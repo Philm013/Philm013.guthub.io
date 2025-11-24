@@ -17,13 +17,13 @@
             --shadow: 0 10px 15px -3px rgba(0,0,0,0.5);
             --font-ui: 'Nunito', sans-serif; --font-hand: 'Patrick Hand', cursive;
         }
-        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; }
+        * { box-sizing: border-box; outline: none; -webkit-tap-highlight-color: transparent; user-select: none; }
         input, textarea { user-select: text; }
         body { margin: 0; overflow: hidden; background: var(--bg); font-family: var(--font-ui); color: var(--text); height: 100vh; touch-action: none; }
 
         /* --- LAYOUT --- */
         #app { display: none; width: 100vw; height: 100vh; }
-        
+
         /* SIDEBAR */
         #sidebar { 
             width: 320px; background: var(--panel); border-right: 1px solid var(--panel-border); 
@@ -31,16 +31,16 @@
             box-shadow: 4px 0 15px rgba(0,0,0,0.3); position: absolute; height: 100%; top:0; left:0;
         }
         #sidebar.closed { transform: translateX(-100%); }
-        
+
         /* VIEWPORT */
         #viewport { flex: 1; position: relative; overflow: hidden; background: var(--bg); cursor: default; touch-action: none; width: 100vw; height: 100vh; }
         #viewport.panning { cursor: grab; }
         #viewport.panning:active { cursor: grabbing; }
         #viewport.drawing { cursor: crosshair; }
-        
+
         #world { position: absolute; top:0; left:0; transform-origin: 0 0; will-change: transform; }
         #bg-grid { position: absolute; inset:0; pointer-events: none; background-image: radial-gradient(#374151 2px, transparent 2px); background-size: 24px 24px; opacity: 0.5; }
-        
+
         /* LAYERS */
         svg { overflow: visible; }
         #ink-layer { position:absolute; inset:0; pointer-events:none; z-index: 1; }
@@ -68,7 +68,7 @@
             touch-action: none; pointer-events: auto; 
         }
         .item.dragging { transition: none !important; z-index: 9999 !important; opacity: 0.8; pointer-events: none; }
-        
+
         .jiggle-wrapper { width:100%; height:100%; display:flex; flex-direction:column; background:white; border-radius:16px; box-shadow: var(--shadow); position:relative; overflow:hidden; color: #1e293b; border: 2px solid transparent; }
         .item.selected .jiggle-wrapper { box-shadow: 0 0 0 3px var(--accent), 0 20px 25px -5px rgba(0,0,0,0.5) !important; z-index: 50; border-color: var(--accent) !important; }
         @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg) scale(1.05); } 75% { transform: rotate(5deg) scale(1.05); } 100% { transform: rotate(0deg); } }
@@ -98,7 +98,7 @@
             z-index: 3000; width: 260px; animation: popIn 0.15s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         @keyframes popIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
-        
+
         @media (max-width: 768px) {
             #context-menu { 
                 position: fixed !important; bottom: 20px !important; left: 50% !important; top: auto !important; 
@@ -108,7 +108,7 @@
 
         .ctx-row { display: flex; gap: 5px; width: 100%; margin-bottom: 5px; }
         .ctx-row:last-child { margin-bottom: 0; }
-        
+
         .ctx-btn { 
             flex: 1; height: 36px; border: 1px solid #e2e8f0; background: #f8fafc; 
             border-radius: 8px; cursor: pointer; display: flex; align-items: center; 
@@ -122,25 +122,25 @@
         /* MENU BUTTON (3 Dots) */
         .menu-trigger { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 50%; cursor: pointer; font-size: 1.4rem; line-height: 1; color: #4b5563; }
         .menu-trigger:hover { background: rgba(0,0,0,0.1); }
-        
+
         /* CONTENT */
         .item.note textarea { width: 100%; height: 100%; border: none; background: transparent; padding: 16px; font-family: var(--font-hand); font-size: 1.4rem; resize: none; line-height: 1.4; color: #1e293b; }
         .item.note img { width: 100%; flex: 1; object-fit: contain; background: #f8fafc; pointer-events: none; min-height: 0; display: block; }
         .caption-in { width: 100%; height: 40px; border: none; border-top: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8); padding: 8px; font-family: var(--font-ui); font-size: 0.9rem; resize: none; color: #1e293b; flex-shrink: 0; }
-        
+
         .i-body { flex: 1; position: relative; min-height: 0; display: flex; flex-direction: column; }
         .zone-label { position:absolute; top:-25px; left:0; color: var(--accent); font-weight:800; letter-spacing:1px; font-size:0.9rem; white-space:nowrap; text-shadow: 0 2px 4px rgba(0,0,0,0.5); pointer-events: none; }
         .cer-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; height: 100%; width: 100%; pointer-events: none; }
         .cer-col { border-right: 2px dashed #cbd5e1; position: relative; display: flex; justify-content: center; padding-top: 10px; font-weight: 800; color: #94a3b8; letter-spacing: 1px; font-size: 0.8rem; }
         .consensus-bg { background-image: radial-gradient(#bae6fd 1px, transparent 1px); background-size: 20px 20px; background-color: #f0f9ff; }
-        
+
         /* ZONE RESULTS WIDGET */
         .zone-res-box { display: none; background: #f8fafc; border-top: 1px solid #cbd5e1; max-height: 50%; overflow-y: auto; padding: 10px; font-size: 0.9rem; flex-shrink: 0; }
         .zone-res-box.active { display: block; }
         .result-row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
         .bar-bg { flex: 1; height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
         .bar-fill { height: 100%; background: var(--accent); transition: width 0.5s; }
-        
+
         .disc-item { padding: 8px; border-bottom: 1px solid #e2e8f0; margin-bottom: 8px; background: white; border-radius: 8px; }
         .disc-tag { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; font-weight: 800; margin-right: 6px; }
         .dt-notice { background:#fef3c7; color:#d97706; }
@@ -191,18 +191,18 @@
             opacity: 0; transition: 0.2s; pointer-events: none; z-index: 999;
         }
         .drawer.open { display: flex; opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
-        
+
         .tool-row { display: flex; gap: 8px; width: 100%; justify-content: center; margin-bottom: 8px; }
         .color-btn { width: 32px; height: 32px; border-radius: 50%; border: 2px solid #374151; cursor: pointer; }
         .color-btn.active { border-color: white; transform: scale(1.2); }
-        
+
         .sub-btn {
             padding: 10px 16px; background: #374151; color: white; border-radius: 12px;
             border: 1px solid #4b5563; font-size: 0.9rem; font-weight: 600; cursor: pointer;
             display: flex; align-items: center; gap: 6px; flex: 1; justify-content: center;
         }
         .sub-btn:hover { background: #4b5563; }
-        
+
         /* SVG ICON BUTTONS */
         .icon-btn {
             width: 44px; height: 44px; padding: 0; display: flex; align-items: center; justify-content: center;
@@ -222,15 +222,15 @@
         .btn-p { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size:1rem; transition:0.2s; min-height: 48px; }
         .btn-s { width: 100%; padding: 14px; background: #f1f5f9; color: #334155; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size:1rem; margin-top:8px; min-height: 48px; }
         input.in-txt { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; }
-        
+
         #marquee { position: absolute; border: 1px solid var(--accent); background: rgba(99,102,241,0.1); display: none; pointer-events: none; z-index: 100; }
-        
+
         .tab-head { display: flex; background: #f1f5f9; border-bottom: 1px solid #e2e8f0; min-height: 50px; border-radius: 12px 12px 0 0; }
         .tab-btn { flex: 1; padding: 12px; text-align: center; font-weight: 700; font-size: 0.9rem; cursor: pointer; color: #64748b; }
         .tab-btn.active { background: white; color: var(--accent); border-bottom: 2px solid var(--accent); }
         .tab-content { display: none; flex: 1; overflow-y: auto; padding: 10px; flex-direction: column; }
         .tab-content.active { display: flex; }
-        
+
         #landing { position: fixed; inset:0; background: #f1f5f9; z-index: 2000; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #1f2937; }
         .land-card { background: white; padding: 40px; border-radius: 24px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); width: 500px; max-width: 90%; text-align: center; }
         .board-row { padding: 16px; border-bottom: 1px solid #f1f5f9; cursor: pointer; display: flex; justify-content: space-between; align-items: center; text-align: left; }
@@ -345,6 +345,7 @@
         <button class="dock-btn" id="mt-arrange" style="display:none" onclick="window.UI.toggleDrawer('arrange')">📏</button>
         <div class="sep-mobile"></div>
         <button class="dock-btn" onclick="ActionHistory.undo()">↩️</button>
+        <button class="dock-btn" style="color:#818cf8" onclick="Network.host()">📡</button>
     </div>
 
     <!-- SHARED DRAWERS -->
@@ -439,7 +440,7 @@
     <div class="modal" style="text-align:center">
         <h2>Join Class</h2>
         <div id="qr-tgt" style="display:flex; justify-content:center; margin:20px"></div>
-        <div id="host-id" style="font-family:monospace; font-size:2rem; background:#f1f5f9; padding:10px; border-radius:12px; letter-spacing:2px; word-break: break-all;">...</div>
+        <div id="host-id" style="font-family:monospace; font-size:2rem; background:#f1f5f9; padding:10px; border-radius:12px; letter-spacing:2px; word-break: break-all; user-select: text;">...</div>
         <button class="btn-p" style="margin-top:20px" onclick="$('modal-host').style.display='none'">Close</button>
     </div>
 </div>
@@ -659,7 +660,7 @@ window.Board = {
                 cy < i.y + i.h && cy + h > i.y
             );
         };
-        
+
         while(!check(nx, ny) && attempts < 50) {
             attempts++;
             const angle = attempts * 0.5;
@@ -725,9 +726,9 @@ window.Render = {
                 el.style.transform = `translate(${i.x}px, ${i.y}px)`;
                 el.style.width = i.w + 'px'; if(i.h) el.style.height = i.h + 'px';
                 el.classList.toggle('selected', State.selection.includes(i.id));
-                
+
                 if(i.type==='zone') { const lbl = el.querySelector('.zone-label'); if(lbl && lbl.innerText !== i.title) lbl.innerText = i.title; }
-                
+
                 const cmts = State.comments.filter(c => c.targetId === i.id);
                 const badge = el.querySelector('.cmt-badge');
                 if(cmts.length > 0) {
@@ -751,7 +752,7 @@ window.Render = {
             if(i.type==='poll') Render.updatePoll(el, i);
             if(i.type==='spin') Render.updateSpin(el, i);
             if(i.type==='graph') Render.updateGraph(el, i);
-            
+
             // Text sync for notes
             if(i.type === 'note' && !i.src) {
                  const txt = el.querySelector('textarea');
@@ -760,7 +761,7 @@ window.Render = {
         });
         Array.from(layer.children).forEach(c => { if(!State.items.find(i=>i.id===c.id)) c.remove(); });
         Render.ink();
-        
+
         // Show/Hide Arrange Button
         const arrBtn = $('btn-arrange');
         if(arrBtn) arrBtn.style.display = State.selection.length > 1 ? 'flex' : 'none';
@@ -791,15 +792,15 @@ window.Render = {
                 </div><div style="flex:1; position:relative"></div>`;
             }
             else inner = `<div style="padding:20px;text-align:center;color:#94a3b8;pointer-events:none;display:flex;align-items:center;justify-content:center;height:100%"></div>`;
-            
+
             inner += `<div id="zr-${d.id}" class="zone-res-box"></div>`;
-            
+
             btnOpen = `<span id="zbtn-${d.id}" style="cursor:pointer;font-size:0.75rem;background:white;padding:4px 8px;border-radius:10px;margin-left:8px;border:1px solid #e2e8f0" onpointerdown="event.stopPropagation()" onclick="Network.openZone('${d.id}')">📡 Open</span>`;
-            
+
             if(d.zoneType === 'exit') {
                 btnOpen = `<span style="cursor:pointer;font-size:0.75rem;background:#6366f1;color:white;padding:4px 8px;border-radius:10px;margin-left:8px;border:1px solid #6366f1" onpointerdown="event.stopPropagation()" onclick="Network.broadcastExit('${d.id}')">📡 Broadcast</span>`;
             }
-            
+
             btnOpen += `<span style="cursor:pointer;font-size:0.75rem;background:white;padding:4px 8px;border-radius:10px;margin-left:4px;border:1px solid #e2e8f0" onpointerdown="event.stopPropagation()" onclick="UI.toggleZoneResults('${d.id}')">💬 Results</span>`;
             el.innerHTML = `<div class="zone-label">${d.title}</div>` + el.innerHTML;
         } else {
@@ -820,7 +821,7 @@ window.Render = {
                 <div class="i-body">${inner}</div>
                 <div class="resize-h"></div>
             </div>`;
-        
+
         const w = el.querySelector('.jiggle-wrapper');
         if(d.type==='note') {
             w.style.background = head.col;
@@ -835,14 +836,14 @@ window.Render = {
             else if(d.zoneType === 'exit') { w.style.border = '2px solid #6366f1'; w.style.background = '#fefeff'; }
             else { w.style.background = 'rgba(255,255,255,0.5)'; }
         }
-        
+
         const ta = el.querySelector('textarea');
         if(ta) ta.oninput = e => { 
             d.text = e.target.value; 
             if(d._timeout) clearTimeout(d._timeout);
             d._timeout = setTimeout(() => { Network.broadcast({type:'NOTE_UPDATE', note:d}); }, 500);
         };
-        
+
         return el;
     },
     updatePoll: (el, d) => {
@@ -881,10 +882,10 @@ window.Actions = {
         if(type==='poll') { it.q="Question?"; it.opts=[{lbl:'Yes',v:0},{lbl:'No',v:0}]; }
         if(type==='spin') { it.ang=0; it.opts=['A','B','C','D']; it.w=200; it.h=220; }
         if(type==='graph') { it.title="Class Data"; it.data=[]; it.w=300; it.h=200; }
-        
+
         const pos = Board.getFreeSpace(cx, cy, it.w, it.h);
         it.x = pos.x; it.y = pos.y;
-        
+
         State.items.push(it); Render.all(); ActionHistory.push(); Board.save(true);
         UI.toggleDrawer(null); 
     },
@@ -892,7 +893,7 @@ window.Actions = {
         let cx = -State.view.x + window.innerWidth/2/State.view.z - 200;
         let cy = -State.view.y + window.innerHeight/2/State.view.z - 150;
         const id = genId();
-        
+
         let promptTxt = "Exit Ticket";
         let opts = null;
 
@@ -1059,7 +1060,7 @@ window.Actions = {
         } else {
             let cx = z.x + PAD; let cy = z.y + 50; 
             if(z.zoneType === 'exit') cy += 30; 
-            
+
             let rowH = 0;
             itemsToLayout.forEach(childId => {
                 let child, isGhost = false;
@@ -1202,10 +1203,10 @@ window.Modes = {
             const y = (e.clientY - r.top)/State.view.z - State.view.y;
             const d = State.drag;
             if(!d.hasMoved) { if(Math.hypot(e.clientX - d.sx, e.clientY - d.sy) > 5) d.hasMoved = true; else return; }
-            
+
             const zone = State.items.find(z => z.type==='zone' && x > z.x && x < z.x+z.w && y > z.y && y < z.y+z.h);
             const ghostEl = $('ghost-layer');
-            
+
             if(zone && zone.children) {
                 let insertIdx = zone.children.length; let minDist = Infinity;
                 if (zone.zoneType !== 'cer') {
@@ -1347,7 +1348,7 @@ window.Modes = {
             const r = $('viewport').getBoundingClientRect();
             const x = e.clientX - r.left; const y = e.clientY - r.top;
             const dot = document.createElement('div');
-            dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:10px;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
+            dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:100%;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
             $('viewport').appendChild(dot);
             setTimeout(() => dot.remove(), 500);
         },
@@ -1366,7 +1367,7 @@ window.InputController = {
 
         const item = e.target.closest('.item');
         const handle = e.target.closest('.resize-h');
-        
+
         if(e.button === 1) { Modes.Pan.down(evt); return; }
 
         if(State.tool === 'pan' || State.tool === 'select') {
@@ -1439,11 +1440,27 @@ window.addEventListener('keyup', InputController.keyup);
 window.Network = {
     peer: null,
     host: (existingId) => {
+        // Fix: Don't destroy if we are just reopening the modal
+        if (Network.peer && !Network.peer.destroyed && existingId === undefined) {
+            $('modal-host').style.display = 'flex';
+            return;
+        }
+
         if(Network.peer) { Network.peer.destroy(); Network.peer = null; }
-        Network.peer = new Peer(existingId || undefined);
+        
+        // If existingId is null (Reset button), pass undefined to generate new.
+        // If existingId is undefined (Host button), pass undefined.
+        // If existingId is string (Reload), pass string.
+        const idToUse = existingId === null ? undefined : existingId;
+
+        Network.peer = new Peer(idToUse);
         Network.peer.on('open', id => {
             $('host-id').innerText = id; localStorage.setItem('dqb_host_id', id);
+            
+            // Fix: Clear previous QR
+            $('qr-tgt').innerHTML = '';
             new QRCode($('qr-tgt'), { text:id, width:180, height:180 });
+            
             if(!existingId) $('modal-host').style.display='flex';
             UI.toast("📡 Network Ready"); setInterval(() => Network.broadcast({type:'HEARTBEAT'}), 3000);
         });
@@ -1451,7 +1468,7 @@ window.Network = {
             c.on('open', () => { 
                 const syncNotes = State.items.filter(i => i.type === 'note').map(i => ({id:i.id, text:i.text, sub:i.sub, src:i.src}));
                 SafeSend(c, { type: 'WELCOME', boardId: State.id, mode: State.mode, sync: syncNotes });
-                
+
                 // 1. Re-broadcast Active Session (Vote/Sort/Discuss)
                 if(State.currentAct) {
                     const actId = State.currentAct.id;
@@ -1554,7 +1571,7 @@ window.Network = {
         }
         else if(d.type === 'COMMENT') { State.comments.push(d); Network.updateDiscussion(); Render.all(); }
         else if(d.type === 'JIGGLE_NOTE') { const el = document.getElementById(d.id); if(el) { el.classList.add('jiggling'); setTimeout(() => el.classList.remove('jiggling'), 2000); } }
-        
+
         // EXIT TICKET SUBMISSION HANDLER
         else if(d.type === 'EXIT_SUBMIT') {
             // Find the Widget (Zone)
@@ -1564,7 +1581,7 @@ window.Network = {
                 let txt = d.val;
                 if(Array.isArray(d.val)) txt = d.val.join(', ');
                 if(typeof d.val === 'object' && d.val.l) txt = `L: ${d.val.l}\nW: ${d.val.w}`;
-                
+
                 // Create Note
                 const noteId = genId();
                 const newNote = {
@@ -1573,14 +1590,14 @@ window.Network = {
                     w: 200, h: 150, votes: 0,
                     parentZone: zone.id
                 };
-                
+
                 // Add to Board
                 State.items.push(newNote);
-                
+
                 // Add to Zone Children
                 if(!zone.children) zone.children = [];
                 zone.children.push(noteId);
-                
+
                 // Snap Layout
                 Actions.layoutZone(zone.id);
                 Render.all(); Board.save(true);
@@ -1670,4 +1687,3 @@ window.onload = () => {
 </script>
 </body>
 </html>
-<!-- END OF FILE DQB_DEV.html -->
