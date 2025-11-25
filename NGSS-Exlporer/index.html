@@ -550,10 +550,10 @@
             try {
                 // Fetch all 4 JSON files in parallel
                 const [elementsRes, k5Res, msRes, hsRes] = await Promise.all([
-                    fetch('ngss3DElements.json'),
-                    fetch('ngssK5.json'),
-                    fetch('ngss68.json'),
-                    fetch('ngss912.json')
+                    fetch('https://philm013.github.io/JSON/ngss3DElements.json'),
+                    fetch('fetch('https://philm013.github.io/JSON/ngssK5.json'),
+                    fetch('https://philm013.github.io/JSON/ngss68.json'),
+                    fetch('https://philm013.github.io/JSON/ngss912.json')
                 ]);
 
                 if (!elementsRes.ok || !k5Res.ok || !msRes.ok || !hsRes.ok) {
