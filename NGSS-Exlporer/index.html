@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -429,11 +428,6 @@
     </div>
     <div id="resize-handle-start" class="resize-handle"></div>
     <div id="resize-handle-end" class="resize-handle"></div>
-
-    <script src="ngss3DElements.js"></script>
-    <script src="ngssK5.js"></script>
-    <script src="ngss68.js"></script>
-    <script src="ngss912.js"></script>
     
     <script type="module">
        import { GoogleGenerativeAI } from "https://esm.run/@google/generative-ai";
@@ -551,7 +545,116 @@
         const applyStateFromUrl = () => { isNavigatingHistory = true; const p = new URLSearchParams(window.location.search); searchInput.value = ''; document.querySelectorAll('.filter-btn.active').forEach(b => b.classList.remove('active')); gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); renderTopicFilters('all'); subDimensionFiltersContainer.style.display = 'none'; dciMinorFiltersContainer.style.display = 'none'; activeElementFilters.clear(); renderActiveElementFilters(); activeBundleFilter = null; renderBundleFilters(); clearPeFilter(); isolatedColumn = null; peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible')); matrixRowElements.clear(); window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => { const c = i.name.split(':')[0].trim(); if (c) matrixRowElements.add(c); })); if (p.has('bundlePEs')) { const ids = p.get('bundlePEs').split(','); peBundle = new Set(ids.filter(id => peMap.has(id))); if (peBundle.size > 0) { updateBundleControls(); renderBundleView(); isNavigatingHistory = false; return; } } const view = p.get('view') || 'pe'; searchInput.value = p.get('q') || ''; if (p.has('matrixRows')) matrixRowElements = new Set(p.get('matrixRows').split(',')); if (p.has('grade')) { const g = p.get('grade'); gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector(`[data-filter="${g}"]`)?.classList.add('active'); renderTopicFilters(g); } if (p.has('topic')) { const t = p.get('topic').split(','); document.querySelector('#topic-filters [data-filter="all"]')?.classList.remove('active'); t.forEach(topic => document.querySelector(`#topic-filters [data-filter="${topic}"]`)?.classList.add('active')); } if (p.has('elements')) { activeElementFilters = new Set(p.get('elements').split(',')); renderActiveElementFilters(); } if (p.has('bundleFilter')) { activeBundleFilter = p.get('bundleFilter'); renderBundleFilters(); } activePeFilter = p.get('highlight') || null; isolatedColumn = p.get('isolate') || null; if (p.has('dim')) { const d = p.get('dim'); dimensionFilters.querySelector(`[data-filter="${d}"]`)?.classList.add('active'); renderSubFilters(d); } if (p.has('subDim')) { const s = p.get('subDim').split(','); s.forEach(sub => subDimensionFilters.querySelector(`[data-filter="${sub}"]`)?.classList.add('active')); const d = p.get('dim'); if (d && d.startsWith('DCI') && s.length > 0) renderDciMinorFilters(s[0]); } if (p.has('minorDim')) { const m = p.get('minorDim').split(','); m.forEach(minor => dciMinorFilters.querySelector(`[data-filter="${minor}"]`)?.classList.add('active')); } switchView(view, null, false); if (p.has('expanded')) { const id = p.get('expanded'); setTimeout(() => { const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${id}"]`); if (row) { row.classList.add('expanded'); row.nextElementSibling.classList.add('is-visible'); } }, 100); } isNavigatingHistory = false; };
         const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
         const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => { let lineMatched = false; ref.text.split('\n').forEach(line => { if (!line.trim()) return; const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel); if (specCode) { specCodes.add(specCode); const el = specificElementMap.get(specCode); if (el) { el.relatedPes.add(pe.id); if (el.parentCode) compCodes.add(el.parentCode); } lineMatched = true; } }); if (!lineMatched) { const cleanId = ref.id.replace(' (secondary)', '').trim(); let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim()); if (cCode) compCodes.add(cCode); } })); peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
-        const loadAndProcessData = async () => { const cache = await loadDataFromDB(); if (cache && cache.version === CACHE_VERSION) { peMap = new Map(cache.peMap); peMap.forEach(pe => { pe.associatedComponentCodes = new Set(pe.associatedComponentCodes); pe.associatedSpecificCodes = new Set(pe.associatedSpecificCodes); }); elementMap = new Map(cache.elementMap); specificElementMap = new Map(cache.specificElementMap); specificElementMap.forEach(el => el.relatedPes = new Set(el.relatedPes)); nameToCodeMap = new Map(cache.nameToCodeMap); textToSpecificCodeMap = new Map(cache.textToSpecificCodeMap); gradeToTopicsMap = cache.gradeToTopicsMap; allTopics = cache.allTopics; sortedGradeLabels = cache.sortedGradeLabels; return; } processAllData(); let topics = new Set(); window.allNgssData.forEach(d => { const t = d.topics.map(t => t.topicTitle); gradeToTopicsMap[d.gradeLabel] = [...new Set(t)]; t.forEach(topic => topics.add(topic)); }); allTopics = [...topics].sort(); const order = ['Kindergarten', 'First Grade', 'Second Grade', 'K-2 ETS', 'Third Grade', 'Fourth Grade', 'Fifth Grade', '3-5 ETS', 'Middle School', 'High School']; sortedGradeLabels = [...new Set([...peMap.values()].map(pe => pe.gradeLabel))].sort((a, b) => { const iA = order.indexOf(a), iB = order.indexOf(b); return (iA === -1 && iB === -1) ? a.localeCompare(b) : (iA === -1 ? 1 : (iB === -1 ? -1 : iA - iB)); }); const dataToCache = { version: CACHE_VERSION, peMap: [...peMap].map(([id, pe]) => [id, { ...pe, associatedComponentCodes: [...pe.associatedComponentCodes], associatedSpecificCodes: [...pe.associatedSpecificCodes] }]), elementMap: [...elementMap], specificElementMap: [...specificElementMap].map(([id, el]) => [id, { ...el, relatedPes: [...el.relatedPes] }]), nameToCodeMap: [...nameToCodeMap], textToSpecificCodeMap: [...textToSpecificCodeMap], gradeToTopicsMap, allTopics, sortedGradeLabels }; try { saveDataToDB(dataToCache); } catch (e) { console.error("Error caching data:", e); } };
+        
+        const fetchRawData = async () => {
+            try {
+                // Fetch all 4 JSON files in parallel
+                const [elementsRes, k5Res, msRes, hsRes] = await Promise.all([
+                    fetch('ngss3DElements.json'),
+                    fetch('ngssK5.json'),
+                    fetch('ngss68.json'),
+                    fetch('ngss912.json')
+                ]);
+
+                if (!elementsRes.ok || !k5Res.ok || !msRes.ok || !hsRes.ok) {
+                    throw new Error("One or more data files could not be loaded.");
+                }
+
+                // Parse JSON
+                window.allNgss3dElements = await elementsRes.json();
+                const k5Data = await k5Res.json();
+                const msData = await msRes.json();
+                const hsData = await hsRes.json();
+
+                // Combine grade levels into the structure the app expects
+                window.allNgssData = [k5Data, msData, hsData].flat();
+                
+            } catch (error) {
+                console.error("Error fetching NGSS JSON data:", error);
+                alert("Failed to load NGSS data files. Please check the console and ensure JSON files are in the correct directory.");
+                throw error; // Stop execution
+            }
+        };
+
+        const loadAndProcessData = async () => {
+            // 1. Try to load processed data from IndexedDB Cache
+            const cache = await loadDataFromDB();
+            
+            if (cache && cache.version === CACHE_VERSION) {
+                // Cache hit! Restore maps and variables
+                peMap = new Map(cache.peMap);
+                peMap.forEach(pe => {
+                    pe.associatedComponentCodes = new Set(pe.associatedComponentCodes);
+                    pe.associatedSpecificCodes = new Set(pe.associatedSpecificCodes);
+                });
+                elementMap = new Map(cache.elementMap);
+                specificElementMap = new Map(cache.specificElementMap);
+                specificElementMap.forEach(el => el.relatedPes = new Set(el.relatedPes));
+                nameToCodeMap = new Map(cache.nameToCodeMap);
+                textToSpecificCodeMap = new Map(cache.textToSpecificCodeMap);
+                gradeToTopicsMap = cache.gradeToTopicsMap;
+                allTopics = cache.allTopics;
+                sortedGradeLabels = cache.sortedGradeLabels;
+                
+                // If we cache hit, we still need the raw 3D elements for the 3D explorer view to render
+                if (!window.allNgss3dElements) {
+                     try {
+                         const elRes = await fetch('ngss3DElements.json');
+                         window.allNgss3dElements = await elRes.json();
+                     } catch (e) {
+                         console.error("Could not fetch 3D elements for view generation", e);
+                     }
+                }
+                return;
+            }
+
+            // 2. Cache Miss: Fetch JSON files from server
+            await fetchRawData();
+
+            // 3. Process the raw data
+            processAllData();
+
+            // 4. Generate metadata
+            let topics = new Set();
+            window.allNgssData.forEach(d => {
+                const t = d.topics.map(t => t.topicTitle);
+                gradeToTopicsMap[d.gradeLabel] = [...new Set(t)];
+                t.forEach(topic => topics.add(topic));
+            });
+            allTopics = [...topics].sort();
+            
+            const order = ['Kindergarten', 'First Grade', 'Second Grade', 'K-2 ETS', 'Third Grade', 'Fourth Grade', 'Fifth Grade', '3-5 ETS', 'Middle School', 'High School'];
+            sortedGradeLabels = [...new Set([...peMap.values()].map(pe => pe.gradeLabel))].sort((a, b) => {
+                const iA = order.indexOf(a),
+                    iB = order.indexOf(b);
+                return (iA === -1 && iB === -1) ? a.localeCompare(b) : (iA === -1 ? 1 : (iB === -1 ? -1 : iA - iB));
+            });
+
+            // 5. Save to Cache
+            const dataToCache = {
+                version: CACHE_VERSION,
+                peMap: [...peMap].map(([id, pe]) => [id, { ...pe,
+                    associatedComponentCodes: [...pe.associatedComponentCodes],
+                    associatedSpecificCodes: [...pe.associatedSpecificCodes]
+                }]),
+                elementMap: [...elementMap],
+                specificElementMap: [...specificElementMap].map(([id, el]) => [id, { ...el,
+                    relatedPes: [...el.relatedPes]
+                }]),
+                nameToCodeMap: [...nameToCodeMap],
+                textToSpecificCodeMap: [...textToSpecificCodeMap],
+                gradeToTopicsMap,
+                allTopics,
+                sortedGradeLabels
+            };
+
+            try {
+                saveDataToDB(dataToCache);
+            } catch (e) {
+                console.error("Error caching data:", e);
+            }
+        };
+
         const buildMatrixDataMap = () => { elementToGradePeMap.clear(); for (const pe of peMap.values()) for (const code of pe.associatedComponentCodes) { if (!elementToGradePeMap.has(code)) elementToGradePeMap.set(code, new Map()); const gradeMap = elementToGradePeMap.get(code); if (!gradeMap.has(pe.gradeLabel)) gradeMap.set(pe.gradeLabel, new Set()); gradeMap.get(pe.gradeLabel).add(pe.id); } };
         
         // --- 4. UI RENDERING & NAVIGATION ---
