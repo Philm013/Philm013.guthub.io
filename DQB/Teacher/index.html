@@ -658,9 +658,6 @@ window.HierarchyManager = {
         if (currentIdx > -1) zone.children.splice(currentIdx, 1);
 
         if (index >= 0 && index <= zone.children.length) {
-            if (currentIdx > -1 && currentIdx < index) {
-                index--;
-            }
             zone.children.splice(index, 0, childId);
         } else {
             zone.children.push(childId);
@@ -904,12 +901,10 @@ window.LayoutSystem = {
         }
     },
 
-    // Calculate insertion index based on geometric proximity (Row/Col aware)
-    // CHANGED: Added excludeId parameter
+    // CHANGED: Replaced the entire function with a more reliable algorithm
     getIndex: (zone, x, y, excludeId = null) => {
         if(!zone.children) return 0;
         
-        // CHANGED: Filter out the excluded ID before mapping
         const items = zone.children
             .filter(id => id !== excludeId)
             .map(id => State.items.find(i=>i.id===id))
@@ -917,24 +912,22 @@ window.LayoutSystem = {
         
         if (items.length === 0) return 0;
 
-        let bestIndex = items.length;
-        let minDist = Infinity;
-
-        for(let i=0; i<items.length; i++) {
+        // Find the first item that we should insert *before*.
+        for (let i = 0; i < items.length; i++) {
             const item = items[i];
-            const icx = item.x + item.w/2;
-            const icy = item.y + item.h/2;
-            
-            const dist = Math.hypot(x - icx, y - icy); 
-            
-            if(dist < minDist) {
-                minDist = dist;
-                // Determine if cursor is in the first or second half of the item
-                bestIndex = (x < icx) ? i : i + 1;
+            const itemCenterY = item.y + item.h / 2;
+            const itemCenterX = item.x + item.w / 2;
+
+            // This logic checks if the dragged item's center (x,y) is vertically above the current item,
+            // or on the same row but horizontally to the left. This provides a consistent "first-fit"
+            // for finding the insertion index, which is more reliable than finding the "closest" item.
+            if (y < itemCenterY && x < (item.x + item.w)) {
+                return i;
             }
         }
-        
-        return bestIndex;
+
+        // If the loop completes, it means the item should be at the very end.
+        return items.length;
     }
 };
 
@@ -1561,8 +1554,16 @@ window.Actions = {
             } else {
                 html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.groupSelection()">Group Items</button></div>`;
             }
+            
+            // ADDED: Check if notes are in the selection and add the "Move to Zone" button
+            const hasNotesInSelection = selection.some(i => i.type === 'note');
+            if (hasNotesInSelection) {
+                html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>`;
+            }
+
             html += `<div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete()">Delete All</button></div>`;
-        } else {
+
+        } else { // Single item selection logic remains the same
              if(item.type === 'note') {
                 html += `<div class="ctx-row">
                     <button class="ctx-btn" style="background:#fef3c7" onclick="Actions.setType('${id}','notice')">👁️</button>
@@ -1924,7 +1925,6 @@ window.Modes = {
                 if (hitZone) {
                     d.hoverZoneId = hitZone.id;
                     document.getElementById(hitZone.id).classList.add('drag-over');
-                    // CHANGED: Pass the primary item's ID to exclude it from index calculation
                     const newIndex = LayoutSystem.getIndex(hitZone, cx, cy, primaryItem.id);
                     if (d.targetIndex !== newIndex) {
                         d.targetIndex = newIndex;
@@ -2011,7 +2011,6 @@ window.Modes = {
             i.w = Math.max(150, d.ow + (x - d.sx)); 
             i.h = Math.max(150, d.oh + (y - d.sy));
             
-            // ADDED: Trigger reflow for the parent zone if this item is in one
             if(i.type === 'zone') {
                 LayoutSystem.update(i.id);
             } else if (i.parentZone) {
@@ -2021,9 +2020,8 @@ window.Modes = {
             const el = document.getElementById(i.id);
             if(el) { el.style.width = i.w + 'px'; el.style.height = i.h + 'px'; }
         },
-        up: (e) => {
+        up: (e) => { 
             const i = State.items.find(x=>x.id===State.drag.id);
-            // ADDED: Final reflow update on mouse up
             if(i && i.parentZone) {
                 LayoutSystem.update(i.parentZone);
             }
