@@ -6,6 +6,7 @@
     <title>InquiryDQB | Teacher Console</title>
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
@@ -276,12 +277,30 @@
 <!-- GLOBAL FLOATING CONTEXT MENU -->
 <div id="context-menu"></div>
 
+<!-- JOIN MODAL -->
+<div id="modal-join" class="modal-bg">
+    <div class="modal">
+        <h2 style="margin-top:0; color:var(--accent)">Join as Co-Host</h2>
+        <div id="reader" style="width:100%; min-height:250px; background:#f1f5f9; border-radius:12px; overflow:hidden; display:none; margin-bottom:20px"></div>
+        <button id="btn-scan" class="btn-s" style="background:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; gap:8px" onclick="Network.startQRScan()">
+            <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+            Scan QR Code
+        </button>
+        <div style="margin:20px 0; text-align:center; font-weight:bold; color:#cbd5e1">- OR -</div>
+        <div style="margin-bottom:8px; font-weight:700; color:#64748b">Enter Host ID Manually</div>
+        <input id="join-id-input" class="in-txt" placeholder="e.g. a1b2c3d4e">
+        <button class="btn-p" style="margin-top:20px" onclick="Network.submitJoin()">Join Board</button>
+        <button class="btn-s" style="color:#ef4444; background:#fef2f2" onclick="Network.closeJoinModal()">Cancel</button>
+    </div>
+</div>
+
 <!-- LANDING -->
 <div id="landing">
     <div class="land-card">
         <h1 style="color:var(--accent); margin:0 0 10px 0; font-size:2.5rem">InquiryDQB</h1>
         <p style="color:#64748b; margin-bottom:30px">Teacher Console</p>
         <button class="btn-p" onclick="Board.create()">+ New Board</button>
+        <button class="btn-s" style="background:#e0e7ff; color:#4338ca" onclick="Network.joinAsCoHost()">🤝 Join as Co-Host</button>
         <div id="saved-list" style="text-align: left; max-height: 300px; overflow-y: auto; margin: 20px 0; border: 1px solid #e2e8f0; border-radius: 12px;"></div>
         <button class="btn-s" onclick="$('file-up').click()">Import JSON</button>
         <input type="file" id="file-up" hidden onchange="Board.import(this)">
@@ -484,7 +503,8 @@ window.State = {
     
     activeSorts: {}, comments: [],
     touch: { dist: 0 },
-    draw: { color: '#ef4444', width: 4 }
+    draw: { color: '#ef4444', width: 4 },
+    isCoHost: false
 };
 
 window.ActionHistory = {
@@ -503,6 +523,7 @@ window.ActionHistory = {
             State.items = s.items; State.ink = s.ink;
             Render.all(); Board.save(true);
             UI.toast("Undo");
+            if(State.isCoHost || Network.peer) Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink});
         }
     }
 };
@@ -754,7 +775,10 @@ window.DB = {
         };
         req.onsuccess = e => { DB.db = e.target.result; resolve(); Board.list(); };
     }),
-    save: (board) => { const tx = DB.db.transaction('boards', 'readwrite'); tx.objectStore('boards').put(board); return new Promise(r => tx.oncomplete = r); },
+    save: (board) => { 
+        if(State.isCoHost) return; // Co-hosts don't save to local DB
+        const tx = DB.db.transaction('boards', 'readwrite'); tx.objectStore('boards').put(board); return new Promise(r => tx.oncomplete = r); 
+    },
     saveTemplate: (tpl) => { const tx = DB.db.transaction('templates', 'readwrite'); tx.objectStore('templates').put(tpl); return new Promise(r => tx.oncomplete = r); },
     getAll: (store) => new Promise(resolve => { const req = DB.db.transaction(store, 'readonly').objectStore(store).getAll(); req.onsuccess = () => resolve(req.result); })
 };
@@ -784,8 +808,10 @@ window.Board = {
     start: () => { 
         $('landing').style.display='none'; $('app').style.display='block'; $('board-name').value=State.name; 
         Render.loop(); Render.all(); 
-        const lastPeer = localStorage.getItem('dqb_host_id');
-        Network.host(lastPeer);
+        if(!State.isCoHost) {
+            const lastPeer = localStorage.getItem('dqb_host_id');
+            Network.host(lastPeer);
+        }
     },
     save: async (silent) => { 
         await DB.save({ id: State.id, name: State.name, items: State.items, ink: State.ink, ts: Date.now() }); 
@@ -830,6 +856,7 @@ window.InkManager = {
         if(InkManager.currentPath.length > 1) {
             State.ink.push({ id: genId(), points: [...InkManager.currentPath], color: State.draw.color, width: State.draw.width });
             Render.ink(); ActionHistory.push(); Board.save(true);
+            if(State.isCoHost || Network.peer) Network.broadcast({type:'INK_ADD', ink:State.ink[State.ink.length-1]});
         }
         InkManager.currentPath = []; InkManager.renderTemp();
     },
@@ -844,12 +871,12 @@ window.InkManager = {
         path.id = "temp-ink"; svg.appendChild(path);
     },
     pointsToPath: (pts) => { if(pts.length===0) return ""; let d=`M ${pts[0].x} ${pts[0].y}`; for(let i=1;i<pts.length;i++) d+=` L ${pts[i].x} ${pts[i].y}`; return d; },
-    clear: () => { if(confirm("Clear all drawings?")) { State.ink = []; Render.ink(); ActionHistory.push(); Board.save(true); } },
+    clear: () => { if(confirm("Clear all drawings?")) { State.ink = []; Render.ink(); ActionHistory.push(); Board.save(true); Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink}); } },
     eraseAt: (x, y) => {
         const thresh = 20 / State.view.z;
         const initLen = State.ink.length;
         State.ink = State.ink.filter(s => { return !s.points.some(p => Math.hypot(p.x - x, p.y - y) < thresh); });
-        if(State.ink.length !== initLen) { Render.ink(); ActionHistory.push(); Board.save(true); }
+        if(State.ink.length !== initLen) { Render.ink(); ActionHistory.push(); Board.save(true); Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink}); }
     }
 };
 
@@ -1054,7 +1081,11 @@ window.Actions = {
         const id = genId();
         let it = { id, type, w:200, h:150 };
         if(type==='note') { it.sub=sub; it.text=''; }
-        if(type==='zone') { it.title="Zone "+Math.floor(Math.random()*100); it.w=300; it.h=300; it.children=[]; it.snap=true; }
+        if(type==='zone') { 
+            const name = prompt("Name your new zone:", "New Zone");
+            if(!name) return;
+            it.title=name; it.w=300; it.h=300; it.children=[]; it.snap=true; 
+        }
         if(type==='cer') { it.type='zone'; it.zoneType='cer'; it.title="Argument Builder (CER)"; it.w=600; it.h=400; it.children=[]; it.snap=true; }
         if(type==='consensus') { it.type='zone'; it.zoneType='consensus'; it.title="Consensus Model"; it.w=600; it.h=400; it.children=[]; it.snap=true; }
         if(type==='poll') { it.q="Question?"; it.opts=[{lbl:'Yes',v:0},{lbl:'No',v:0}]; }
@@ -1065,7 +1096,8 @@ window.Actions = {
         it.x = pos.x; it.y = pos.y;
 
         State.items.push(it); Render.all(); ActionHistory.push(); Board.save(true);
-        UI.toggleDrawer(null); 
+        UI.toggleDrawer(null);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'ADD_ITEM', item:it});
     },
     createExit: (mode) => {
         let cx = -State.view.x + window.innerWidth/2/State.view.z - 200;
@@ -1100,6 +1132,7 @@ window.Actions = {
 
         State.items.push(it); Render.all(); ActionHistory.push(); Board.save(true);
         UI.toggleDrawer(null);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'ADD_ITEM', item:it});
     },
     showContextMenu: (e, id) => {
         const menu = $('context-menu');
@@ -1118,7 +1151,8 @@ window.Actions = {
             <div class="ctx-row">
                 <button class="ctx-btn" onclick="Actions.toggleLock('${id}')">${item.locked?'Unlock 🔓':'Lock 🔒'}</button>
                 <button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button>
-            </div>`;
+            </div>
+            <div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>`;
         } else if(item.type === 'zone') {
             html += `<div class="ctx-row">
                 <button class="ctx-btn" onclick="Network.startActivity('vote')">🗳️ Vote</button>
@@ -1138,8 +1172,30 @@ window.Actions = {
     },
     showGroupMenu: (e) => {
         const menu = $('context-menu');
-        menu.innerHTML = `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.groupToZone()">🔲 Group to Zone</button></div><div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete()">Delete All</button></div>`;
+        menu.innerHTML = `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.groupToZone()">🔲 Group to Zone</button></div>
+        <div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>
+        <div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete()">Delete All</button></div>`;
         menu.style.display = 'block'; Actions.posMenu(menu, e);
+    },
+    showZoneList: (e) => {
+        e.stopPropagation();
+        const menu = $('context-menu');
+        const zones = State.items.filter(i => i.type === 'zone');
+        let html = `<div style="max-height:200px;overflow-y:auto">`;
+        if(zones.length > 0) {
+            html += zones.map(z => `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.moveToZone('${z.id}')">${z.title}</button></div>`).join('');
+        }
+        html += `<div class="ctx-row" style="border-top:1px solid #e2e8f0; margin-top:5px; padding-top:5px"><button class="ctx-btn" onclick="Actions.groupToZone()">+ New Zone</button></div>`;
+        html += `</div>`;
+        menu.innerHTML = html;
+    },
+    moveToZone: (zoneId) => {
+        const items = State.selection.map(id => State.items.find(i => i.id === id)).filter(i => i && i.type === 'note');
+        if(items.length === 0) return;
+        items.forEach(i => Model.link(i.id, zoneId));
+        LayoutSystem.update(zoneId);
+        Render.all(); UI.closeAllMenus(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'LINK_ITEMS', ids:items.map(i=>i.id), zoneId:zoneId});
     },
     posMenu: (menu, e) => {
         const rect = e.target.getBoundingClientRect();
@@ -1151,11 +1207,15 @@ window.Actions = {
     groupToZone: () => {
         const sel = State.selection.map(id => State.items.find(i => i.id === id)).filter(i => i && i.type === 'note');
         if(sel.length === 0) return;
+        
+        const name = prompt("Name your new zone:", "Group");
+        if(!name) return;
+
         let minX=Infinity, minY=Infinity, maxX=-Infinity, maxY=-Infinity;
         sel.forEach(i => { minX = Math.min(minX, i.x); minY = Math.min(minY, i.y); maxX = Math.max(maxX, i.x+i.w); maxY = Math.max(maxY, i.y+i.h); });
         
         const z = { 
-            id: genId(), type: 'zone', title: 'Group', 
+            id: genId(), type: 'zone', title: name, 
             x: minX - 20, y: minY - 50, 
             w: (maxX - minX) + 40, h: (maxY - minY) + 70, 
             children: sel.map(i => i.id), snap: true 
@@ -1168,6 +1228,10 @@ window.Actions = {
         LayoutSystem.update(z.id);
         
         Actions.sel(z.id); UI.closeAllMenus(); Render.all(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) {
+            Network.broadcast({type:'ADD_ITEM', item:z});
+            Network.broadcast({type:'LINK_ITEMS', ids:sel.map(i=>i.id), zoneId:z.id});
+        }
         setTimeout(() => { sel.forEach(i => { const el = $(i.id); if(el) el.classList.add('snap-anim'); }); }, 50);
     },
     setType: (id, sub) => { const i = State.items.find(x=>x.id===id); if(i && i.type==='note') { i.sub = sub; const oldEl = document.getElementById(id); if(oldEl) oldEl.remove(); Render.all(); UI.closeAllMenus(); Board.save(true); Network.broadcast({type:'NOTE_UPDATE', note:i}); } },
@@ -1190,7 +1254,7 @@ window.Actions = {
         Render.sync(); 
     },
     spin: (id) => { const i = State.items.find(x=>x.id===id); i.ang += 720 + Math.random()*360; Render.all(); },
-    rename: (id) => { const i = State.items.find(x=>x.id===id); const n = prompt("Rename Zone:", i.title); if(n) { i.title=n; Render.sync(); Board.save(true); } },
+    rename: (id) => { const i = State.items.find(x=>x.id===id); const n = prompt("Rename Zone:", i.title); if(n) { i.title=n; Render.sync(); Board.save(true); if(State.isCoHost || Network.peer) Network.broadcast({type:'NOTE_UPDATE', note:i}); } },
     editPoll: (id) => {
         const p = State.items.find(x=>x.id===id); if(!p) return;
         const q = prompt("Poll Question:", p.q);
@@ -1232,6 +1296,7 @@ window.Actions = {
         if(mode === 'middle') { const avg = items.reduce((a,b)=>a+(b.y+b.h/2),0)/items.length; items.forEach(i=>i.y=avg-i.h/2); }
         if(mode === 'bottom') { const max = Math.max(...items.map(i=>i.y+i.h)); items.forEach(i=>i.y=max-i.h); }
         Render.sync(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     distribute: (axis) => {
         if(State.selection.length < 3) return;
@@ -1244,6 +1309,7 @@ window.Actions = {
             items.forEach((item, i) => { item.y = min + (step * i); });
         }
         Render.sync(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     matchSize: () => {
         if(State.selection.length < 2) return;
@@ -1251,6 +1317,7 @@ window.Actions = {
         const maxW = Math.max(...items.map(i=>i.w)); const maxH = Math.max(...items.map(i=>i.h));
         items.forEach(i => { i.w = maxW; i.h = maxH; });
         Render.sync(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     arrangeGrid: () => {
         const items = State.selection.length > 0 ? State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x) : State.items.filter(i => i.type === 'note');
@@ -1263,6 +1330,7 @@ window.Actions = {
             item.x = cx; item.y = cy; cx += item.w + pad; if(item.h > rowH) rowH = item.h;
         });
         Render.sync(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     collectByType: () => {
         const types = ['notice', 'wonder', 'idea', 'test', 'meta', 'sketch'];
@@ -1278,6 +1346,7 @@ window.Actions = {
             startX += maxGroupW + 100;
         });
         Render.sync(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink});
     },
     collectByUser: () => {
         const users = [...new Set(State.items.filter(i=>i.author).map(i=>i.author))];
@@ -1293,20 +1362,23 @@ window.Actions = {
             startX += maxGroupW + 100;
         });
         Render.sync(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink});
     },
     bringFront: () => { State.selection.forEach(id => { const i = State.items.find(x=>x.id===id); if(i) i.z = (i.z || 10) + 1; }); Render.all(); Board.save(true); },
     sendBack: () => { State.selection.forEach(id => { const i = State.items.find(x=>x.id===id); if(i) i.z = Math.max(1, (i.z || 10) - 1); }); Render.all(); Board.save(true); },
     duplicate: () => {
         const newIds = [];
+        const newItems = [];
         State.selection.forEach(id => {
             const original = State.items.find(x=>x.id===id);
             if(original) {
                 const copy = JSON.parse(JSON.stringify(original)); copy.id = genId();
                 const pos = Board.getFreeSpace(copy.x + 20, copy.y + 20, copy.w, copy.h);
-                copy.x = pos.x; copy.y = pos.y; State.items.push(copy); newIds.push(copy.id);
+                copy.x = pos.x; copy.y = pos.y; State.items.push(copy); newIds.push(copy.id); newItems.push(copy);
             }
         });
         State.selection = newIds; Render.all(); ActionHistory.push(); Board.save(true);
+        if(State.isCoHost || Network.peer) newItems.forEach(i => Network.broadcast({type:'ADD_ITEM', item:i}));
     }
 };
 
@@ -1475,12 +1547,7 @@ window.Modes = {
             const item = State.items.find(i=>i.id===d.id);
             const el = document.getElementById(d.id);
             
-            if(el) {
-                el.classList.remove('dragging');
-                // Restore transition
-                el.style.transition = ''; 
-                el.style.zIndex = (item.type === 'zone' ? 1 : (item.z || 10));
-            }
+            const changedItems = [item];
 
             // Cleanup children styles
             if(item.type === 'zone' && item.children) {
@@ -1491,6 +1558,7 @@ window.Modes = {
                         childEl.classList.remove('dragging');
                         childEl.style.zIndex = (childItem.z || 10);
                     }
+                    changedItems.push(childItem);
                 });
             }
 
@@ -1504,9 +1572,17 @@ window.Modes = {
                 Model.link(item.id, d.hoverZoneId, idx);
                 
                 // Force a final clean layout update
+                // CRITICAL FIX: Ensure layout updates the item coordinates BEFORE we remove dragging class
                 LayoutSystem.update(d.hoverZoneId);
                 
                 if(el) { 
+                    // Set the transform to the calculated layout position immediately to prevent visual jump to (0,0) or center
+                    el.style.transform = `translate(${item.x}px, ${item.y}px)`;
+                    // Now safe to remove dragging class (restores transition)
+                    el.classList.remove('dragging');
+                    el.style.transition = ''; 
+                    el.style.zIndex = (item.type === 'zone' ? 1 : (item.z || 10));
+                    
                     el.classList.remove('snap-anim'); 
                     void el.offsetWidth; 
                     el.classList.add('snap-anim'); 
@@ -1515,11 +1591,21 @@ window.Modes = {
                 if (item.parentZone) {
                     Model.unlink(item.id);
                 }
+                if(el) {
+                    el.classList.remove('dragging');
+                    el.style.transition = ''; 
+                    el.style.zIndex = (item.type === 'zone' ? 1 : (item.z || 10));
+                }
             }
 
             State.drag = null;
             ActionHistory.push();
             Board.save(true);
+            
+            if(State.isCoHost || Network.peer) {
+                Network.broadcast({type:'BATCH_UPDATE', items:changedItems});
+                if(d.hoverZoneId) Network.broadcast({type:'LINK_ITEMS', ids:[item.id], zoneId:d.hoverZoneId});
+            }
         }
     },
     Resize: {
@@ -1538,7 +1624,13 @@ window.Modes = {
             const i = State.items.find(x=>x.id===d.id);
             i.w = Math.max(150, d.ow + (x - d.sx)); i.h = Math.max(100, d.oh + (y - d.sy));
         },
-        up: (e) => { State.drag = null; ActionHistory.push(); Board.save(true); }
+        up: (e) => { 
+            if(State.isCoHost || Network.peer) {
+                const i = State.items.find(x=>x.id===State.drag.id);
+                Network.broadcast({type:'UPDATE_POS', id:i.id, x:i.x, y:i.y, w:i.w, h:i.h});
+            }
+            State.drag = null; ActionHistory.push(); Board.save(true); 
+        }
     },
     Marquee: {
         down: (e) => {
@@ -1597,6 +1689,7 @@ window.Modes = {
             dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:100%;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
             $('viewport').appendChild(dot);
             setTimeout(() => dot.remove(), 500);
+            if(State.isCoHost || Network.peer) Network.broadcast({type:'LASER', x:x, y:y});
         },
         up: () => { State.drag = null; }
     }
@@ -1685,6 +1778,7 @@ window.addEventListener('keyup', InputController.keyup);
 /* --- NETWORK & ACTIVITY MANAGER --- */
 window.Network = {
     peer: null,
+    qrScanner: null,
     
     host: (existingId) => {
         if (Network.peer && !Network.peer.destroyed && existingId === undefined) {
@@ -1699,8 +1793,10 @@ window.Network = {
             $('host-id').innerText = id; localStorage.setItem('dqb_host_id', id);
             $('qr-tgt').innerHTML = '';
             new QRCode($('qr-tgt'), { text:id, width:180, height:180 });
-            if(!existingId) $('modal-host').style.display='flex';
-            UI.toast("📡 Network Ready"); setInterval(() => Network.broadcast({type:'HEARTBEAT'}), 3000);
+            if(!existingId && !State.isCoHost) $('modal-host').style.display='flex';
+            UI.toast(State.isCoHost ? "Connected as Co-Host" : "📡 Network Ready"); 
+            setInterval(() => Network.broadcast({type:'HEARTBEAT'}), 3000);
+            if(State.isCoHost) Network.requestSync();
         });
 
         Network.peer.on('connection', c => {
@@ -1711,31 +1807,13 @@ window.Network = {
                 let actPayload = null;
 
                 switch(State.activity.type) {
-                    case 'OPEN': 
-                        welcomeMode = 'OPEN'; 
-                        break;
-                    case 'ZONE_ACT':
-                        welcomeMode = State.activity.payload.subType;
-                        actPayload = State.activity.payload;
-                        break;
-                    case 'WIDGET_ACT':
-                        welcomeMode = State.activity.payload.subType; 
-                        actPayload = State.activity.payload;
-                        break;
-                    case 'EXIT_TICKET':
-                        welcomeMode = 'EXIT_TICKET';
-                        actPayload = State.activity.payload;
-                        break;
+                    case 'OPEN': welcomeMode = 'OPEN'; break;
+                    case 'ZONE_ACT': welcomeMode = State.activity.payload.subType; actPayload = State.activity.payload; break;
+                    case 'WIDGET_ACT': welcomeMode = State.activity.payload.subType; actPayload = State.activity.payload; break;
+                    case 'EXIT_TICKET': welcomeMode = 'EXIT_TICKET'; actPayload = State.activity.payload; break;
                 }
 
-                SafeSend(c, { 
-                    type: 'WELCOME', 
-                    boardId: State.id, 
-                    mode: welcomeMode, 
-                    payload: actPayload, 
-                    sync: syncNotes 
-                });
-
+                SafeSend(c, { type: 'WELCOME', boardId: State.id, mode: welcomeMode, payload: actPayload, sync: syncNotes });
                 UI.toast(`Student Joined`); 
             });
             c.on('data', d => { try { Network.handle(c.peer, JSON.parse(d), c); } catch(e) { console.error(e); } });
@@ -1745,6 +1823,77 @@ window.Network = {
         Network.peer.on('error', (err) => {
             if(err.type === 'unavailable-id') { Network.host(null); } else { console.error(err); }
         });
+    },
+
+    joinAsCoHost: () => {
+        $('modal-join').style.display = 'flex';
+        $('join-id-input').focus();
+    },
+
+    startQRScan: () => {
+        $('reader').style.display = 'block';
+        $('btn-scan').style.display = 'none';
+        
+        if (!Network.qrScanner) {
+            Network.qrScanner = new Html5Qrcode("reader");
+        }
+        
+        Network.qrScanner.start(
+            { facingMode: "environment" }, 
+            { fps: 10, qrbox: { width: 250, height: 250 } },
+            (decodedText, decodedResult) => {
+                $('join-id-input').value = decodedText;
+                Network.qrScanner.stop().then(() => {
+                    $('reader').style.display = 'none';
+                    $('btn-scan').style.display = 'flex';
+                    Network.submitJoin();
+                });
+            },
+            (errorMessage) => {
+                // Ignore parse errors, scanning is continuous
+            }
+        ).catch(err => {
+            console.error(err);
+            UI.toast("Camera access failed");
+            $('reader').style.display = 'none';
+            $('btn-scan').style.display = 'flex';
+        });
+    },
+
+    submitJoin: () => {
+        const id = $('join-id-input').value.trim();
+        if(!id) return alert("Please enter a Host ID");
+        
+        Network.closeJoinModal();
+        State.isCoHost = true;
+        $('landing').style.display='none'; $('app').style.display='block';
+        
+        Network.peer = new Peer();
+        Network.peer.on('open', myId => {
+            const conn = Network.peer.connect(id);
+            conn.on('open', () => {
+                UI.toast("Connected to Host");
+                State.students['HOST'] = { name: "HOST", conn: conn };
+                conn.send(JSON.stringify({type: 'AUTH_COHOST'}));
+            });
+            conn.on('data', d => Network.handle('HOST', JSON.parse(d), conn));
+            conn.on('error', e => { alert("Connection Failed"); location.reload(); });
+        });
+        Render.loop();
+    },
+
+    closeJoinModal: () => {
+        $('modal-join').style.display='none';
+        if(Network.qrScanner && Network.qrScanner.isScanning) {
+            Network.qrScanner.stop().then(() => {
+                 $('reader').style.display = 'none';
+                 $('btn-scan').style.display = 'flex';
+            });
+        }
+    },
+
+    requestSync: () => {
+        if(State.students['HOST']) SafeSend(State.students['HOST'].conn, {type:'SYNC_REQ'});
     },
 
     transitionTo: (type, targetId = null, payload = null) => {
@@ -1918,6 +2067,33 @@ window.Network = {
 
     handle: (pid, d, conn) => {
         if(d.type === 'JOIN') { State.students[pid] = { name:d.name, avatar:d.avatar, conn:conn }; Roster(); } 
+        else if(d.type === 'AUTH_COHOST') { 
+            State.students[pid] = { name: "Co-Host", avatar: "👑", conn: conn }; 
+            Roster(); 
+            SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink});
+        }
+        else if(d.type === 'SYNC_REQ') { SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink}); }
+        else if(d.type === 'FULL_SYNC') { State.items = d.items; State.ink = d.ink; Render.all(); }
+        else if(d.type === 'UPDATE_POS') { 
+            const i = State.items.find(x=>x.id===d.id); 
+            if(i) { i.x=d.x; i.y=d.y; if(d.w) i.w=d.w; if(d.h) i.h=d.h; Render.sync(); } 
+        }
+        else if(d.type === 'BATCH_UPDATE') {
+             d.items.forEach(u => {
+                 const i = State.items.find(x=>x.id===u.id);
+                 if(i) { i.x=u.x; i.y=u.y; i.w=u.w; i.h=u.h; }
+             });
+             Render.all();
+        }
+        else if(d.type === 'ADD_ITEM') { State.items.push(d.item); Render.all(); }
+        else if(d.type === 'LINK_ITEMS') { d.ids.forEach(id => Model.link(id, d.zoneId)); LayoutSystem.update(d.zoneId); Render.all(); }
+        else if(d.type === 'INK_ADD') { State.ink.push(d.ink); Render.ink(); }
+        else if(d.type === 'LASER') { 
+            const dot = document.createElement('div');
+            dot.style.cssText = `position:absolute;left:${d.x}px;top:${d.y}px;width:100%;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
+            $('viewport').appendChild(dot);
+            setTimeout(() => dot.remove(), 500);
+        }
         else if(d.type === 'NOTE') {
             let i = State.items.find(x => x.id === d.id);
             if(!i) {
@@ -1928,9 +2104,9 @@ window.Network = {
             } else { i.text = d.text; i.sub = d.sub; }
             LayoutSystem.update(d.zoneId); 
             Render.all(); Board.save(true);
+            Network.broadcast(d); // Rebroadcast to other co-hosts
         }
         else if(d.type === 'IMG_NOTE') {
-             // Robustness Check: Ensure src exists
              if (!d.src) return;
              let i = { id:d.id, type:'note', sub:'sketch', src:d.src, text:d.text, author:State.students[pid]?.name, w:200, h:200, votes:0 };
              const pos = Board.getFreeSpace(-State.view.x+100, -State.view.y+100, 200, 200);
@@ -1939,8 +2115,9 @@ window.Network = {
              if(d.zoneId) Actions.addToZone(d.zoneId, i.id); 
              LayoutSystem.update(d.zoneId);
              Render.all(); Board.save(true);
+             Network.broadcast(d);
         }
-        else if(d.type === 'DELETE_NOTE') { State.items = State.items.filter(x => x.id !== d.id); Render.all(); Board.save(true); }
+        else if(d.type === 'DELETE_NOTE') { State.items = State.items.filter(x => x.id !== d.id); Render.all(); Board.save(true); Network.broadcast(d); }
         else if(d.type === 'POLL_VOTE') { 
             const p = State.items.find(x => x.id === d.actId); 
             if(p && p.opts[d.idx]) { p.opts[d.idx].v++; Render.all(); confetti({particleCount: 50, spread: 60, origin: { y: 0.8 }}); } 
@@ -1973,6 +2150,7 @@ window.Network = {
                 zone.children.push(noteId);
                 LayoutSystem.update(zone.id);
                 Render.all(); Board.save(true);
+                Network.broadcast(d);
             }
         }
     },
@@ -2008,7 +2186,10 @@ window.Network = {
         if($('act-results')) $('act-results').innerHTML = html;
     },
     
-    broadcast: (msg) => Object.values(State.students).forEach(s => { SafeSend(s.conn, msg); })
+    broadcast: (msg) => {
+        if(State.students['HOST']) SafeSend(State.students['HOST'].conn, msg); // Send to Host
+        Object.values(State.students).forEach(s => { SafeSend(s.conn, msg); }); // Send to Clients
+    }
 };
 
 window.setTool = function(t) { 
