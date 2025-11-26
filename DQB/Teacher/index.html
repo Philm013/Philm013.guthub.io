@@ -1,9 +1,16 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>InquiryDQB | Teacher Console</title>
+    
+    <!-- PWA MANIFEST -->
+    <link rel="manifest" href="data:application/json;base64,ewogICJuYW1lIjogIklucXVpcnlEUUIiLAogICJzaG9ydF9uYW1lIjogIkRRQiIsCiAgInN0YXJ0X3VybCI6ICIuIiwKICAiZGlzcGxheSI6ICJzdGFuZGFsb25lIiwKICAiYmFja2dyb3VuZF9jb2xvciI6ICIjMTExODI3IiwKICAidGhlbWVfY29xvciI6ICIjMTExODI3IiwKICAiaWNvbnMiOiBbCiAgICB7CiAgICAgICJzcmMiOiAiaHR0cHM6Ly91aS1hdmF0YXJzLmNvbS9hcGkvP25hbWU9RFFCJmJhY2tncm91bmQ9NjM2NmYxJmNvbG9yPWZmZiZzaXplPTE5MiIsCiAgICAgICJzaXplcyI6ICIxOTJ4MTkyIiwKICAgICAgInR5cGUiOiAiaW1hZ2UvcG5nIgogICAgfQogIF0KfQ==">
+
     <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
@@ -294,6 +301,15 @@
     </div>
 </div>
 
+<!-- TEMPLATES MODAL -->
+<div id="modal-templates" class="modal-bg">
+    <div class="modal">
+        <h2 style="margin-top:0; color:var(--accent)">Templates</h2>
+        <div id="tpl-list" style="display:flex; flex-direction:column; gap:8px"></div>
+        <button class="btn-s" style="margin-top:20px" onclick="$('modal-templates').style.display='none'">Close</button>
+    </div>
+</div>
+
 <!-- LANDING -->
 <div id="landing">
     <div class="land-card">
@@ -332,6 +348,7 @@
                 <button class="btn-s" style="background:#4338ca; color:#e0e7ff; margin-bottom:8px" onclick="Network.host(null)">Reset Network ID</button>
                 <button class="btn-s" onclick="window.UI.saveTemplate()">💾 Save as Template</button>
                 <button class="btn-s" style="background:#065f46; color:#a7f3d0" onclick="window.UI.toggleA11y()">♿ List View</button>
+                <button class="btn-s" style="background:#374151; color:#f3f4f6" onclick="window.UI.toggleFullScreen()">⛶ Full Screen</button>
                 <button class="btn-s" style="background:#7f1d1d; color:#fecaca" onclick="Board.exit()">Exit</button>
             </div>
         </div>
@@ -559,7 +576,6 @@ window.Model = {
         }
         
         child.parentZone = zoneId;
-        // Ensure child inherits zone z-index logic if needed, though Render handles this
     },
 
     unlink: (childId) => {
@@ -725,7 +741,11 @@ window.UI = {
         if(type === 'system') {
             const sysTpls = [
                 { name: "See-Think-Wonder", items: [{type:'zone',title:'I See',x:0,y:0,w:300,h:400},{type:'zone',title:'I Think',x:320,y:0,w:300,h:400},{type:'zone',title:'I Wonder',x:640,y:0,w:300,h:400}] },
-                { name: "Frayer Model", items: [{type:'zone',title:'Definition',x:0,y:0,w:300,h:200},{type:'zone',title:'Characteristics',x:320,y:0,w:300,h:200},{type:'zone',title:'Examples',x:0,y:220,w:300,h:200},{type:'zone',title:'Non-Examples',x:320,y:220,w:300,h:200}] }
+                { name: "Frayer Model", items: [{type:'zone',title:'Definition',x:0,y:0,w:300,h:200},{type:'zone',title:'Characteristics',x:320,y:0,w:300,h:200},{type:'zone',title:'Examples',x:0,y:220,w:300,h:200},{type:'zone',title:'Non-Examples',x:320,y:220,w:300,h:200}] },
+                { name: "K-W-L Chart", items: [{type:'zone',title:'What I Know',x:0,y:0,w:300,h:500},{type:'zone',title:'What I Want to Know',x:320,y:0,w:300,h:500},{type:'zone',title:'What I Learned',x:640,y:0,w:300,h:500}] },
+                { name: "Venn Diagram", items: [{type:'zone',title:'Topic A',x:0,y:0,w:300,h:400},{type:'zone',title:'Both',x:320,y:0,w:300,h:400},{type:'zone',title:'Topic B',x:640,y:0,w:300,h:400}] },
+                { name: "Four Corners", items: [{type:'zone',title:'Strongly Agree',x:0,y:0,w:300,h:250},{type:'zone',title:'Agree',x:320,y:0,w:300,h:250},{type:'zone',title:'Disagree',x:0,y:270,w:300,h:250},{type:'zone',title:'Strongly Disagree',x:320,y:270,w:300,h:250}] },
+                { name: "Compass Points", items: [{type:'zone',title:'North (Need to Know)',x:320,y:0,w:300,h:200},{type:'zone',title:'West (Worrisome)',x:0,y:220,w:300,h:200},{type:'zone',title:'East (Excited)',x:640,y:220,w:300,h:200},{type:'zone',title:'South (Stance/Steps)',x:320,y:440,w:300,h:200}] }
             ];
             list.innerHTML = sysTpls.map((t,i) => `<button class="btn-s" onclick='UI.loadTemplate(${JSON.stringify(t)})'>${t.name}</button>`).join('');
         } else {
@@ -740,6 +760,7 @@ window.UI = {
             State.items.push(item);
         });
         Render.all(); ActionHistory.push(); Board.save(true); $('modal-templates').style.display='none';
+        if(State.isCoHost || Network.peer) Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink});
     },
     toggleA11y: () => {
         const v = $('a11y-view');
@@ -760,6 +781,14 @@ window.UI = {
                 else Network.updateResults(id);
             }
         }
+    },
+    toggleFullScreen: () => {
+        if (!document.fullscreenElement) {
+            document.documentElement.requestFullscreen();
+        } else {
+            if (document.exitFullscreen) document.exitFullscreen();
+        }
+        UI.toggleMenu();
     }
 };
 
@@ -1195,7 +1224,10 @@ window.Actions = {
         items.forEach(i => Model.link(i.id, zoneId));
         LayoutSystem.update(zoneId);
         Render.all(); UI.closeAllMenus(); ActionHistory.push(); Board.save(true);
-        if(State.isCoHost || Network.peer) Network.broadcast({type:'LINK_ITEMS', ids:items.map(i=>i.id), zoneId:zoneId});
+        if(State.isCoHost || Network.peer) {
+            const zone = State.items.find(z => z.id === zoneId);
+            if(zone) Network.broadcast({type:'ZONE_REORDER', zoneId:zoneId, children:zone.children});
+        }
     },
     posMenu: (menu, e) => {
         const rect = e.target.getBoundingClientRect();
@@ -1230,7 +1262,7 @@ window.Actions = {
         Actions.sel(z.id); UI.closeAllMenus(); Render.all(); ActionHistory.push(); Board.save(true);
         if(State.isCoHost || Network.peer) {
             Network.broadcast({type:'ADD_ITEM', item:z});
-            Network.broadcast({type:'LINK_ITEMS', ids:sel.map(i=>i.id), zoneId:z.id});
+            Network.broadcast({type:'ZONE_REORDER', zoneId:z.id, children:z.children});
         }
         setTimeout(() => { sel.forEach(i => { const el = $(i.id); if(el) el.classList.add('snap-anim'); }); }, 50);
     },
@@ -1489,34 +1521,33 @@ window.Modes = {
 
                     let insertIdx = kids.length;
 
-                    // Simple proximity check for insertion index
+                    // Improved proximity check
                     if (kids.length > 0) {
-                        // Find closest child
-                        let closestDist = Infinity;
-                        let closestIdx = -1;
-                        
-                        kids.forEach((k, idx) => {
-                            // Distance to center of child
-                            const cx = k.x + k.w/2;
-                            const cy = k.y + k.h/2;
-                            const dist = Math.hypot((item.x+item.w/2) - cx, (item.y+item.h/2) - cy);
-                            if(dist < closestDist) {
-                                closestDist = dist;
-                                closestIdx = idx;
-                            }
-                        });
+                        let minDistance = Infinity;
+                        let closestChildIndex = -1;
 
-                        if(closestIdx > -1) {
-                            const target = kids[closestIdx];
-                            const tx = target.x + target.w/2;
-                            const ty = target.y + target.h/2;
+                        for (let i = 0; i < kids.length; i++) {
+                            const kid = kids[i];
+                            const kcx = kid.x + kid.w / 2;
+                            const kcy = kid.y + kid.h / 2;
+                            const dist = Math.hypot((item.x + item.w / 2) - kcx, (item.y + item.h / 2) - kcy);
                             
-                            // Determine if we are Before or After the closest target
-                            // Logic depends slightly on layout, but generally:
-                            // If we are to the left (and same row) or above
-                            const isBefore = (item.y + item.h/2) < ty - 20 || ((Math.abs((item.y + item.h/2) - ty) < 40) && (item.x + item.w/2) < tx);
+                            if (dist < minDistance) {
+                                minDistance = dist;
+                                closestChildIndex = i;
+                            }
+                        }
+
+                        if (closestChildIndex !== -1) {
+                            const closest = kids[closestChildIndex];
+                            const ccx = closest.x + closest.w / 2;
                             
-                            insertIdx = isBefore ? closestIdx : closestIdx + 1;
+                            // If dragging to the left of the closest item's center, insert before
+                            if ((item.x + item.w / 2) < ccx) {
+                                insertIdx = closestChildIndex;
+                            } else {
+                                insertIdx = closestChildIndex + 1;
+                            }
                         }
                     }
 
@@ -1604,7 +1635,11 @@ window.Modes = {
             
             if(State.isCoHost || Network.peer) {
                 Network.broadcast({type:'BATCH_UPDATE', items:changedItems});
-                if(d.hoverZoneId) Network.broadcast({type:'LINK_ITEMS', ids:[item.id], zoneId:d.hoverZoneId});
+                if(d.hoverZoneId) {
+                    // Broadcast the exact order of the zone to prevent sync mismatch
+                    const zone = State.items.find(z => z.id === d.hoverZoneId);
+                    if(zone) Network.broadcast({type:'ZONE_REORDER', zoneId:zone.id, children:zone.children});
+                }
             }
         }
     },
@@ -2087,6 +2122,19 @@ window.Network = {
         }
         else if(d.type === 'ADD_ITEM') { State.items.push(d.item); Render.all(); }
         else if(d.type === 'LINK_ITEMS') { d.ids.forEach(id => Model.link(id, d.zoneId)); LayoutSystem.update(d.zoneId); Render.all(); }
+        else if(d.type === 'ZONE_REORDER') {
+            const z = State.items.find(i => i.id === d.zoneId);
+            if(z) {
+                z.children = d.children;
+                // Ensure all children point to this parent
+                z.children.forEach(cid => {
+                    const c = State.items.find(x => x.id === cid);
+                    if(c) c.parentZone = z.id;
+                });
+                LayoutSystem.update(z.id);
+                Render.all();
+            }
+        }
         else if(d.type === 'INK_ADD') { State.ink.push(d.ink); Render.ink(); }
         else if(d.type === 'LASER') { 
             const dot = document.createElement('div');
