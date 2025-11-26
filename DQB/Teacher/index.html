@@ -48,17 +48,42 @@
         #bg-grid { position: absolute; inset:0; pointer-events: none; background-image: radial-gradient(#374151 2px, transparent 2px); background-size: 24px 24px; opacity: 0.5; }
 
         /* MINIMAP */
+        #minimap-container {
+            position: absolute; /* Will be adjusted by JS */
+            z-index: 1500;
+            padding: 8px;
+            touch-action: none;
+        }
         #minimap {
-            position: absolute; top: 20px; right: 20px;
-            width: 200px; height: 150px;
+            width: 100%; height: 100%;
             background: rgba(31, 41, 55, 0.9);
             border: 1px solid #4b5563;
             border-radius: 12px;
-            z-index: 1500;
             cursor: crosshair;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
             backdrop-filter: blur(4px);
+            position: relative;
         }
+        #minimap-drag-handle {
+            position: absolute; left: -4px; top: -4px; right: -4px; bottom: -4px;
+            cursor: grab;
+        }
+        #minimap-resize-handle {
+            position: absolute;
+            right: 0; bottom: 0;
+            width: 20px; height: 20px;
+            cursor: nwse-resize;
+            z-index: 1501;
+        }
+        #minimap-resize-handle::after {
+            content: '';
+            position: absolute;
+            right: 4px; bottom: 4px;
+            width: 8px; height: 8px;
+            border-bottom: 2px solid rgba(255,255,255,0.5);
+            border-right: 2px solid rgba(255,255,255,0.5);
+        }
+
 
         /* LAYERS */
         svg { overflow: visible; }
@@ -70,18 +95,19 @@
         .item { 
             position: absolute; 
             display: flex; flex-direction: column; 
-            /* Smooth movement for reordering */
             transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1), width 0.1s, height 0.1s;
             touch-action: none; pointer-events: auto; 
             will-change: transform, width, height;
         }
+        .item.no-transition {
+            transition: none !important;
+        }
 
         /* DRAGGING STATE */
         .item.dragging { 
-            transition: none !important; 
+            /* transition is handled by no-transition class */
             z-index: 9999 !important; 
             opacity: 0.95; 
-            pointer-events: none; /* Pass clicks to underlying elements */
             filter: drop-shadow(0 15px 30px rgba(0,0,0,0.4));
             transform: scale(1.02) !important;
         }
@@ -94,7 +120,7 @@
             border-color: var(--accent) !important;
         }
 
-        /* GHOST SLOT */
+        /* GHOST SLOT & GUIDES */
         .ghost-slot {
             position: absolute;
             border: 2px dashed rgba(99,102,241,0.4);
@@ -104,12 +130,27 @@
             z-index: 1;
             box-sizing: border-box;
         }
+        .snap-guide {
+            position: absolute;
+            background: #ef4444;
+            pointer-events: none;
+            z-index: 9998;
+        }
+        .snap-guide.v { width: 1px; }
+        .snap-guide.h { height: 1px; }
 
         .snap-anim { animation: snapPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
         @keyframes snapPop { 0% { transform: scale(1); } 50% { transform: scale(1.05); } 100% { transform: scale(1); } }
 
-        .jiggle-wrapper { width:100%; height:100%; display:flex; flex-direction:column; background:white; border-radius:16px; box-shadow: var(--shadow); position:relative; overflow:hidden; color: #1e293b; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s; }
+        .jiggle-wrapper { width:100%; height:100%; display:flex; flex-direction:column; background:white; border-radius:16px; box-shadow: var(--shadow); position:relative; overflow:hidden; color: #1e293b; border: 2px solid transparent; transition: border-color 0.2s, background-color 0.2s, box-shadow 0.2s; }
         .item.selected .jiggle-wrapper { box-shadow: 0 0 0 3px var(--accent), 0 20px 25px -5px rgba(0,0,0,0.5) !important; z-index: 50; border-color: var(--accent) !important; }
+        .item.grouped .jiggle-wrapper {
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.7), 0 10px 15px -3px rgba(0,0,0,0.5) !important;
+            border-color: #3b82f6 !important;
+        }
+        .item.grouped.selected .jiggle-wrapper {
+            box-shadow: 0 0 0 3px var(--accent), 0 0 0 6px #3b82f6, 0 20px 25px -5px rgba(0,0,0,0.5) !important;
+        }
         @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg) scale(1.05); } 75% { transform: rotate(5deg) scale(1.05); } 100% { transform: rotate(0deg); } }
         .item.jiggling .jiggle-wrapper { animation: shake 0.4s ease-in-out infinite; border-color: #ef4444; z-index: 500; }
 
@@ -149,7 +190,7 @@
                 position: fixed !important; bottom: 20px !important; left: 50% !important; top: auto !important; 
                 transform: translateX(-50%) !important; width: 90% !important; max-width: 400px; 
             }
-            #minimap { top: 10px; right: 10px; width: 120px; height: 90px; }
+            #minimap-container { display: none; } /* Hide minimap on small screens for now */
         }
 
         .ctx-row { display: flex; gap: 5px; width: 100%; margin-bottom: 5px; }
@@ -272,6 +313,8 @@
         .btn-p { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size:1rem; transition:0.2s; min-height: 48px; }
         .btn-s { width: 100%; padding: 14px; background: #f1f5f9; color: #334155; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size:1rem; margin-top:8px; min-height: 48px; }
         input.in-txt { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; }
+        .input-group { margin-bottom: 15px; }
+        .input-group label { display: block; font-weight: 700; color: #64748b; margin-bottom: 6px; font-size: 0.9rem; }
 
         #marquee { position: absolute; border: 1px solid var(--accent); background: rgba(99,102,241,0.1); display: none; pointer-events: none; z-index: 100; }
 
@@ -330,6 +373,45 @@
     </div>
 </div>
 
+<!-- SETTINGS MODAL -->
+<div id="modal-settings" class="modal-bg">
+    <div class="modal">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h2 style="margin:0; color:var(--accent)">Settings & Sharing</h2>
+            <button class="btn-s" style="width:auto; margin:0; padding:8px 12px; min-height:0" onclick="$('modal-settings').style.display='none'">✕</button>
+        </div>
+        <div class="tab-head" style="margin-bottom:20px; border-radius:12px">
+            <div class="tab-btn active" onclick="UI.settingsTab(0)">Sharing</div>
+            <div class="tab-btn" onclick="UI.settingsTab(1)">Appearance</div>
+        </div>
+        
+        <div id="settings-tab-0" class="tab-content active" style="gap:15px; padding:0">
+             <p style="margin:0 0 10px 0; color:#64748b; text-align:center;">Allow students and co-hosts to join this board using the QR code or ID below.</p>
+             <div id="settings-qr-tgt" style="background:white; padding:10px; border-radius:8px; margin:0 auto 10px auto; display:flex; justify-content:center"></div>
+             <div style="text-align:center; font-size:1.4rem; font-weight:bold; margin-bottom:10px; color:#334155; user-select:text;" id="settings-host-id"></div>
+             <button class="btn-s" style="background:#4338ca; color:#e0e7ff;" onclick="Network.host(null)">Reset Network ID</button>
+        </div>
+
+        <div id="settings-tab-1" class="tab-content" style="gap:15px; padding:0">
+            <div class="input-group">
+                <label for="minimap-pos">Minimap Position</label>
+                <select id="minimap-pos" class="in-txt" onchange="UI.setMinimapPosition(this.value)">
+                    <option value="top-right">Top Right</option>
+                    <option value="top-left">Top Left</option>
+                    <option value="bottom-right">Bottom Right</option>
+                    <option value="bottom-left">Bottom Left</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label for="minimap-size">Minimap Size: <span id="minimap-size-val">200px</span></label>
+                <input type="range" id="minimap-size" min="120" max="300" value="200" style="width:100%" oninput="UI.setMinimapSize(this.value)">
+            </div>
+             <button class="btn-s" style="background:#374151; color:#f3f4f6" onclick="window.UI.toggleFullScreen()">⛶ Toggle Full Screen</button>
+        </div>
+    </div>
+</div>
+
+
 <!-- LANDING -->
 <div id="landing">
     <div class="land-card">
@@ -359,21 +441,6 @@
         </div>
         <div id="tab-roster" class="tab-content active" style="color: #d1d5db;">
             <div id="roster"><div style="padding:20px; text-align:center">Waiting for connections...</div></div>
-            <div style="margin-top:auto; padding-top:20px; border-top:1px solid #374151">
-                <label style="display:flex; align-items:center; gap:10px; font-weight:700; cursor:pointer; font-size:0.9rem; margin-bottom:10px; color:#d1d5db; padding:10px; background:#374151; border-radius:8px;">
-                    <input type="checkbox" onchange="Network.toggleOpenMode(this.checked)" checked style="width:20px; height:20px"> Allow Open Notes
-                </label>
-                <label style="display:flex; align-items:center; gap:10px; font-weight:700; cursor:pointer; font-size:0.9rem; margin-bottom:15px; color:#d1d5db; padding:10px; background:#374151; border-radius:8px;">
-                    <input type="checkbox" onchange="State.snap = this.checked" style="width:20px; height:20px"> Snap to Grid
-                </label>
-                <div id="qr-tgt" style="background:white; padding:10px; border-radius:8px; margin-bottom:10px; display:flex; justify-content:center"></div>
-                <div style="text-align:center; font-size:1.2rem; font-weight:bold; margin-bottom:10px; color:#fff" id="host-id"></div>
-                <button class="btn-s" style="background:#4338ca; color:#e0e7ff; margin-bottom:8px" onclick="Network.host(null)">Reset Network ID</button>
-                <button class="btn-s" onclick="window.UI.saveTemplate()">💾 Save as Template</button>
-                <button class="btn-s" style="background:#065f46; color:#a7f3d0" onclick="window.UI.toggleA11y()">♿ List View</button>
-                <button class="btn-s" style="background:#374151; color:#f3f4f6" onclick="window.UI.toggleFullScreen()">⛶ Full Screen</button>
-                <button class="btn-s" style="background:#7f1d1d; color:#fecaca" onclick="Board.exit()">Exit</button>
-            </div>
         </div>
         <div id="tab-activity" class="tab-content" style="color: #d1d5db;">
             <div id="act-controls" style="display:none; margin-bottom:10px">
@@ -384,6 +451,13 @@
                 <button class="btn-s" style="background:#7f1d1d; color:#fecaca" onclick="Network.stopActivity()">Stop Activity</button>
             </div>
             <div id="act-results"><div style="padding:20px; text-align:center">Select a Zone to see activity or create an Exit Ticket.</div></div>
+        </div>
+        <!-- Sidebar Actions -->
+        <div style="margin-top:auto; padding:15px; border-top:1px solid #374151; display:flex; flex-direction:column; gap:8px;">
+            <button class="sub-btn" onclick="window.UI.saveTemplate()">💾 Save as Template</button>
+            <button class="sub-btn" onclick="window.UI.toggleA11y()">♿ Accessibility View</button>
+            <button class="sub-btn" onclick="UI.showSettingsModal()">⚙️ Settings & Sharing</button>
+            <button class="sub-btn" style="background:#7f1d1d; color:#fecaca" onclick="Board.exit()">🚪 Exit Board</button>
         </div>
     </div>
 
@@ -396,7 +470,11 @@
             <div id="ghost-layer"></div>
         </div>
         <div id="marquee"></div>
-        <canvas id="minimap" width="200" height="150"></canvas>
+        <div id="minimap-container">
+            <div id="minimap-drag-handle"></div>
+            <div id="minimap-resize-handle"></div>
+            <canvas id="minimap"></canvas>
+        </div>
     </div>
 
     <!-- DESKTOP TOOLBAR -->
@@ -407,9 +485,7 @@
         <button class="tb-btn" id="dt-pan" onclick="window.setTool('pan')">✋ Pan</button>
         <button class="tb-btn" id="dt-draw" onclick="window.UI.toggleDrawer('draw')">✏️ Draw</button>
         <div class="sep"></div>
-        <button class="tb-btn" style="color:#d97706" onclick="Actions.create('note','notice')">👁️</button>
-        <button class="tb-btn" style="color:#0284c7" onclick="Actions.create('note','wonder')">❓</button>
-        <button class="tb-btn" style="color:#16a34a" onclick="Actions.create('note','idea')">💡</button>
+        <button class="tb-btn" id="tb-open-notes" onclick="UI.toggleOpenNotes()">🔓 Open Notes</button>
         <div class="sep"></div>
         <button class="tb-btn" onclick="window.UI.toggleDrawer('add')">➕ Add</button>
         <button class="tb-btn" id="btn-arrange" style="display:none" onclick="window.UI.toggleDrawer('arrange')">📏 Arrange</button>
@@ -541,8 +617,7 @@ window.State = {
     activeSorts: {}, comments: [],
     touch: { dist: 0 },
     draw: { color: '#ef4444', width: 4 },
-    isCoHost: false,
-    snap: false // New Snap Toggle
+    isCoHost: false
 };
 
 window.ActionHistory = {
@@ -566,36 +641,30 @@ window.ActionHistory = {
     }
 };
 
-/* --- DATA MODEL MANAGER --- */
-window.Model = {
+/* --- HIERARCHY & DATA MANAGER --- */
+window.HierarchyManager = {
     link: (childId, zoneId, index = -1) => {
         const zone = State.items.find(i => i.id === zoneId);
         const child = State.items.find(i => i.id === childId);
-        if (!zone || !child) return;
+        if (!zone || !child || zone.type !== 'zone') return;
 
-        // If moving to a DIFFERENT zone, unlink from old one first
         if (child.parentZone && child.parentZone !== zoneId) {
-            Model.unlink(childId);
+            HierarchyManager.unlink(child.id);
         }
 
         if (!zone.children) zone.children = [];
         
-        // Handle Reordering within the SAME zone
         const currentIdx = zone.children.indexOf(childId);
-        if (currentIdx > -1) {
-            // Remove from old position
-            zone.children.splice(currentIdx, 1);
-            // Adjust insertion index if we removed from a lower index
-            if (index > currentIdx) index--; 
-        }
+        if (currentIdx > -1) zone.children.splice(currentIdx, 1);
 
-        // Insert at new index
         if (index >= 0 && index <= zone.children.length) {
+            if (currentIdx > -1 && currentIdx < index) {
+                index--;
+            }
             zone.children.splice(index, 0, childId);
         } else {
             zone.children.push(childId);
         }
-        
         child.parentZone = zoneId;
     },
 
@@ -606,31 +675,56 @@ window.Model = {
         const zone = State.items.find(i => i.id === child.parentZone);
         if (zone && zone.children) {
             zone.children = zone.children.filter(id => id !== childId);
-            LayoutSystem.update(zone.id); 
         }
         delete child.parentZone;
     },
 
+    getDescendants: (itemId) => {
+        const item = State.items.find(i => i.id === itemId);
+        if (!item || item.type !== 'zone' || !item.children) {
+            return [];
+        }
+        let descendants = [...item.children];
+        item.children.forEach(childId => {
+            descendants.push(...HierarchyManager.getDescendants(childId));
+        });
+        return descendants;
+    },
+
     delete: (ids) => {
         if (!Array.isArray(ids)) ids = [ids];
+        const itemsToDelete = new Set(ids);
+        
         ids.forEach(id => {
+            const item = State.items.find(i => i.id === id);
+            if (item && item.groupId) {
+                State.items.forEach(i => {
+                    if (i.groupId === item.groupId) itemsToDelete.add(i.id);
+                });
+            }
+        });
+
+        const finalIds = Array.from(itemsToDelete);
+        finalIds.forEach(id => {
             const item = State.items.find(i => i.id === id);
             if (!item) return;
             if (item.type === 'zone' && item.children) {
-                [...item.children].forEach(cid => Model.unlink(cid));
+                [...item.children].forEach(cid => HierarchyManager.unlink(cid));
             }
             if (item.parentZone) {
-                Model.unlink(id);
+                HierarchyManager.unlink(id);
             }
             Network.broadcast({type:'DELETE_NOTE', id: id});
         });
-        State.items = State.items.filter(i => !ids.includes(i.id));
-        State.selection = State.selection.filter(id => !ids.includes(id));
+
+        State.items = State.items.filter(i => !finalIds.includes(i.id));
+        State.selection = State.selection.filter(id => !finalIds.includes(id));
         Render.all();
         ActionHistory.push();
         Board.save(true);
     }
 };
+
 
 /* --- ROBUST LAYOUT ENGINE --- */
 window.LayoutSystem = {
@@ -816,37 +910,20 @@ window.LayoutSystem = {
         
         const items = zone.children.map(id => State.items.find(i=>i.id===id)).filter(i=>i);
         
-        // Find the "Row" we are in
-        // A row is defined roughly by y +/- height/2
-        // We find the closest item in Y, then find closest in X
-        
         let bestIndex = items.length;
         let minDist = Infinity;
 
-        // Simple approach: Find closest item center
         for(let i=0; i<items.length; i++) {
             const item = items[i];
             const icx = item.x + item.w/2;
             const icy = item.y + item.h/2;
             
-            // Check if we are "before" this item visually
-            const dy = y - icy;
-            const dx = x - icx;
-
-            // Distance to top-left corner of insertion point (before item)
-            const dist = Math.hypot(dx + item.w/2, dy); 
+            const dist = Math.hypot(x - icx, y - icy); 
             
             if(dist < minDist) {
                 minDist = dist;
-                bestIndex = i;
-            }
-            
-            // Handle "After last item" case
-            if(i === items.length -1) {
-                const distAfter = Math.hypot(x - (item.x + item.w + 10), y - icy);
-                if(distAfter < minDist && distAfter < 100) {
-                    bestIndex = items.length;
-                }
+                // Determine if cursor is in the first or second half of the item
+                bestIndex = (x < icx) ? i : i + 1;
             }
         }
         
@@ -901,8 +978,9 @@ window.UI = {
         }
     },
     loadTemplate: (t) => {
+        const groupId = genId(); // Create a new group for this template
         t.items.forEach(i => {
-            const item = { ...i, id: genId() };
+            const item = { ...i, id: genId(), groupId: groupId }; // Assign new ID and group ID
             item.x += -State.view.x + 100; item.y += -State.view.y + 100;
             State.items.push(item);
         });
@@ -936,6 +1014,64 @@ window.UI = {
             if (document.exitFullscreen) document.exitFullscreen();
         }
         UI.toggleMenu();
+    },
+    showSettingsModal: () => {
+        $('modal-settings').style.display = 'flex';
+        UI.settingsTab(0);
+        // Ensure QR code and host ID are populated
+        const hostId = localStorage.getItem('dqb_host_id');
+        if (hostId) {
+            $('settings-host-id').innerText = hostId;
+            const qrTgt = $('settings-qr-tgt');
+            qrTgt.innerHTML = '';
+            new QRCode(qrTgt, { text: hostId, width: 180, height: 180 });
+        }
+    },
+    settingsTab: (n) => {
+        const modal = $('modal-settings');
+        modal.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', i===n));
+        modal.querySelectorAll('.tab-content').forEach((c,i) => c.classList.toggle('active', i===n));
+    },
+    toggleOpenNotes: () => {
+        const isOpen = State.activity.type === 'OPEN';
+        Network.toggleOpenMode(!isOpen);
+    },
+    updateOpenNotesButton: (isOpen) => {
+        const btn = $('tb-open-notes');
+        if (btn) {
+            btn.innerHTML = isOpen ? '🔒 Lock Board' : '🔓 Open Notes';
+            if (isOpen) {
+                btn.style.background = '#c2410c';
+            } else {
+                btn.style.background = '';
+            }
+        }
+        // Could add mobile button update here too
+    },
+    setMinimapPosition: (val) => {
+        const cont = $('minimap-container');
+        cont.style.top = (val.includes('top')) ? '20px' : 'auto';
+        cont.style.bottom = (val.includes('bottom')) ? '80px' : 'auto';
+        cont.style.left = (val.includes('left')) ? '20px' : 'auto';
+        cont.style.right = (val.includes('right')) ? '20px' : 'auto';
+        localStorage.setItem('dqb_minimap_pos', val);
+    },
+    setMinimapSize: (val) => {
+        const cont = $('minimap-container');
+        const aspect = 4/3;
+        cont.style.width = val + 'px';
+        cont.style.height = (val / aspect) + 'px';
+        $('minimap-size-val').innerText = `${val}px`;
+        Render.minimap();
+        localStorage.setItem('dqb_minimap_size', val);
+    },
+    loadMinimapSettings: () => {
+        const pos = localStorage.getItem('dqb_minimap_pos') || 'top-right';
+        const size = localStorage.getItem('dqb_minimap_size') || '200';
+        $('minimap-pos').value = pos;
+        $('minimap-size').value = size;
+        UI.setMinimapPosition(pos);
+        UI.setMinimapSize(size);
     }
 };
 
@@ -984,6 +1120,7 @@ window.Board = {
     start: () => { 
         $('landing').style.display='none'; $('app').style.display='block'; $('board-name').value=State.name; 
         Render.loop(); Render.all(); 
+        UI.loadMinimapSettings();
         if(!State.isCoHost) {
             const lastPeer = localStorage.getItem('dqb_host_id');
             Network.host(lastPeer);
@@ -1030,12 +1167,6 @@ window.Board = {
             }
             nx = x + Math.cos(angle) * radius;
             ny = y + Math.sin(angle) * radius;
-            
-            // Apply grid snap if enabled during search
-            if(State.snap) {
-                nx = Math.round(nx / 20) * 20;
-                ny = Math.round(ny / 20) * 20;
-            }
         }
         
         // If still colliding after 150 tries, just offset slightly from original
@@ -1091,31 +1222,19 @@ window.Render = {
         $('world').style.transform = t;
         $('bg-grid').style.backgroundPosition = `${State.view.x*State.view.z}px ${State.view.y*State.view.z}px`;
 
-        let draggedIds = new Set();
-        if (State.drag && State.drag.mode === 'move') {
-            draggedIds.add(State.drag.id);
-            const draggedItem = State.items.find(i => i.id === State.drag.id);
-            if (draggedItem && draggedItem.type === 'zone' && draggedItem.children) {
-                draggedItem.children.forEach(cid => draggedIds.add(cid));
-            }
-        }
-
+        const isDragging = State.drag && State.drag.mode === 'move';
+        
         State.items.forEach(i => {
             const el = document.getElementById(i.id);
             if(el) {
-                const isBeingDragged = draggedIds.has(i.id);
-                if (isBeingDragged) {
-                    el.classList.add('dragging');
-                } else {
-                    el.classList.remove('dragging');
-                }
-
-                if (!isBeingDragged) {
+                // Dragging is handled by direct transform in Modes.Move.move for performance
+                if (!isDragging || !State.drag.moveTargets.find(t => t.id === i.id)) {
                      el.style.transform = `translate(${i.x}px, ${i.y}px)`;
                 }
                 
                 el.style.width = i.w + 'px'; if(i.h) el.style.height = i.h + 'px';
                 el.classList.toggle('selected', State.selection.includes(i.id));
+                el.classList.toggle('grouped', !!i.groupId);
 
                 if(i.type==='zone') { const lbl = el.querySelector('.zone-label'); if(lbl && lbl.innerText !== i.title) lbl.innerText = i.title; }
 
@@ -1128,6 +1247,8 @@ window.Render = {
                         b.onpointerdown = (e) => { e.stopPropagation(); Actions.showComments(i.id); };
                         el.appendChild(b);
                     } else { badge.innerText = cmts.length; }
+                } else if (badge) {
+                    badge.remove();
                 }
             }
         });
@@ -1169,6 +1290,10 @@ window.Render = {
     },
     minimap: () => {
         const canvas = $('minimap');
+        const cont = $('minimap-container');
+        canvas.width = cont.offsetWidth;
+        canvas.height = cont.offsetHeight;
+
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -1176,12 +1301,17 @@ window.Render = {
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         
         // Include items
-        State.items.forEach(i => {
-            minX = Math.min(minX, i.x);
-            minY = Math.min(minY, i.y);
-            maxX = Math.max(maxX, i.x + i.w);
-            maxY = Math.max(maxY, i.y + i.h);
-        });
+        if (State.items.length > 0) {
+            State.items.forEach(i => {
+                minX = Math.min(minX, i.x);
+                minY = Math.min(minY, i.y);
+                maxX = Math.max(maxX, i.x + i.w);
+                maxY = Math.max(maxY, i.y + i.h);
+            });
+        } else {
+            minX = 0; minY = 0; maxX = window.innerWidth; maxY = window.innerHeight;
+        }
+
 
         // Include Viewport
         const vw = window.innerWidth / State.view.z;
@@ -1200,6 +1330,8 @@ window.Render = {
 
         const worldW = maxX - minX;
         const worldH = maxY - minY;
+        if (worldW <= 0 || worldH <= 0) return;
+        
         const scale = Math.min(canvas.width / worldW, canvas.height / worldH);
 
         const mapX = (val) => (val - minX) * scale;
@@ -1343,15 +1475,15 @@ window.Actions = {
         let cx = -State.view.x + window.innerWidth/2/State.view.z - 100;
         let cy = -State.view.y + window.innerHeight/2/State.view.z - 75;
         const id = genId();
-        let it = { id, type, w:200, h:150 };
+        let it = { id, type, w:200, h:150, groupId: null };
         if(type==='note') { it.sub=sub; it.text=''; }
         if(type==='zone') { 
             const name = prompt("Name your new zone:", "New Zone");
             if(!name) return;
-            it.title=name; it.w=300; it.h=300; it.children=[]; it.snap=true; 
+            it.title=name; it.w=300; it.h=300; it.children=[];
         }
-        if(type==='cer') { it.type='zone'; it.zoneType='cer'; it.title="Argument Builder (CER)"; it.w=600; it.h=400; it.children=[]; it.snap=true; }
-        if(type==='consensus') { it.type='zone'; it.zoneType='consensus'; it.title="Consensus Model"; it.w=600; it.h=600; it.children=[]; it.snap=true; }
+        if(type==='cer') { it.type='zone'; it.zoneType='cer'; it.title="Argument Builder (CER)"; it.w=600; it.h=400; it.children=[]; }
+        if(type==='consensus') { it.type='zone'; it.zoneType='consensus'; it.title="Consensus Model"; it.w=600; it.h=600; it.children=[]; }
         if(type==='poll') { it.q="Question?"; it.opts=[{lbl:'Yes',v:0},{lbl:'No',v:0}]; }
         if(type==='spin') { it.ang=0; it.opts=['A','B','C','D']; it.w=200; it.h=220; }
         if(type==='graph') { it.title="Class Data"; it.data=[]; it.w=300; it.h=200; }
@@ -1390,7 +1522,7 @@ window.Actions = {
         let it = { 
             id, type: 'zone', zoneType: 'exit', exitMode: mode, 
             title: 'Exit Ticket', prompt: promptTxt, opts: opts,
-            w: 400, h: 300, children: [], snap: true,
+            w: 400, h: 300, children: [],
             x: cx, y: cy // Will be overridden by free space
         };
 
@@ -1403,46 +1535,60 @@ window.Actions = {
     },
     showContextMenu: (e, id) => {
         const menu = $('context-menu');
-        if(State.selection.length > 1 && State.selection.includes(id)) { Actions.showGroupMenu(e); return; }
         const item = State.items.find(x => x.id === id);
         if(!item) return;
-        Actions.sel(id);
-        let html = '';
-        if(item.type === 'note') {
-            html += `<div class="ctx-row">
-                <button class="ctx-btn" style="background:#fef3c7" onclick="Actions.setType('${id}','notice')">👁️</button>
-                <button class="ctx-btn" style="background:#bae6fd" onclick="Actions.setType('${id}','wonder')">❓</button>
-                <button class="ctx-btn" style="background:#bbf7d0" onclick="Actions.setType('${id}','idea')">💡</button>
-                <button class="ctx-btn" style="background:#fecaca" onclick="Actions.setType('${id}','test')">🧪</button>
-            </div>
-            <div class="ctx-row">
-                <button class="ctx-btn" onclick="Actions.toggleLock('${id}')">${item.locked?'Unlock 🔓':'Lock 🔒'}</button>
-                <button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button>
-            </div>
-            <div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>`;
-        } else if(item.type === 'zone') {
-            html += `<div class="ctx-row">
-                <button class="ctx-btn" onclick="Network.startActivity('vote')">🗳️ Vote</button>
-                <button class="ctx-btn" onclick="Network.startActivity('sort')">🔢 Rank</button>
-                <button class="ctx-btn" onclick="Network.startActivity('discuss')">💬 Discuss</button>
-            </div>
-            <div class="ctx-row"><button class="ctx-btn" onclick="Actions.rename('${id}')">Rename</button></div>
-            <div class="ctx-row">
-                <button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button>
-            </div>`;
-        } else if(item.type === 'poll') {
-            html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.editPoll('${id}')">✏️ Edit</button><button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button></div>`;
-        } else {
-            html += `<div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button></div>`;
+
+        if (!State.selection.includes(id)) {
+            Actions.sel(id);
         }
+        
+        const selection = State.items.filter(i => State.selection.includes(i.id));
+        const isGroupSelected = selection.length > 1;
+        const firstSelectedItem = selection[0] || item;
+        const isInGroup = !!firstSelectedItem.groupId;
+
+        let html = '';
+        if (isGroupSelected) {
+            if (isInGroup) {
+                html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.ungroupSelection()">Ungroup</button></div>`;
+            } else {
+                html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.groupSelection()">Group Items</button></div>`;
+            }
+            html += `<div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete()">Delete All</button></div>`;
+        } else {
+             if(item.type === 'note') {
+                html += `<div class="ctx-row">
+                    <button class="ctx-btn" style="background:#fef3c7" onclick="Actions.setType('${id}','notice')">👁️</button>
+                    <button class="ctx-btn" style="background:#bae6fd" onclick="Actions.setType('${id}','wonder')">❓</button>
+                    <button class="ctx-btn" style="background:#bbf7d0" onclick="Actions.setType('${id}','idea')">💡</button>
+                    <button class="ctx-btn" style="background:#fecaca" onclick="Actions.setType('${id}','test')">🧪</button>
+                </div>
+                <div class="ctx-row">
+                    <button class="ctx-btn" onclick="Actions.toggleLock('${id}')">${item.locked?'Unlock 🔓':'Lock 🔒'}</button>
+                    <button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button>
+                </div>
+                <div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>`;
+                 if (isInGroup) {
+                    html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.ungroupSelection()">Ungroup</button></div>`;
+                }
+            } else if(item.type === 'zone') {
+                html += `<div class="ctx-row">
+                    <button class="ctx-btn" onclick="Network.startActivity('vote')">🗳️ Vote</button>
+                    <button class="ctx-btn" onclick="Network.startActivity('sort')">🔢 Rank</button>
+                    <button class="ctx-btn" onclick="Network.startActivity('discuss')">💬 Discuss</button>
+                </div>
+                <div class="ctx-row"><button class="ctx-btn" onclick="Actions.rename('${id}')">Rename</button></div>
+                <div class="ctx-row">
+                    <button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button>
+                </div>`;
+            } else if(item.type === 'poll') {
+                html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.editPoll('${id}')">✏️ Edit</button><button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button></div>`;
+            } else {
+                html += `<div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete('${id}')">Delete</button></div>`;
+            }
+        }
+        
         menu.innerHTML = html; menu.style.display = 'block'; Actions.posMenu(menu, e);
-    },
-    showGroupMenu: (e) => {
-        const menu = $('context-menu');
-        menu.innerHTML = `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.groupToZone()">🔲 Group to Zone</button></div>
-        <div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>
-        <div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete()">Delete All</button></div>`;
-        menu.style.display = 'block'; Actions.posMenu(menu, e);
     },
     showZoneList: (e) => {
         e.stopPropagation();
@@ -1459,7 +1605,7 @@ window.Actions = {
     moveToZone: (zoneId) => {
         const items = State.selection.map(id => State.items.find(i => i.id === id)).filter(i => i && i.type === 'note');
         if(items.length === 0) return;
-        items.forEach(i => Model.link(i.id, zoneId));
+        items.forEach(i => HierarchyManager.link(i.id, zoneId));
         LayoutSystem.update(zoneId);
         Render.all(); UI.closeAllMenus(); ActionHistory.push(); Board.save(true);
         if(State.isCoHost || Network.peer) {
@@ -1488,13 +1634,13 @@ window.Actions = {
             id: genId(), type: 'zone', title: name, 
             x: minX - 20, y: minY - 50, 
             w: (maxX - minX) + 40, h: (maxY - minY) + 70, 
-            children: sel.map(i => i.id), snap: true 
+            children: sel.map(i => i.id)
         };
         
         sel.forEach(i => i.parentZone = z.id);
         State.items.push(z);
         
-        sel.forEach(i => Model.link(i.id, z.id));
+        sel.forEach(i => HierarchyManager.link(i.id, z.id));
         LayoutSystem.update(z.id);
         
         Actions.sel(z.id); UI.closeAllMenus(); Render.all(); ActionHistory.push(); Board.save(true);
@@ -1504,11 +1650,39 @@ window.Actions = {
         }
         setTimeout(() => { sel.forEach(i => { const el = $(i.id); if(el) el.classList.add('snap-anim'); }); }, 50);
     },
+    groupSelection: () => {
+        if (State.selection.length < 2) return;
+        const groupId = genId();
+        State.selection.forEach(id => {
+            const item = State.items.find(i => i.id === id);
+            if (item) item.groupId = groupId;
+        });
+        UI.closeAllMenus();
+        UI.toast("Items Grouped");
+        Board.save(true);
+        Render.all();
+        Network.broadcast({type:'GROUP_ITEMS', ids: State.selection, groupId: groupId});
+    },
+    ungroupSelection: () => {
+        const item = State.items.find(i => State.selection.includes(i.id));
+        if (!item || !item.groupId) return;
+        const groupId = item.groupId;
+        State.items.forEach(i => {
+            if (i.groupId === groupId) {
+                i.groupId = null;
+            }
+        });
+        UI.closeAllMenus();
+        UI.toast("Items Ungrouped");
+        Board.save(true);
+        Render.all();
+        Network.broadcast({type:'UNGROUP_ITEMS', groupId: groupId});
+    },
     setType: (id, sub) => { const i = State.items.find(x=>x.id===id); if(i && i.type==='note') { i.sub = sub; const oldEl = document.getElementById(id); if(oldEl) oldEl.remove(); Render.all(); UI.closeAllMenus(); Board.save(true); Network.broadcast({type:'NOTE_UPDATE', note:i}); } },
     delete: (id) => {
         const targets = id ? [id] : State.selection;
         if (targets.length === 0) return;
-        Model.delete(targets);
+        HierarchyManager.delete(targets);
         UI.closeAllMenus();
     },
     sel: (id) => { 
@@ -1521,7 +1695,7 @@ window.Actions = {
                  Network.updateResults(i.id);
             }
         }
-        Render.sync(); 
+        Render.all(); 
     },
     spin: (id) => { const i = State.items.find(x=>x.id===id); i.ang += 720 + Math.random()*360; Render.all(); },
     rename: (id) => { const i = State.items.find(x=>x.id===id); const n = prompt("Rename Zone:", i.title); if(n) { i.title=n; Render.sync(); Board.save(true); if(State.isCoHost || Network.peer) Network.broadcast({type:'NOTE_UPDATE', note:i}); } },
@@ -1552,7 +1726,7 @@ window.Actions = {
     toggleLock: (id) => { const i = State.items.find(x=>x.id===id); if(i) { i.locked = !i.locked; Render.all(); UI.closeAllMenus(); Board.save(true); } },
     layoutZone: (zoneId) => { LayoutSystem.update(zoneId); },
     addToZone: (zoneId, noteId) => {
-        Model.link(noteId, zoneId);
+        HierarchyManager.link(noteId, zoneId);
         LayoutSystem.update(zoneId); 
         Render.all();
     },
@@ -1661,179 +1835,153 @@ window.Modes = {
     },
     Move: {
         down: (e, id) => {
-            const item = State.items.find(i=>i.id===id); 
-            if(item.locked) return; 
-            
+            const item = State.items.find(i => i.id === id);
+            if (!item || item.locked) return;
+
             const r = $('viewport').getBoundingClientRect();
-            const wx = (e.clientX - r.left)/State.view.z - State.view.x;
-            const wy = (e.clientY - r.top)/State.view.z - State.view.y;
-            
-            // Setup Drag State
-            State.drag = { 
-                mode:'move', 
-                id:id, 
-                offX: wx - item.x, // Store offset from item top-left
-                offY: wy - item.y,
-                hoverZoneId: null,
-                targetIndex: -1,
-                expandTimer: null
-            };
-            
-            // Visual Updates
-            const el = document.getElementById(id);
-            if(el) {
-                el.classList.add('dragging');
-                // Temporarily lift to top
-                el.style.zIndex = 9999;
+            const wx = (e.clientX - r.left) / State.view.z - State.view.x;
+            const wy = (e.clientY - r.top) / State.view.z - State.view.y;
+
+            const moveTargetIds = new Set();
+            if (item.groupId) {
+                State.items.forEach(i => { if (i.groupId === item.groupId) moveTargetIds.add(i.id); });
+            } else if (State.selection.includes(id) && State.selection.length > 1) {
+                State.selection.forEach(selId => moveTargetIds.add(selId));
+            } else {
+                moveTargetIds.add(id);
             }
 
-            // Lift children if dragging a zone
-            if(item.type === 'zone' && item.children) {
-                item.children.forEach(cid => {
-                    const cEl = document.getElementById(cid);
-                    if(cEl) cEl.classList.add('dragging');
-                });
-            }
+            const finalTargetIds = new Set(moveTargetIds);
+            moveTargetIds.forEach(targetId => {
+                HierarchyManager.getDescendants(targetId).forEach(descId => finalTargetIds.add(descId));
+            });
+
+            const moveTargets = Array.from(finalTargetIds)
+                .map(iId => State.items.find(i => i.id === iId)).filter(Boolean);
+
+            State.drag = {
+                mode: 'move', primaryId: id,
+                moveTargets: moveTargets.map(i => ({ id: i.id, startX: i.x, startY: i.y })),
+                mouseStartX: wx, mouseStartY: wy,
+                hoverZoneId: null, targetIndex: -1
+            };
+
+            moveTargets.forEach(i => {
+                const el = document.getElementById(i.id);
+                if (el) {
+                    el.classList.add('no-transition');
+                    el.style.zIndex = (parseInt(el.style.zIndex) || 10) + 10000;
+                }
+            });
         },
         move: (e) => {
             const d = State.drag;
-            const item = State.items.find(i=>i.id===d.id);
-            if(!item) return;
+            if (!d) return;
+            const primaryItem = State.items.find(i => i.id === d.primaryId);
+            if (!primaryItem) return;
 
-            // 1. Calculate New World Position
             const r = $('viewport').getBoundingClientRect();
-            const wx = (e.clientX - r.left)/State.view.z - State.view.x;
-            const wy = (e.clientY - r.top)/State.view.z - State.view.y;
+            const wx = (e.clientX - r.left) / State.view.z - State.view.x;
+            const wy = (e.clientY - r.top) / State.view.z - State.view.y;
+            let dx = wx - d.mouseStartX;
+            let dy = wy - d.mouseStartY;
 
-            item.x = wx - d.offX;
-            item.y = wy - d.offY;
+            const primaryTarget = d.moveTargets.find(t => t.id === d.primaryId);
+            const snapResult = SnapSystem.getSnap(primaryItem, primaryTarget.startX + dx, primaryTarget.startY + dy);
             
-            // 2. Snap Logic (if enabled and not in a zone)
-            if(State.snap && !d.hoverZoneId) {
-                item.x = Math.round(item.x / 20) * 20;
-                item.y = Math.round(item.y / 20) * 20;
-            }
+            dx = snapResult.x - primaryTarget.startX;
+            dy = snapResult.y - primaryTarget.startY;
+            SnapSystem.drawGuides();
 
-            // 3. Move DOM immediately
-            const el = document.getElementById(d.id);
-            if(el) el.style.transform = `translate(${item.x}px, ${item.y}px)`;
-            
-            // Move children if zone
-            if(item.type === 'zone' && item.children) {
-                // Simplified relative move logic would go here, 
-                // but for stability we rely on zone layout updates or explicit child deltas in a full implementation.
-            }
-
-            // 4. Zone Interaction Logic (If dragging a note)
-            if (item.type !== 'zone') {
-                // Find Zone under mouse
-                const cx = item.x + item.w/2;
-                const cy = item.y + item.h/2;
-
-                const hitZone = State.items.find(z => 
-                    z.type === 'zone' && 
-                    z.id !== item.id && 
-                    cx > z.x && cx < z.x + z.w && 
-                    cy > z.y && cy < z.y + z.h
-                );
-
-                // Exit Zone
-                if (d.hoverZoneId && (!hitZone || hitZone.id !== d.hoverZoneId)) {
-                    const prevEl = document.getElementById(d.hoverZoneId);
-                    if(prevEl) prevEl.classList.remove('drag-over');
-                    LayoutSystem.update(d.hoverZoneId); // Clean up gap
-                    d.hoverZoneId = null;
-                    d.targetIndex = -1;
-                    $('ghost-layer').innerHTML = '';
-                    clearTimeout(d.expandTimer); d.expandTimer = null;
+            d.moveTargets.forEach(target => {
+                const item = State.items.find(i => i.id === target.id);
+                if (item) {
+                    item.x = target.startX + dx;
+                    item.y = target.startY + dy;
+                    const el = document.getElementById(item.id);
+                    if (el) el.style.transform = `translate(${item.x}px, ${item.y}px)`;
                 }
+            });
 
-                // Enter/Move in Zone
+            if (primaryItem.type !== 'zone') {
+                const cx = primaryItem.x + primaryItem.w / 2;
+                const cy = primaryItem.y + primaryItem.h / 2;
+                const hitZone = State.items.find(z => z.type === 'zone' && z.id !== primaryItem.id && cx > z.x && cx < z.x + z.w && cy > z.y && cy < z.y + z.h);
+
+                if (d.hoverZoneId && (!hitZone || hitZone.id !== d.hoverZoneId)) {
+                    document.getElementById(d.hoverZoneId)?.classList.remove('drag-over');
+                    LayoutSystem.update(d.hoverZoneId);
+                    d.hoverZoneId = null; d.targetIndex = -1;
+                    $('ghost-layer').innerHTML = '';
+                }
                 if (hitZone) {
                     d.hoverZoneId = hitZone.id;
-                    const zoneEl = document.getElementById(hitZone.id);
-                    zoneEl.classList.add('drag-over');
-
-                    // Auto-Expand Logic: Check if near right edge
-                    const distToRight = (hitZone.x + hitZone.w) - cx;
-                    if(distToRight < 60 && distToRight > 0) {
-                        if(!d.expandTimer) {
-                            d.expandTimer = setTimeout(() => {
-                                hitZone.w += 40;
-                                LayoutSystem.update(hitZone.id, { ...item, _isVirtual: true }, d.targetIndex);
-                                d.expandTimer = null; // reset to allow continuous growth
-                            }, 400); // 400ms hold to trigger
-                        }
-                    } else {
-                        clearTimeout(d.expandTimer); d.expandTimer = null;
-                    }
-
-                    // Calculate Insertion Index
+                    document.getElementById(hitZone.id).classList.add('drag-over');
                     const newIndex = LayoutSystem.getIndex(hitZone, cx, cy);
-                    
                     if (d.targetIndex !== newIndex) {
                         d.targetIndex = newIndex;
-                        // Create Virtual Item for Ghost calculation
-                        const virt = { ...item, _isVirtual: true, _dragX: item.x, _dragY: item.y };
+                        const virt = { ...primaryItem, _isVirtual: true, _dragX: primaryItem.x, _dragY: primaryItem.y };
                         LayoutSystem.update(hitZone.id, virt, newIndex);
                     }
                 }
             }
-
-            // Edge Scrolling
-            const edge = 50;
-            if(e.clientX < edge) State.view.x += 15/State.view.z; 
-            if(e.clientX > window.innerWidth - edge) State.view.x -= 15/State.view.z;
-            if(e.clientY < edge) State.view.y += 15/State.view.z; 
-            if(e.clientY > window.innerHeight - edge) State.view.y -= 15/State.view.z;
-            if(e.clientX < edge || e.clientX > window.innerWidth-edge || e.clientY<edge || e.clientY>window.innerHeight-edge) {
-                Render.sync();
-            }
         },
         up: (e) => {
             const d = State.drag;
-            if(!d) return; 
+            if(!d) return;
 
-            clearTimeout(d.expandTimer);
-            
-            const item = State.items.find(i=>i.id===d.id);
-            const el = document.getElementById(d.id);
-
-            // Clean UI
+            SnapSystem.clearGuides();
             $('ghost-layer').innerHTML = '';
             document.querySelectorAll('.drag-over').forEach(x => x.classList.remove('drag-over'));
-            if(el) {
-                el.classList.remove('dragging');
-                el.style.zIndex = (item.type === 'zone' ? 1 : (item.z || 10));
-            }
 
-            // Drop Logic
-            if (d.hoverZoneId && item.type !== 'zone') {
-                // Link and Layout
-                Model.link(item.id, d.hoverZoneId, d.targetIndex);
-                LayoutSystem.update(d.hoverZoneId);
-                
-                // Animate Snap
-                if(el) { 
-                    el.classList.add('snap-anim'); 
-                    setTimeout(() => el.classList.remove('snap-anim'), 300);
+            d.moveTargets.forEach(target => {
+                const el = document.getElementById(target.id);
+                if (el) {
+                    el.classList.remove('no-transition');
+                    el.style.zIndex = (parseInt(el.style.zIndex) || 10010) - 10000;
+                }
+            });
+
+            const updatedItems = d.moveTargets.map(t => State.items.find(i => i.id === t.id)).filter(Boolean);
+
+            if (d.hoverZoneId) {
+                const zone = State.items.find(i => i.id === d.hoverZoneId);
+                if (zone) {
+                    const itemsToLink = updatedItems.filter(i => i && i.type !== 'zone');
+                    const primaryItem = itemsToLink.find(i => i.id === d.primaryId);
+                    
+                    if (primaryItem) {
+                        HierarchyManager.link(primaryItem.id, d.hoverZoneId, d.targetIndex);
+                        itemsToLink.forEach(item => {
+                            if (item.id !== d.primaryId) HierarchyManager.link(item.id, d.hoverZoneId);
+                        });
+                    } else {
+                        itemsToLink.forEach(item => HierarchyManager.link(item.id, d.hoverZoneId));
+                    }
+                    LayoutSystem.update(d.hoverZoneId);
                 }
             } else {
-                // Dropped in open space
-                if(item.parentZone) Model.unlink(item.id);
+                d.moveTargets.forEach(target => {
+                    const item = State.items.find(i => i.id === target.id);
+                    if (item && item.parentZone) {
+                        const oldZone = State.items.find(z => z.id === item.parentZone);
+                        if (oldZone && !d.moveTargets.find(t => t.id === oldZone.id)) {
+                            const oldParentId = item.parentZone;
+                            HierarchyManager.unlink(item.id);
+                            LayoutSystem.update(oldParentId);
+                        }
+                    }
+                });
             }
 
             State.drag = null;
             ActionHistory.push();
             Board.save(true);
             
-            // Network Sync
-            if(State.isCoHost || Network.peer) {
-                Network.broadcast({type:'BATCH_UPDATE', items:State.items}); // Simpler to sync all items position
-                if(d.hoverZoneId) {
-                    const z = State.items.find(x=>x.id===d.hoverZoneId);
-                    Network.broadcast({type:'ZONE_REORDER', zoneId:z.id, children:z.children});
-                }
+            Network.broadcast({type:'BATCH_UPDATE', items: updatedItems});
+            if (d.hoverZoneId) {
+                const z = State.items.find(x => x.id === d.hoverZoneId);
+                if (z) Network.broadcast({type:'ZONE_REORDER', zoneId: z.id, children: z.children});
             }
         }
     },
@@ -1852,21 +2000,13 @@ window.Modes = {
             const d = State.drag;
             const i = State.items.find(x=>x.id===d.id);
             
-            // Update dimensions
             i.w = Math.max(150, d.ow + (x - d.sx)); 
             i.h = Math.max(150, d.oh + (y - d.sy));
             
-            // Immediate Reflow!
-            if(i.type === 'zone') {
-                LayoutSystem.update(i.id);
-            }
+            if(i.type === 'zone') LayoutSystem.update(i.id);
             
-            // Manual DOM update for smoothness
             const el = document.getElementById(i.id);
-            if(el) {
-                el.style.width = i.w + 'px';
-                el.style.height = i.h + 'px';
-            }
+            if(el) { el.style.width = i.w + 'px'; el.style.height = i.h + 'px'; }
         },
         up: (e) => { 
             if(State.isCoHost || Network.peer) {
@@ -1880,7 +2020,7 @@ window.Modes = {
         down: (e) => {
             const r = $('viewport').getBoundingClientRect();
             State.drag = { mode:'box', sx: e.clientX - r.left, sy: e.clientY - r.top };
-            if(!e.shiftKey) { State.selection=[]; UI.closeAllMenus(); $('sidebar').classList.add('closed'); Render.all(); }
+            if(!e.shiftKey) { State.selection=[]; UI.closeAllMenus(); Render.all(); }
         },
         move: (e) => {
             const r = $('viewport').getBoundingClientRect();
@@ -1890,11 +2030,16 @@ window.Modes = {
             const m = $('marquee');
             m.style.left = l + 'px'; m.style.top = t + 'px'; m.style.width = w + 'px'; m.style.height = h + 'px'; m.style.display='block';
             const globalL = l + r.left, globalT = t + r.top, globalR = globalL + w, globalB = globalT + h;
+            
+            const newlySelected = [];
             State.items.forEach(i => {
                 const el = document.getElementById(i.id); if(!el) return;
                 const rect = el.getBoundingClientRect();
-                if (globalL < rect.right && globalR > rect.left && globalT < rect.bottom && globalB > rect.top) { if(!State.selection.includes(i.id)) State.selection.push(i.id); }
+                if (globalL < rect.right && globalR > rect.left && globalT < rect.bottom && globalB > rect.top) {
+                    newlySelected.push(i.id);
+                }
             });
+            State.selection = [...new Set([...(e.shiftKey ? State.selection : []), ...newlySelected])];
             Render.all(); 
         },
         up: (e) => { $('marquee').style.display='none'; State.drag = null; }
@@ -1942,15 +2087,25 @@ window.Modes = {
 /* --- INPUT CONTROLLER --- */
 window.InputController = {
     start: (e) => {
-        if(e.target.closest('.drawer') || e.target.closest('.modal') || e.target.closest('.dock-btn') || e.target.closest('.tb-btn') || e.target.closest('input') || e.target.closest('textarea')) return;
+        if(e.target.closest('.drawer') || e.target.closest('.modal') || e.target.closest('.dock-btn') || e.target.closest('.tb-btn') || e.target.closest('input') || e.target.closest('textarea') || e.target.closest('select')) return;
         if(e.target.closest('.menu-trigger') || e.target.closest('[onclick]') || e.target.closest('.cmt-badge')) return;
+        
+        if (e.target.id === 'minimap-drag-handle') {
+            const cont = $('minimap-container');
+            State.drag = { mode: 'minimap-drag', el: cont, sx: e.clientX, sy: e.clientY, ex: cont.offsetLeft, ey: cont.offsetTop };
+            return;
+        }
+        if (e.target.id === 'minimap-resize-handle') {
+            const cont = $('minimap-container');
+            State.drag = { mode: 'minimap-resize', el: cont, sx: e.clientX, sy: e.clientY, ew: cont.offsetWidth, eh: cont.offsetHeight };
+            return;
+        }
         if(e.target.closest('#minimap')) {
-            // Minimap interaction
             const rect = $('minimap').getBoundingClientRect();
             const mx = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
             const my = (e.touches ? e.touches[0].clientY : e.clientY) - rect.top;
             const info = $('minimap').worldInfo;
-            if(info) {
+            if(info && info.scale > 0) {
                 const wx = (mx / info.scale) + info.minX;
                 const wy = (my / info.scale) + info.minY;
                 State.view.x = -wx + (window.innerWidth/State.view.z)/2;
@@ -1963,18 +2118,18 @@ window.InputController = {
         const evt = e.touches ? e.touches[0] : e;
         if(e.touches && e.touches.length > 1) { State.touch.dist = Math.hypot(e.touches[0].clientX-e.touches[1].clientX, e.touches[0].clientY-e.touches[1].clientY); return; }
 
-        const item = e.target.closest('.item');
+        const itemEl = e.target.closest('.item');
         const handle = e.target.closest('.resize-h');
 
         if(e.button === 1) { Modes.Pan.down(evt); return; }
 
         if(State.tool === 'pan' || State.tool === 'select') {
-            if(handle) { Modes.Resize.down(evt, item.id); return; }
-            if(item) {
-                 if(!e.shiftKey) { if(!State.selection.includes(item.id)) { State.selection = [item.id]; Render.sync(); } } 
-                 else { if(!State.selection.includes(item.id)) State.selection.push(item.id); else State.selection = State.selection.filter(id => id !== item.id); Render.sync(); }
-                 if(e.target.closest('.i-body') && item.classList.contains('note')) return;
-                 Modes.Move.down(evt, item.id); return;
+            if(handle) { Modes.Resize.down(evt, itemEl.id); return; }
+            if(itemEl) {
+                 if(!e.shiftKey) { if(!State.selection.includes(itemEl.id)) { State.selection = [itemEl.id]; Render.all(); } } 
+                 else { if(!State.selection.includes(itemEl.id)) State.selection.push(itemEl.id); else State.selection = State.selection.filter(id => id !== itemEl.id); Render.all(); }
+                 if(e.target.closest('.i-body') && itemEl.classList.contains('note')) return;
+                 Modes.Move.down(evt, itemEl.id); return;
             }
             if(State.tool === 'pan') Modes.Pan.down(evt); else Modes.Marquee.down(evt);
             return;
@@ -1994,6 +2149,9 @@ window.InputController = {
         e.preventDefault();
         const evt = e.touches ? e.touches[0] : e;
         const m = State.drag.mode;
+        if (m === 'minimap-drag' || m === 'minimap-resize') {
+            return;
+        }
         if(m === 'pan') Modes.Pan.move(evt);
         else if(m === 'move') Modes.Move.move(evt);
         else if(m === 'resize') Modes.Resize.move(evt);
@@ -2007,7 +2165,7 @@ window.InputController = {
         const m = State.drag.mode;
         if(m === 'pan') {
             const dist = Math.hypot(e.clientX - State.drag.sx, e.clientY - State.drag.sy);
-            if(dist < 5) { State.selection = []; UI.closeAllMenus(); $('sidebar').classList.add('closed'); Render.all(); }
+            if(dist < 5) { State.selection = []; UI.closeAllMenus(); Render.all(); }
             Modes.Pan.up();
         }
         else if(m === 'move') Modes.Move.up(e);
@@ -2034,6 +2192,92 @@ window.InputController = {
 };
 window.addEventListener('keyup', InputController.keyup);
 
+/* --- MAGNETIC SNAP SYSTEM --- */
+window.SnapSystem = {
+    threshold: 10,
+    activeGuides: [],
+
+    getSnap: (item, newX, newY) => {
+        const threshold = SnapSystem.threshold / State.view.z;
+        let finalX = newX, finalY = newY;
+        SnapSystem.activeGuides = [];
+
+        const itemBounds = {
+            left: newX, right: newX + item.w, top: newY, bottom: newY + item.h,
+            cx: newX + item.w / 2, cy: newY + item.h / 2
+        };
+
+        const otherItems = State.items.filter(i => i.id !== item.id && !State.drag.moveTargets.find(t => t.id === i.id));
+
+        let bestSnapX = { dist: Infinity }, bestSnapY = { dist: Infinity };
+
+        otherItems.forEach(other => {
+            const otherBounds = {
+                left: other.x, right: other.x + other.w, top: other.y, bottom: other.y + other.h,
+                cx: other.x + other.w / 2, cy: other.y + other.h / 2
+            };
+
+            const xPoints = ['left', 'cx', 'right'];
+            const yPoints = ['top', 'cy', 'bottom'];
+
+            xPoints.forEach(p1 => {
+                xPoints.forEach(p2 => {
+                    const dist = Math.abs(itemBounds[p1] - otherBounds[p2]);
+                    if (dist < threshold && dist < bestSnapX.dist) {
+                        bestSnapX = { dist, val: otherBounds[p2] - (itemBounds[p1] - newX), guide: otherBounds[p2] };
+                    }
+                });
+            });
+            yPoints.forEach(p1 => {
+                yPoints.forEach(p2 => {
+                    const dist = Math.abs(itemBounds[p1] - otherBounds[p2]);
+                    if (dist < threshold && dist < bestSnapY.dist) {
+                        bestSnapY = { dist, val: otherBounds[p2] - (itemBounds[p1] - newY), guide: otherBounds[p2] };
+                    }
+                });
+            });
+        });
+
+        if (bestSnapX.dist < Infinity) {
+            finalX = bestSnapX.val;
+            SnapSystem.activeGuides.push({ type: 'v', pos: bestSnapX.guide });
+        }
+        if (bestSnapY.dist < Infinity) {
+            finalY = bestSnapY.val;
+            SnapSystem.activeGuides.push({ type: 'h', pos: bestSnapY.guide });
+        }
+
+        return { x: finalX, y: finalY };
+    },
+
+    drawGuides: () => {
+        const layer = $('ghost-layer');
+        SnapSystem.clearGuides(true);
+        SnapSystem.activeGuides.forEach(g => {
+            const el = document.createElement('div');
+            el.className = `snap-guide ${g.type}`;
+            if (g.type === 'v') {
+                el.style.left = `${g.pos}px`;
+                el.style.top = '0';
+                el.style.height = '10000px'; // A large number
+                el.style.transform = 'translateY(-5000px)';
+            } else {
+                el.style.top = `${g.pos}px`;
+                el.style.left = '0';
+                el.style.width = '10000px';
+                el.style.transform = 'translateX(-5000px)';
+            }
+            layer.appendChild(el);
+        });
+    },
+
+    clearGuides: (instant = false) => {
+        const layer = $('ghost-layer');
+        Array.from(layer.querySelectorAll('.snap-guide')).forEach(g => g.remove());
+    }
+};
+
+
 /* --- NETWORK & ACTIVITY MANAGER --- */
 window.Network = {
     peer: null,
@@ -2041,7 +2285,7 @@ window.Network = {
     
     host: (existingId) => {
         if (Network.peer && !Network.peer.destroyed && existingId === undefined) {
-            $('modal-host').style.display = 'flex';
+            UI.showSettingsModal();
             return;
         }
         if(Network.peer) { Network.peer.destroy(); Network.peer = null; }
@@ -2049,10 +2293,7 @@ window.Network = {
 
         Network.peer = new Peer(idToUse);
         Network.peer.on('open', id => {
-            $('host-id').innerText = id; localStorage.setItem('dqb_host_id', id);
-            $('qr-tgt').innerHTML = '';
-            new QRCode($('qr-tgt'), { text:id, width:180, height:180 });
-            if(!existingId && !State.isCoHost) $('modal-host').style.display='flex';
+            localStorage.setItem('dqb_host_id', id);
             UI.toast(State.isCoHost ? "Connected as Co-Host" : "📡 Network Ready"); 
             setInterval(() => Network.broadcast({type:'HEARTBEAT'}), 3000);
             if(State.isCoHost) Network.requestSync();
@@ -2167,13 +2408,13 @@ window.Network = {
         });
 
         $('act-controls').style.display = 'none';
-        const openCheck = document.querySelector('#tab-roster input[type="checkbox"]');
-        if(openCheck) openCheck.checked = (type === 'OPEN');
+        UI.updateOpenNotesButton(type === 'OPEN');
 
         Network.broadcast({ type: 'STOP_ACT' });
         if (type !== 'OPEN') Network.broadcast({ type: 'MODE', val: 'LOCKED' });
 
         State.activity = { type, targetId, payload };
+        Board.save(true); // Save activity state change
 
         if (type === 'OPEN') {
             Network.broadcast({ type: 'MODE', val: 'OPEN' });
@@ -2201,11 +2442,7 @@ window.Network = {
                     }
                     $('act-results').innerHTML = html;
                 } 
-                else if (type === 'WIDGET_ACT') {
-                    if(btn) { btn.innerText = "🔴 Stop"; btn.classList.add('active'); }
-                    Network.broadcast(payload); 
-                }
-                else if (type === 'EXIT_TICKET') {
+                else if (type === 'WIDGET_ACT' || type === 'EXIT_TICKET') {
                     if(btn) { btn.innerText = "🔴 Stop"; btn.classList.add('active'); }
                     Network.broadcast(payload); 
                 }
@@ -2329,10 +2566,10 @@ window.Network = {
         else if(d.type === 'AUTH_COHOST') { 
             State.students[pid] = { name: "Co-Host", avatar: "👑", conn: conn }; 
             Roster(); 
-            SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink});
+            SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink, activity: State.activity});
         }
-        else if(d.type === 'SYNC_REQ') { SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink}); }
-        else if(d.type === 'FULL_SYNC') { State.items = d.items; State.ink = d.ink; Render.all(); }
+        else if(d.type === 'SYNC_REQ') { SafeSend(conn, {type:'FULL_SYNC', items:State.items, ink:State.ink, activity: State.activity}); }
+        else if(d.type === 'FULL_SYNC') { State.items = d.items; State.ink = d.ink; if (d.activity) State.activity = d.activity; Render.all(); UI.updateOpenNotesButton(State.activity.type === 'OPEN'); }
         else if(d.type === 'UPDATE_POS') { 
             const i = State.items.find(x=>x.id===d.id); 
             if(i) { i.x=d.x; i.y=d.y; if(d.w) i.w=d.w; if(d.h) i.h=d.h; Render.sync(); } 
@@ -2340,12 +2577,14 @@ window.Network = {
         else if(d.type === 'BATCH_UPDATE') {
              d.items.forEach(u => {
                  const i = State.items.find(x=>x.id===u.id);
-                 if(i) { i.x=u.x; i.y=u.y; i.w=u.w; i.h=u.h; }
+                 if(i) { Object.assign(i, u); }
              });
              Render.all();
         }
+        else if(d.type === 'GROUP_ITEMS') { d.ids.forEach(id => { const i = State.items.find(x=>x.id===id); if(i) i.groupId = d.groupId; }); Render.all(); }
+        else if(d.type === 'UNGROUP_ITEMS') { State.items.forEach(i => { if(i.groupId === d.groupId) i.groupId = null; }); Render.all(); }
         else if(d.type === 'ADD_ITEM') { State.items.push(d.item); Render.all(); }
-        else if(d.type === 'LINK_ITEMS') { d.ids.forEach(id => Model.link(id, d.zoneId)); LayoutSystem.update(d.zoneId); Render.all(); }
+        else if(d.type === 'LINK_ITEMS') { d.ids.forEach(id => HierarchyManager.link(id, d.zoneId)); LayoutSystem.update(d.zoneId); Render.all(); }
         else if(d.type === 'ZONE_REORDER') {
             const z = State.items.find(i => i.id === d.zoneId);
             if(z) {
@@ -2369,7 +2608,7 @@ window.Network = {
         else if(d.type === 'NOTE') {
             let i = State.items.find(x => x.id === d.id);
             if(!i) {
-                i = { id:d.id, type:'note', sub:d.sub, text:d.text, author:State.students[pid]?.name, w:200, h:150, votes:0 };
+                i = { id:d.id, type:'note', sub:d.sub, text:d.text, author:State.students[pid]?.name, w:200, h:150, votes:0, groupId: null };
                 
                 // Initialize default placement first
                 const pos = Board.getFreeSpace(-State.view.x+100, -State.view.y+100, 200, 150);
@@ -2377,8 +2616,6 @@ window.Network = {
                 State.items.push(i);
 
                 if(d.zoneId) {
-                    // Force the item coordinates to "center" of zone before linking,
-                    // so LayoutSystem puts it in a sensible bucket
                     const zone = State.items.find(z => z.id === d.zoneId);
                     if(zone) {
                         i.x = zone.x + zone.w/2 - i.w/2;
@@ -2393,9 +2630,8 @@ window.Network = {
             Network.broadcast(d); // Rebroadcast to other co-hosts
         }
         else if(d.type === 'IMG_NOTE') {
-             // CRITICAL FIX: Ensure src is always preserved
              if (!d.src) return;
-             let i = { id:d.id, type:'note', sub:'sketch', src:d.src, text:d.text, author:State.students[pid]?.name, w:200, h:200, votes:0 };
+             let i = { id:d.id, type:'note', sub:'sketch', src:d.src, text:d.text, author:State.students[pid]?.name, w:200, h:200, votes:0, groupId: null };
              
              const pos = Board.getFreeSpace(-State.view.x+100, -State.view.y+100, 200, 200);
              i.x = pos.x; i.y = pos.y;
@@ -2514,6 +2750,37 @@ window.onload = () => {
     v.addEventListener('touchmove', InputController.move, {passive: false});
     v.addEventListener('touchend', InputController.end);
     window.addEventListener('keydown', InputController.keydown);
+    
+    // Global listeners for minimap dragging/resizing
+    window.addEventListener('mousemove', e => {
+        if (!State.drag) return;
+        if (State.drag.mode === 'minimap-drag') {
+            const dx = e.clientX - State.drag.sx;
+            const dy = e.clientY - State.drag.sy;
+            State.drag.el.style.left = `${State.drag.ex + dx}px`;
+            State.drag.el.style.top = `${State.drag.ey + dy}px`;
+        } else if (State.drag.mode === 'minimap-resize') {
+            const dx = e.clientX - State.drag.sx;
+            const newWidth = Math.max(120, State.drag.ew + dx);
+            UI.setMinimapSize(newWidth);
+            $('minimap-size').value = newWidth;
+        }
+    });
+    window.addEventListener('mouseup', e => {
+        if (State.drag && (State.drag.mode === 'minimap-drag' || State.drag.mode === 'minimap-resize')) {
+             if (State.drag.mode === 'minimap-drag') {
+                const cont = State.drag.el;
+                const rect = cont.getBoundingClientRect();
+                const midX = rect.left + rect.width / 2;
+                const midY = rect.top + rect.height / 2;
+                const pos = (midY < window.innerHeight / 2 ? 'top' : 'bottom') + '-' + (midX < window.innerWidth / 2 ? 'left' : 'right');
+                $('minimap-pos').value = pos;
+                UI.setMinimapPosition(pos);
+            }
+            State.drag = null;
+        }
+    });
+
     setInterval(() => Board.save(true), 30000);
 };
 </script>
