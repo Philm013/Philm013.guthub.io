@@ -37,7 +37,20 @@
             box-shadow: 4px 0 15px rgba(0,0,0,0.3); position: absolute; height: 100%; top:0; left:0;
         }
         #sidebar.closed { transform: translateX(-100%); }
-
+        
+        #sidebar .in-txt {
+            background: #374151;
+            border: 1px solid #4b5563;
+            color: var(--text);
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 1rem;
+        }
+        #sidebar .in-txt:focus {
+            border-color: var(--accent);
+            outline: none;
+        }
+        
         /* VIEWPORT */
         #viewport { flex: 1; position: relative; overflow: hidden; background: var(--bg); cursor: default; touch-action: none; width: 100vw; height: 100vh; }
         #viewport.panning { cursor: grab; }
@@ -154,6 +167,20 @@
         @keyframes shake { 0% { transform: rotate(0deg); } 25% { transform: rotate(-5deg) scale(1.05); } 75% { transform: rotate(5deg) scale(1.05); } 100% { transform: rotate(0deg); } }
         .item.jiggling .jiggle-wrapper { animation: shake 0.4s ease-in-out infinite; border-color: #ef4444; z-index: 500; }
 
+        /* SEAMLESS CONSENSUS ITEMS */
+        .item.consensus-child .jiggle-wrapper {
+            background: transparent !important;
+            box-shadow: none !important;
+            border: 2px solid transparent;
+            overflow: visible;
+        }
+        .item.consensus-child.selected .jiggle-wrapper {
+            border: 2px dashed var(--accent) !important;
+        }
+        .item.consensus-child .i-head { display: none !important; }
+        .item.consensus-child textarea { padding: 0; background: transparent; font-weight: bold; text-shadow: 0 1px 2px rgba(255,255,255,0.8); }
+        .item.consensus-child img { background: transparent; }
+
         /* HEADER ACTIONS */
         .i-head { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px 0 12px; font-size: 0.9rem; font-weight: 700; cursor: grab; flex-shrink: 0; z-index: 2; background: rgba(255,255,255,0.5); border-bottom: 1px solid rgba(0,0,0,0.1); user-select: none; -webkit-user-select: none; }
         .i-head:active { cursor: grabbing; }
@@ -210,7 +237,7 @@
 
         /* CONTENT */
         .item.note textarea { width: 100%; height: 100%; border: none; background: transparent; padding: 16px; font-family: var(--font-hand); font-size: 1.4rem; resize: none; line-height: 1.4; color: #1e293b; }
-        .item.note img { width: 100%; flex: 1; object-fit: contain; background: #f8fafc; pointer-events: none; min-height: 0; display: block; }
+        .item.note img { width: 100%; flex: 1; object-fit: contain; background: transparent; pointer-events: none; min-height: 0; display: block; }
         .caption-in { width: 100%; height: 40px; border: none; border-top: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8); padding: 8px; font-family: var(--font-ui); font-size: 0.9rem; resize: none; color: #1e293b; flex-shrink: 0; }
 
         .i-body { flex: 1; position: relative; min-height: 0; display: flex; flex-direction: column; }
@@ -219,11 +246,6 @@
         .cer-col { border-right: 2px dashed #cbd5e1; position: relative; display: flex; justify-content: center; padding-top: 10px; font-weight: 800; color: #94a3b8; letter-spacing: 1px; font-size: 0.8rem; }
         .consensus-bg { background-image: radial-gradient(#bae6fd 1px, transparent 1px); background-size: 20px 20px; background-color: #f0f9ff; }
         
-        .consensus-grid { position: absolute; inset: 0; pointer-events: none; }
-        .con-line-v { position: absolute; left: 50%; top: 0; bottom: 0; border-left: 2px dashed #bae6fd; }
-        .con-line-h { position: absolute; top: 50%; left: 0; right: 0; border-top: 2px dashed #bae6fd; }
-        .con-center { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150px; height: 150px; border-radius: 50%; border: 2px dashed #0ea5e9; background: rgba(255,255,255,0.5); }
-
         /* ZONE RESULTS WIDGET */
         .zone-res-box { display: none; background: #f8fafc; border-top: 1px solid #cbd5e1; max-height: 50%; overflow-y: auto; padding: 10px; font-size: 0.9rem; flex-shrink: 0; }
         .zone-res-box.active { display: block; }
@@ -311,7 +333,7 @@
         .modal { background: white; padding: 24px; border-radius: 24px; width: 500px; max-width: 90%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); max-height: 85vh; overflow-y: auto; color: #1f2937; }
         .btn-p { width: 100%; padding: 14px; background: var(--accent); color: white; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size:1rem; transition:0.2s; min-height: 48px; }
         .btn-s { width: 100%; padding: 14px; background: #f1f5f9; color: #334155; border: none; border-radius: 12px; font-weight: 700; cursor: pointer; font-size:1rem; margin-top:8px; min-height: 48px; }
-        input.in-txt { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; }
+        input.in-txt, select.in-txt { width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 1rem; background: #fff; }
         .input-group { margin-bottom: 15px; }
         .input-group label { display: block; font-weight: 700; color: #64748b; margin-bottom: 6px; font-size: 0.9rem; }
 
@@ -352,7 +374,7 @@
         <h2 style="margin-top:0; color:var(--accent)">Join as Co-Host</h2>
         <div id="reader" style="width:100%; min-height:250px; background:#f1f5f9; border-radius:12px; overflow:hidden; display:none; margin-bottom:20px"></div>
         <button id="btn-scan" class="btn-s" style="background:#e0e7ff; color:#4338ca; display:flex; align-items:center; justify-content:center; gap:8px" onclick="Network.startQRScan()">
-            <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
+            <svg style="width:20px;height:20px" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
             Scan QR Code
         </button>
         <div style="margin:20px 0; text-align:center; font-weight:bold; color:#cbd5e1">- OR -</div>
@@ -405,7 +427,6 @@
                 <label for="minimap-size">Minimap Size: <span id="minimap-size-val">200px</span></label>
                 <input type="range" id="minimap-size" min="120" max="300" value="200" style="width:100%" oninput="UI.setMinimapSize(this.value)">
             </div>
-             <button class="btn-s" style="background:#374151; color:#f3f4f6" onclick="window.UI.toggleFullScreen()">⛶ Toggle Full Screen</button>
         </div>
     </div>
 </div>
@@ -427,12 +448,12 @@
 <div id="app">
     <!-- SIDEBAR -->
     <div id="sidebar" class="closed">
-        <div style="padding:20px; border-bottom:1px solid #374151; display:flex; justify-content:space-between; align-items:center;">
+        <div style="padding:15px; border-bottom:1px solid #374151; display:flex; justify-content:space-between; align-items:flex-start;">
             <div style="flex:1">
                 <div style="font-size:0.75rem; color:#9ca3af; font-weight:800; text-transform:uppercase; margin-bottom:6px;">Board Name</div>
                 <input class="in-txt" id="board-name" value="My Board" oninput="State.name=this.value; Board.save(true)">
             </div>
-            <button class="btn-s" style="width:auto; margin:0 0 0 10px; padding:8px 12px;" onclick="window.UI.toggleMenu()">✕</button>
+            <button class="btn-s" style="width:auto; margin: 24px 0 0 10px; padding:8px 12px; height: 44px; min-height:0;" onclick="window.UI.toggleMenu()">✕</button>
         </div>
         <div class="tab-head">
             <div class="tab-btn active" onclick="Tab(0)">Roster <span id="conn-badge">0</span></div>
@@ -453,10 +474,7 @@
         </div>
         <!-- Sidebar Actions -->
         <div style="margin-top:auto; padding:15px; border-top:1px solid #374151; display:flex; flex-direction:column; gap:8px;">
-            <button class="sub-btn" onclick="Board.setStartView()">📍 Set Start View</button>
-            <button class="sub-btn" onclick="window.UI.saveTemplate()">💾 Save as Template</button>
             <button class="sub-btn" onclick="window.UI.toggleA11y()">♿ Accessibility View</button>
-            <button class="sub-btn" onclick="UI.showSettingsModal()">⚙️ Settings & Sharing</button>
             <button class="sub-btn" style="background:#7f1d1d; color:#fecaca" onclick="Board.exit()">🚪 Exit Board</button>
         </div>
     </div>
@@ -481,32 +499,31 @@
     <div id="desktop-toolbar">
         <button class="tb-btn" onclick="window.UI.toggleMenu()">☰ Menu</button>
         <div class="sep"></div>
-        <button class="tb-btn active" id="dt-select" onclick="window.setTool('select')">⛝ Select</button>
-        <button class="tb-btn" id="dt-pan" onclick="window.setTool('pan')">✋ Pan</button>
+        <button class="tb-btn active" id="dt-pan" onclick="window.setTool('pan')">✋ Pan</button>
+        <button class="tb-btn" id="dt-select" onclick="window.setTool('select')">⛝ Select</button>
         <button class="tb-btn" id="dt-draw" onclick="window.UI.toggleDrawer('draw')">✏️ Draw</button>
         <div class="sep"></div>
-        <button class="tb-btn" id="tb-open-notes" onclick="UI.toggleOpenNotes()">🔓 Open Notes</button>
-        <button class="tb-btn" id="tb-connect" onclick="UI.showSettingsModal()">📡 Connect</button>
-        <div class="sep"></div>
+        <button class="tb-btn" onclick="window.UI.toggleDrawer('board')">⚙️ Board</button>
         <button class="tb-btn" onclick="window.UI.toggleDrawer('add')">➕ Add</button>
         <button class="tb-btn" id="btn-arrange" style="display:none" onclick="window.UI.toggleDrawer('arrange')">📏 Arrange</button>
         <div class="sep"></div>
         <button class="tb-btn" onclick="ActionHistory.undo()">↩️</button>
+        <button class="tb-btn" onclick="ActionHistory.redo()">↪️</button>
     </div>
 
     <!-- MOBILE DOCK -->
     <div id="mobile-dock">
         <button class="dock-btn" onclick="window.UI.toggleMenu()">☰</button>
         <div class="sep-mobile"></div>
-        <button class="dock-btn active" id="mt-select" onclick="window.setTool('select')">⛝</button>
-        <button class="dock-btn" id="mt-pan" onclick="window.setTool('pan')">✋</button>
+        <button class="dock-btn active" id="mt-pan" onclick="window.setTool('pan')">✋</button>
+        <button class="dock-btn" id="mt-select" onclick="window.setTool('select')">⛝</button>
         <button class="dock-btn" id="mt-draw" onclick="window.UI.toggleDrawer('draw')">✏️</button>
         <button class="dock-btn" id="mt-add" onclick="window.UI.toggleDrawer('add')">➕</button>
         <button class="dock-btn" id="mt-arrange" style="display:none" onclick="window.UI.toggleDrawer('arrange')">📏</button>
-        <button class="dock-btn" id="mt-open-notes" onclick="UI.toggleOpenNotes()">🔓</button>
-        <button class="dock-btn" id="mt-share" onclick="UI.showSettingsModal()">📡</button>
+        <button class="dock-btn" id="mt-board" onclick="window.UI.toggleDrawer('board')">⚙️</button>
         <div class="sep-mobile"></div>
         <button class="dock-btn" onclick="ActionHistory.undo()">↩️</button>
+        <button class="dock-btn" onclick="ActionHistory.redo()">↪️</button>
     </div>
 
     <!-- SHARED DRAWERS -->
@@ -546,6 +563,19 @@
         <div class="tool-row" style="border-top:1px solid #4b5563; margin-top:5px; padding-top:5px">
              <button class="sub-btn" onclick="window.UI.showTemplates()">📄 Templates</button>
              <button class="sub-btn" style="background:#4f46e5; color:white; border-color:#6366f1" onclick="window.UI.toggleDrawer('exit')">🚪 Exit Ticket</button>
+        </div>
+    </div>
+    
+    <!-- NEW BOARD CONTROLS DRAWER -->
+    <div id="drawer-board" class="drawer">
+         <div style="width:100%; text-align:center; color:#9ca3af; font-size:0.8rem; margin-bottom:8px; font-weight:bold">BOARD CONTROLS</div>
+        <div class="tool-row">
+             <button class="sub-btn" id="drawer-open-notes-btn" onclick="UI.toggleOpenNotes()">🔓 Open Board</button>
+             <button class="sub-btn" onclick="UI.showSettingsModal()">📡 Share</button>
+        </div>
+        <div class="tool-row">
+             <button class="sub-btn" onclick="Board.setStartView()">📍 Set Start View</button>
+             <button class="sub-btn" onclick="window.UI.toggleFullScreen()">⛶ Fullscreen</button>
         </div>
     </div>
 
@@ -603,7 +633,10 @@ window.TYPES = {
     idea:   { col: '#bbf7d0', bor: '#16a34a', icon: '💡', lbl: 'Idea' },
     test:   { col: '#fecaca', bor: '#dc2626', icon: '🧪', lbl: 'Testable' },
     meta:   { col: '#f8fafc', bor: '#64748b', icon: '📝', lbl: 'Note' },
-    sketch: { col: '#ffffff', bor: '#64748b', icon: '✏️', lbl: 'Sketch' }
+    sketch: { col: '#ffffff', bor: '#64748b', icon: '✏️', lbl: 'Sketch' },
+    claim: { col: '#fffbeb', bor: '#d97706', icon: '🤔', lbl: 'Claim' },
+    evidence: { col: '#f0f9ff', bor: '#0284c7', icon: '📊', lbl: 'Evidence' },
+    reasoning: { col: '#f0fdf4', bor: '#16a34a', icon: '🔗', lbl: 'Reasoning' }
 };
 
 /* --- STATE & HISTORY --- */
@@ -611,7 +644,7 @@ window.State = {
     id: null, name: 'My Board',
     items: [], ink: [], selection: [],
     view: { x: 0, y: 0, z: 1 },
-    tool: 'select', students: {}, drag: null,
+    tool: 'pan', students: {}, drag: null,
     
     // NEW: Centralized Activity State
     // Types: 'LOCKED' | 'OPEN' | 'ZONE_ACT' | 'WIDGET_ACT' | 'EXIT_TICKET'
@@ -641,6 +674,88 @@ window.ActionHistory = {
             UI.toast("Undo");
             if(State.isCoHost || Network.peer) Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink});
         }
+    },
+    redo: () => {
+        if (ActionHistory.index < ActionHistory.stack.length - 1) {
+            ActionHistory.index++;
+            const s = JSON.parse(ActionHistory.stack[ActionHistory.index]);
+            State.items = s.items; State.ink = s.ink;
+            Render.all(); Board.save(true);
+            UI.toast("Redo");
+            if (State.isCoHost || Network.peer) Network.broadcast({type:'FULL_SYNC', items:State.items, ink:State.ink});
+        }
+    }
+};
+
+/* --- AUTO SCROLL SYSTEM --- */
+window.AutoScroll = {
+    active: false,
+    vx: 0, vy: 0,
+    margin: 50,
+    // Max pixel shift per frame relative to screen size (not world size)
+    maxSpeed: 15,
+    interval: null,
+    lastEvt: null,
+    
+    start: () => {
+        if(AutoScroll.active) return;
+        AutoScroll.active = true;
+        AutoScroll.loop();
+    },
+    
+    stop: () => {
+        AutoScroll.active = false;
+        AutoScroll.vx = 0; AutoScroll.vy = 0;
+        if(AutoScroll.interval) cancelAnimationFrame(AutoScroll.interval);
+        AutoScroll.interval = null;
+    },
+    
+    check: (e) => {
+        AutoScroll.lastEvt = e;
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const m = AutoScroll.margin;
+        
+        AutoScroll.vx = 0; 
+        AutoScroll.vy = 0;
+
+        // Calculate intensity (0 to 1) based on closeness to edge
+        // Apply maxSpeed and adjust for zoom level so it feels consistent
+        // We clamp the zoom divisor so it doesn't go crazy when zoomed way out
+        const zFactor = Math.max(0.5, State.view.z);
+
+        if (e.clientX < m) {
+            const intensity = (m - e.clientX) / m;
+            AutoScroll.vx = (AutoScroll.maxSpeed * intensity) / zFactor;
+        } else if (e.clientX > w - m) {
+            const intensity = (e.clientX - (w - m)) / m;
+            AutoScroll.vx = -(AutoScroll.maxSpeed * intensity) / zFactor;
+        }
+        
+        if (e.clientY < m) {
+            const intensity = (m - e.clientY) / m;
+            AutoScroll.vy = (AutoScroll.maxSpeed * intensity) / zFactor;
+        } else if (e.clientY > h - m) {
+            const intensity = (e.clientY - (h - m)) / m;
+            AutoScroll.vy = -(AutoScroll.maxSpeed * intensity) / zFactor;
+        }
+    },
+    
+    loop: () => {
+        if (!AutoScroll.active) return;
+        
+        if (AutoScroll.vx !== 0 || AutoScroll.vy !== 0) {
+            State.view.x += AutoScroll.vx;
+            State.view.y += AutoScroll.vy;
+            Render.sync();
+            
+            // Re-trigger move logic to update item position relative to new view
+            if (State.drag && State.drag.mode === 'move' && AutoScroll.lastEvt) {
+                Modes.Move.move(AutoScroll.lastEvt);
+            }
+        }
+        
+        AutoScroll.interval = requestAnimationFrame(AutoScroll.loop);
     }
 };
 
@@ -810,17 +925,20 @@ window.LayoutSystem = {
         const colY = new Array(colCount).fill(LayoutSystem.headerH + 10);
 
         items.forEach(item => {
-            // Determine column based on item center X relative to zone
+            // Determine column based on Semantic Type
             let colIdx = 0;
-            
-            // If dragging, use the drag position to determine column
-            if(item._isVirtual) {
-               const relX = item._dragX - zone.x;
-               colIdx = Math.floor(relX / colW);
-            } else {
-               // Otherwise keep it where it was assigned, or calculate based on center
-               const center = (item.x - zone.x) + (item.w/2);
-               colIdx = Math.floor(center / colW);
+            if (item.sub === 'claim') colIdx = 0;
+            else if (item.sub === 'evidence') colIdx = 1;
+            else if (item.sub === 'reasoning') colIdx = 2;
+            else {
+                // Fallback: Geometric position
+                if(item._isVirtual) {
+                   const relX = item._dragX - zone.x;
+                   colIdx = Math.floor(relX / colW);
+                } else {
+                   const center = (item.x - zone.x) + (item.w/2);
+                   colIdx = Math.floor(center / colW);
+                }
             }
 
             if(colIdx < 0) colIdx = 0;
@@ -838,52 +956,35 @@ window.LayoutSystem = {
         return Math.max(...colY) + LayoutSystem.padding;
     },
 
-    // Consensus Layout (Quadrants + Center)
+    // Consensus Layout (Scatter/Random Fill for manual arrangement)
     layoutConsensus: (zone, items) => {
-        const cx = zone.w / 2;
-        const cy = zone.h / 2;
-        const buckets = [[], [], [], [], []]; // TL, TR, BL, BR, Center
+        // Consensus layout is a "Free Canvas". 
+        // We do not force positions unless item is new/virtual and needs a default.
+        // We mainly calculate the required height.
+        
+        let maxY = 0;
 
         items.forEach(item => {
-            let b = 0;
+            // Calculate relative position
+            let relX = item.x - zone.x;
+            let relY = item.y - zone.y;
+
+            // If virtual (dragging), use drag pos
             if (item._isVirtual) {
-                 // Calculate bucket based on drag position
-                 const mx = item._dragX - zone.x + item.w/2;
-                 const my = item._dragY - zone.y + item.h/2;
-                 const dist = Math.hypot(mx - cx, my - cy);
-                 if(dist < 80) b = 4;
-                 else if(mx < cx && my < cy) b = 0;
-                 else if(mx >= cx && my < cy) b = 1;
-                 else if(mx < cx && my >= cy) b = 2;
-                 else b = 3;
-            } else {
-                // If it has votes or is marked agreed, center it
-                if(item.votes > 0) b = 4;
-                else {
-                    // Hash distribution for demo, or preserve position
-                    const icx = (item.x - zone.x) + item.w/2;
-                    const icy = (item.y - zone.y) + item.h/2;
-                    if(Math.hypot(icx-cx, icy-cy) < 80) b = 4;
-                    else if(icx < cx && icy < cy) b = 0;
-                    else if(icx >= cx && icy < cy) b = 1;
-                    else if(icx < cx && icy >= cy) b = 2;
-                    else b = 3;
-                }
+                relX = item._dragX - zone.x;
+                relY = item._dragY - zone.y;
             }
-            buckets[b].push(item);
+
+            // Apply position to DOM/Ghost (ensures visual sync)
+            LayoutSystem.apply(zone, item, relX, relY);
+
+            // Track max height
+            const bottom = relY + item.h;
+            if (bottom > maxY) maxY = bottom;
         });
 
-        // Apply positions
-        const p = 20;
-        let y0=60, y1=60, y2=zone.h-150, y3=zone.h-150, yc=cy-30;
-
-        buckets[0].forEach(i => { LayoutSystem.apply(zone, i, p, y0); y0+=i.h+10; }); // TL
-        buckets[1].forEach(i => { LayoutSystem.apply(zone, i, zone.w-i.w-p, y1); y1+=i.h+10; }); // TR
-        buckets[2].forEach(i => { LayoutSystem.apply(zone, i, p, y2); y2-= (i.h+10); }); // BL (Stack Up)
-        buckets[3].forEach(i => { LayoutSystem.apply(zone, i, zone.w-i.w-p, y3); y3-= (i.h+10); }); // BR (Stack Up)
-        buckets[4].forEach(i => { LayoutSystem.apply(zone, i, cx-i.w/2, yc); yc+=40; }); // Center
-
-        return zone.h; // Fixed height mostly
+        // Return calculated height with padding, but don't shrink below current unless dragged up
+        return Math.max(zone.h, maxY + 50);
     },
 
     // Apply calculated position to DOM or Ghost
@@ -904,7 +1005,6 @@ window.LayoutSystem = {
         }
     },
 
-    // CHANGED: Replaced the entire function with a more reliable algorithm
     getIndex: (zone, x, y, excludeId = null) => {
         if(!zone.children) return 0;
         
@@ -915,21 +1015,13 @@ window.LayoutSystem = {
         
         if (items.length === 0) return 0;
 
-        // Find the first item that we should insert *before*.
         for (let i = 0; i < items.length; i++) {
             const item = items[i];
             const itemCenterY = item.y + item.h / 2;
-            const itemCenterX = item.x + item.w / 2;
-
-            // This logic checks if the dragged item's center (x,y) is vertically above the current item,
-            // or on the same row but horizontally to the left. This provides a consistent "first-fit"
-            // for finding the insertion index, which is more reliable than finding the "closest" item.
             if (y < itemCenterY && x < (item.x + item.w)) {
                 return i;
             }
         }
-
-        // If the loop completes, it means the item should be at the very end.
         return items.length;
     }
 };
@@ -1016,7 +1108,6 @@ window.UI = {
         } else {
             if (document.exitFullscreen) document.exitFullscreen();
         }
-        UI.toggleMenu();
     },
     showSettingsModal: () => {
         $('modal-settings').style.display = 'flex';
@@ -1040,23 +1131,15 @@ window.UI = {
         Network.toggleOpenMode(!isOpen);
     },
     updateOpenNotesButton: (isOpen) => {
-        const btn = $('tb-open-notes');
-        const mbtn = $('mt-open-notes');
-        if (btn) {
-            btn.innerHTML = isOpen ? '🔒 Lock Board' : '🔓 Open Notes';
+        const drawerBtn = $('drawer-open-notes-btn');
+        if (drawerBtn) {
+            drawerBtn.innerHTML = isOpen ? '🔒 Lock Board' : '🔓 Open Board';
             if (isOpen) {
-                btn.style.background = '#c2410c';
+                drawerBtn.style.background = '#c2410c';
+                drawerBtn.style.color = '#fef2f2';
             } else {
-                btn.style.background = '';
-            }
-        }
-        if (mbtn) {
-            mbtn.innerHTML = isOpen ? '🔓' : '🔓';
-            mbtn.classList.toggle('active', isOpen);
-            if (isOpen) {
-                mbtn.style.background = '#c2410c';
-            } else {
-                mbtn.style.background = '';
+                drawerBtn.style.background = ''; // Revert to default .sub-btn style
+                drawerBtn.style.color = '';
             }
         }
     },
@@ -1133,7 +1216,8 @@ window.Board = {
     },
     start: () => { 
         $('landing').style.display='none'; $('app').style.display='block'; $('board-name').value=State.name; 
-        Render.loop(); Render.all(); 
+        Render.loop(); Render.all();
+        setTool(State.tool);
         UI.loadMinimapSettings();
         UI.updateOpenNotesButton(State.activity.type === 'OPEN');
         if(!State.isCoHost) {
@@ -1378,6 +1462,16 @@ window.Render = {
     },
     createItem: (d) => {
         const el = document.createElement('div'); el.id=d.id; el.className=`item ${d.type}`;
+        
+        // --- CONSENSUS LOGIC ---
+        // Check if this item belongs to a Consensus Zone
+        const parent = d.parentZone ? State.items.find(x => x.id === d.parentZone) : null;
+        const isConsensusChild = parent && parent.zoneType === 'consensus';
+        if (isConsensusChild) {
+            el.classList.add('consensus-child');
+        }
+        // -----------------------
+
         let inner = '';
         
         let isActive = d.isOpen;
@@ -1396,17 +1490,19 @@ window.Render = {
         let resBtn = `<span id="btn-res-${d.id}" class="btn-toggle results-btn" onpointerdown="event.stopPropagation()" onclick="UI.toggleZoneResults('${d.id}')">💬 Results</span>`;
 
         if(d.type === 'note') {
-            if(d.src) {
+            if(d.sub === 'sketch' || d.src) {
+                // Sketch or Image Note
                 inner = `<div style="display:flex;flex-direction:column;height:100%;overflow:hidden;">
-                    <img src="${d.src}" draggable="false" style="flex:1;width:100%;object-fit:contain;background:#f8fafc">
-                    <textarea class="caption-in" placeholder="Caption...">${d.text||''}</textarea>
+                    <img src="${d.src}" draggable="false" style="flex:1;width:100%;object-fit:contain;background:${isConsensusChild ? 'transparent' : '#f8fafc'}">
+                    ${!isConsensusChild ? `<textarea class="caption-in" placeholder="Caption...">${d.text||''}</textarea>` : ''}
                 </div>`;
             } else {
-                inner = `<textarea class="note-in" placeholder="Empty note...">${d.text||''}</textarea>`;
+                // Text Note
+                inner = `<textarea class="note-in" placeholder="Empty note..." ${isConsensusChild ? 'style="border:none;background:transparent;resize:none;font-weight:bold"' : ''}>${d.text||''}</textarea>`;
             }
         } else if (d.type === 'zone') {
             if(d.zoneType === 'cer') inner = `<div class="cer-grid"><div class="cer-col">CLAIM</div><div class="cer-col">EVIDENCE</div><div class="cer-col">REASONING</div></div>`;
-            else if(d.zoneType === 'consensus') inner = `<div class="consensus-grid"><div class="con-line-v"></div><div class="con-line-h"></div><div class="con-center"></div></div>`;
+            else if(d.zoneType === 'consensus') inner = `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#cbd5e1;font-weight:bold;font-size:1.5rem;opacity:0.5;pointer-events:none">CONSENSUS AREA</div>`;
             else if(d.zoneType === 'exit') {
                 inner = `<div style="padding:15px; text-align:center; color:#1e293b; font-weight:bold; border-bottom:1px solid #e2e8f0; background:#f8fafc">
                     ${d.prompt}
@@ -1444,11 +1540,13 @@ window.Render = {
 
         const w = el.querySelector('.jiggle-wrapper');
         if(d.type==='note') {
-            w.style.background = head.col;
-            w.style.borderColor = head.bor;
-            const h = el.querySelector('.i-head');
-            h.style.background = head.bor + '33'; 
-            h.style.color = head.bor;
+            if (!isConsensusChild) {
+                w.style.background = head.col;
+                w.style.borderColor = head.bor;
+                const h = el.querySelector('.i-head');
+                h.style.background = head.bor + '33'; 
+                h.style.color = head.bor;
+            }
         }
         else if(d.type==='zone') { 
             w.style.border = '2px dashed #cbd5e1';
@@ -1580,6 +1678,9 @@ window.Actions = {
                 html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.showZoneList(event)">Move to Zone ➡</button></div>`;
             }
 
+            // ADDED: Save as Template for selection
+            html += `<div class="ctx-row"><button class="ctx-btn" onclick="Actions.saveSelectionAsTemplate()">💾 Save Template</button></div>`;
+
             html += `<div class="ctx-row"><button class="ctx-btn btn-del" onclick="Actions.delete()">Delete All</button></div>`;
 
         } else { // Single item selection logic remains the same
@@ -1616,6 +1717,31 @@ window.Actions = {
         }
         
         menu.innerHTML = html; menu.style.display = 'block'; Actions.posMenu(menu, e);
+    },
+    saveSelectionAsTemplate: async () => {
+        if(State.selection.length === 0) return;
+        const name = prompt("Template Name:");
+        if(!name) return;
+
+        // Get items
+        const selectedItems = State.selection.map(id => State.items.find(i => i.id === id)).filter(Boolean);
+
+        // Calculate bounding box to normalize positions
+        const minX = Math.min(...selectedItems.map(i => i.x));
+        const minY = Math.min(...selectedItems.map(i => i.y));
+
+        // Clone and offset
+        const tplItems = selectedItems.map(i => {
+            const clone = JSON.parse(JSON.stringify(i));
+            clone.x -= minX;
+            clone.y -= minY;
+            return clone;
+        });
+
+        const tpl = { id: genId(), name: name, items: tplItems };
+        await DB.saveTemplate(tpl);
+        UI.toast("Template Saved");
+        UI.closeAllMenus();
     },
     showZoneList: (e) => {
         e.stopPropagation();
@@ -1758,20 +1884,44 @@ window.Actions = {
         Render.all();
     },
     align: (mode) => {
-        if(State.selection.length < 2) return;
-        const items = State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x);
+        // 1. Filter targets: Only items whose parent is NOT also selected
+        const allSelected = State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x);
+        if(allSelected.length < 2) return;
+        
+        const items = allSelected.filter(item => {
+            // If item has a parent zone, and that parent zone is also in the selection, exclude this item (it moves with parent)
+            if (item.parentZone && State.selection.includes(item.parentZone)) return false;
+            return true;
+        });
+        
+        if(items.length < 2) return; // Need at least 2 top-level items to align
+
         if(mode === 'left') { const min = Math.min(...items.map(i=>i.x)); items.forEach(i=>i.x=min); }
         if(mode === 'center') { const avg = items.reduce((a,b)=>a+(b.x+b.w/2),0)/items.length; items.forEach(i=>i.x=avg-i.w/2); }
         if(mode === 'right') { const max = Math.max(...items.map(i=>i.x+i.w)); items.forEach(i=>i.x=max-i.w); }
         if(mode === 'top') { const min = Math.min(...items.map(i=>i.y)); items.forEach(i=>i.y=min); }
         if(mode === 'middle') { const avg = items.reduce((a,b)=>a+(b.y+b.h/2),0)/items.length; items.forEach(i=>i.y=avg-i.h/2); }
         if(mode === 'bottom') { const max = Math.max(...items.map(i=>i.y+i.h)); items.forEach(i=>i.y=max-i.h); }
+        
+        // Update children of any moved zones
+        items.forEach(t => {
+            if(t.type === 'zone') LayoutSystem.update(t.id);
+        });
+
         Render.sync(); ActionHistory.push(); Board.save(true);
         if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     distribute: (axis) => {
-        if(State.selection.length < 3) return;
-        const items = State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x);
+        const allSelected = State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x);
+        if(allSelected.length < 3) return;
+
+        const items = allSelected.filter(item => {
+            if (item.parentZone && State.selection.includes(item.parentZone)) return false;
+            return true;
+        });
+
+        if(items.length < 3) return;
+
         if(axis === 'h') {
             items.sort((a,b) => a.x - b.x); const min = items[0].x; const max = items[items.length-1].x; const span = max - min; const step = span / (items.length - 1);
             items.forEach((item, i) => { item.x = min + (step * i); });
@@ -1779,20 +1929,43 @@ window.Actions = {
             items.sort((a,b) => a.y - b.y); const min = items[0].y; const max = items[items.length-1].y; const span = max - min; const step = span / (items.length - 1);
             items.forEach((item, i) => { item.y = min + (step * i); });
         }
+
+        items.forEach(t => {
+            if(t.type === 'zone') LayoutSystem.update(t.id);
+        });
+
         Render.sync(); ActionHistory.push(); Board.save(true);
         if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     matchSize: () => {
-        if(State.selection.length < 2) return;
-        const items = State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x);
+        const allSelected = State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x);
+        if(allSelected.length < 2) return;
+
+        const items = allSelected.filter(item => {
+            if (item.parentZone && State.selection.includes(item.parentZone)) return false;
+            return true;
+        });
+
         const maxW = Math.max(...items.map(i=>i.w)); const maxH = Math.max(...items.map(i=>i.h));
         items.forEach(i => { i.w = maxW; i.h = maxH; });
+        
+        items.forEach(t => {
+            if(t.type === 'zone') LayoutSystem.update(t.id);
+        });
+
         Render.sync(); ActionHistory.push(); Board.save(true);
         if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
     arrangeGrid: () => {
-        const items = State.selection.length > 0 ? State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x) : State.items.filter(i => i.type === 'note');
+        let items = State.selection.length > 0 
+            ? State.selection.map(id => State.items.find(i => i.id === id)).filter(x=>x) 
+            : State.items.filter(i => i.type === 'note');
+        
         if(items.length === 0) return;
+
+        // Filter out children if parent is also selected
+        items = items.filter(item => !item.parentZone || !State.selection.includes(item.parentZone));
+
         const cols = Math.ceil(Math.sqrt(items.length)); const startX = Math.min(...items.map(i=>i.x)); const startY = Math.min(...items.map(i=>i.y)); const pad = 20;
         items.sort((a,b) => (a.y - b.y) || (a.x - b.x));
         let cx = startX, cy = startY; let rowH = 0;
@@ -1800,6 +1973,11 @@ window.Actions = {
             if(i > 0 && i % cols === 0) { cx = startX; cy += rowH + pad; rowH = 0; }
             item.x = cx; item.y = cy; cx += item.w + pad; if(item.h > rowH) rowH = item.h;
         });
+
+        items.forEach(t => {
+            if(t.type === 'zone') LayoutSystem.update(t.id);
+        });
+
         Render.sync(); ActionHistory.push(); Board.save(true);
         if(State.isCoHost || Network.peer) Network.broadcast({type:'BATCH_UPDATE', items:items});
     },
@@ -1865,6 +2043,9 @@ window.Modes = {
             const item = State.items.find(i => i.id === id);
             if (!item || item.locked) return;
 
+            // Start AutoScroll
+            AutoScroll.start();
+
             const r = $('viewport').getBoundingClientRect();
             const wx = (e.clientX - r.left) / State.view.z - State.view.x;
             const wy = (e.clientY - r.top) / State.view.z - State.view.y;
@@ -1904,6 +2085,10 @@ window.Modes = {
         move: (e) => {
             const d = State.drag;
             if (!d) return;
+            
+            // Update AutoScroll check
+            AutoScroll.check(e);
+
             const primaryItem = State.items.find(i => i.id === d.primaryId);
             if (!primaryItem) return;
 
@@ -1914,11 +2099,25 @@ window.Modes = {
             let dy = wy - d.mouseStartY;
 
             const primaryTarget = d.moveTargets.find(t => t.id === d.primaryId);
-            const snapResult = SnapSystem.getSnap(primaryItem, primaryTarget.startX + dx, primaryTarget.startY + dy);
             
-            dx = snapResult.x - primaryTarget.startX;
-            dy = snapResult.y - primaryTarget.startY;
-            SnapSystem.drawGuides();
+            const potentialX = primaryTarget.startX + dx;
+            const potentialY = primaryTarget.startY + dy;
+
+            // Check for zone hover first to decide whether to snap
+            const cx = potentialX + primaryItem.w / 2;
+            const cy = potentialY + primaryItem.h / 2;
+            const hitZone = (primaryItem.type !== 'zone') && State.items.find(z => z.type === 'zone' && z.id !== primaryItem.id && cx > z.x && cx < z.x + z.w && cy > z.y && cy < z.y + z.h);
+
+            if (hitZone) {
+                // If over a zone, disable snapping and clear guides
+                SnapSystem.clearGuides();
+            } else {
+                // Not over a zone, so apply snapping
+                const snapResult = SnapSystem.getSnap(primaryItem, potentialX, potentialY);
+                dx = snapResult.x - primaryTarget.startX;
+                dy = snapResult.y - primaryTarget.startY;
+                SnapSystem.drawGuides();
+            }
 
             d.moveTargets.forEach(target => {
                 const item = State.items.find(i => i.id === target.id);
@@ -1931,24 +2130,35 @@ window.Modes = {
             });
 
             if (primaryItem.type !== 'zone') {
-                const cx = primaryItem.x + primaryItem.w / 2;
-                const cy = primaryItem.y + primaryItem.h / 2;
-                const hitZone = State.items.find(z => z.type === 'zone' && z.id !== primaryItem.id && cx > z.x && cx < z.x + z.w && cy > z.y && cy < z.y + z.h);
+                const currentCx = primaryItem.x + primaryItem.w / 2;
+                const currentCy = primaryItem.y + primaryItem.h / 2;
+                const currentHitZone = State.items.find(z => z.type === 'zone' && z.id !== primaryItem.id && currentCx > z.x && currentCx < z.x + z.w && currentCy > z.y && currentCy < z.y + z.h);
 
-                if (d.hoverZoneId && (!hitZone || hitZone.id !== d.hoverZoneId)) {
+                if (d.hoverZoneId && (!currentHitZone || currentHitZone.id !== d.hoverZoneId)) {
                     document.getElementById(d.hoverZoneId)?.classList.remove('drag-over');
                     LayoutSystem.update(d.hoverZoneId);
                     d.hoverZoneId = null; d.targetIndex = -1;
                     $('ghost-layer').innerHTML = '';
                 }
-                if (hitZone) {
-                    d.hoverZoneId = hitZone.id;
-                    document.getElementById(hitZone.id).classList.add('drag-over');
-                    const newIndex = LayoutSystem.getIndex(hitZone, cx, cy, primaryItem.id);
-                    if (d.targetIndex !== newIndex) {
-                        d.targetIndex = newIndex;
-                        const virt = { ...primaryItem, _isVirtual: true, _dragX: primaryItem.x, _dragY: primaryItem.y };
-                        LayoutSystem.update(hitZone.id, virt, newIndex);
+                if (currentHitZone) {
+                    d.hoverZoneId = currentHitZone.id;
+                    document.getElementById(currentHitZone.id).classList.add('drag-over');
+                    
+                    // Special Handling for Consensus Zones: No ghost slot logic, just free movement
+                    if (currentHitZone.zoneType === 'consensus') {
+                         d.targetIndex = -1; // No specific index
+                         // We still call update to potentially resize zone if we drag near bottom
+                         // but we pass isVirtual to show it inside
+                         const virt = { ...primaryItem, _isVirtual: true, _dragX: primaryItem.x, _dragY: primaryItem.y };
+                         LayoutSystem.update(currentHitZone.id, virt);
+                    } else {
+                        // Standard Flow Layout Logic
+                        const newIndex = LayoutSystem.getIndex(currentHitZone, currentCx, currentCy, primaryItem.id);
+                        if (d.targetIndex !== newIndex) {
+                            d.targetIndex = newIndex;
+                            const virt = { ...primaryItem, _isVirtual: true, _dragX: primaryItem.x, _dragY: primaryItem.y };
+                            LayoutSystem.update(currentHitZone.id, virt, newIndex);
+                        }
                     }
                 }
             }
@@ -1956,6 +2166,9 @@ window.Modes = {
         up: (e) => {
             const d = State.drag;
             if(!d) return;
+
+            // Stop AutoScroll
+            AutoScroll.stop();
 
             SnapSystem.clearGuides();
             $('ghost-layer').innerHTML = '';
@@ -1977,6 +2190,7 @@ window.Modes = {
                     const itemsToLink = updatedItems.filter(i => i && i.type !== 'zone');
                     const primaryItem = itemsToLink.find(i => i.id === d.primaryId);
                     
+                    // Link items to zone
                     if (primaryItem) {
                         HierarchyManager.link(primaryItem.id, d.hoverZoneId, d.targetIndex);
                         itemsToLink.forEach(item => {
@@ -2110,7 +2324,7 @@ window.Modes = {
             const r = $('viewport').getBoundingClientRect();
             const x = e.clientX - r.left; const y = e.clientY - r.top;
             const dot = document.createElement('div');
-            dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:100%;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
+            dot.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:10px;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
             $('viewport').appendChild(dot);
             setTimeout(() => dot.remove(), 500);
             if(State.isCoHost || Network.peer) Network.broadcast({type:'LASER', x:x, y:y});
@@ -2221,6 +2435,7 @@ window.InputController = {
         if(e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         if(e.key === 'Backspace' || e.key === 'Delete') Actions.delete();
         if((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); ActionHistory.undo(); }
+        if((e.metaKey || e.ctrlKey) && e.key === 'y') { e.preventDefault(); ActionHistory.redo(); }
         if(e.code === 'Space') { e.preventDefault(); window.setTool('pan'); }
     },
     keyup: (e) => { if(e.code === 'Space') { window.setTool('select'); } }
@@ -2242,7 +2457,7 @@ window.SnapSystem = {
             cx: newX + item.w / 2, cy: newY + item.h / 2
         };
 
-        const otherItems = State.items.filter(i => i.id !== item.id && !State.drag.moveTargets.find(t => t.id === i.id));
+        const otherItems = State.items.filter(i => i.id !== item.id && !State.drag.moveTargets.find(t => t.id === i.id) && !i.parentZone);
 
         let bestSnapX = { dist: Infinity }, bestSnapY = { dist: Infinity };
 
@@ -2252,25 +2467,39 @@ window.SnapSystem = {
                 cx: other.x + other.w / 2, cy: other.y + other.h / 2
             };
 
-            const xPoints = ['left', 'cx', 'right'];
-            const yPoints = ['top', 'cy', 'bottom'];
-
-            xPoints.forEach(p1 => {
-                xPoints.forEach(p2 => {
+            // STRICT EDGE-TO-EDGE AND MIDDLE-TO-MIDDLE LOGIC
+            
+            // X-Axis Edges (Left/Right to Left/Right)
+            ['left', 'right'].forEach(p1 => {
+                ['left', 'right'].forEach(p2 => {
                     const dist = Math.abs(itemBounds[p1] - otherBounds[p2]);
                     if (dist < threshold && dist < bestSnapX.dist) {
                         bestSnapX = { dist, val: otherBounds[p2] - (itemBounds[p1] - newX), guide: otherBounds[p2] };
                     }
                 });
             });
-            yPoints.forEach(p1 => {
-                yPoints.forEach(p2 => {
+
+            // X-Axis Centers (CX to CX)
+            const distCx = Math.abs(itemBounds.cx - otherBounds.cx);
+            if (distCx < threshold && distCx < bestSnapX.dist) {
+                bestSnapX = { dist: distCx, val: otherBounds.cx - (itemBounds.cx - newX), guide: otherBounds.cx };
+            }
+
+            // Y-Axis Edges (Top/Bottom to Top/Bottom)
+            ['top', 'bottom'].forEach(p1 => {
+                ['top', 'bottom'].forEach(p2 => {
                     const dist = Math.abs(itemBounds[p1] - otherBounds[p2]);
                     if (dist < threshold && dist < bestSnapY.dist) {
                         bestSnapY = { dist, val: otherBounds[p2] - (itemBounds[p1] - newY), guide: otherBounds[p2] };
                     }
                 });
             });
+
+            // Y-Axis Centers (CY to CY)
+            const distCy = Math.abs(itemBounds.cy - otherBounds.cy);
+            if (distCy < threshold && distCy < bestSnapY.dist) {
+                bestSnapY = { dist: distCy, val: otherBounds.cy - (itemBounds.cy - newY), guide: otherBounds.cy };
+            }
         });
 
         if (bestSnapX.dist < Infinity) {
@@ -2462,7 +2691,9 @@ window.Network = {
                 
                 if (type === 'ZONE_ACT') {
                     if(btn) { btn.innerText = "🟢 Open"; btn.classList.add('active'); }
-                    Network.broadcast(payload); 
+                    // CRITICAL FIX: Send 'type' as the specific activity subtype so student client recognizes it immediately
+                    const finalPayload = { ...payload, type: payload.subType };
+                    Network.broadcast(finalPayload); 
                     
                     Tab(1); 
                     $('act-controls').style.display='block'; 
@@ -2640,11 +2871,16 @@ window.Network = {
         else if(d.type === 'INK_ADD') { State.ink.push(d.ink); Render.ink(); }
         else if(d.type === 'LASER') { 
             const dot = document.createElement('div');
-            dot.style.cssText = `position:absolute;left:${d.x}px;top:${d.y}px;width:100%;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
+            dot.style.cssText = `position:absolute;left:${d.x}px;top:${d.y}px;width:10px;height:10px;background:red;border-radius:50%;pointer-events:none;z-index:9999;opacity:0.8;box-shadow:0 0 5px red`;
             $('viewport').appendChild(dot);
             setTimeout(() => dot.remove(), 500);
         }
         else if(d.type === 'NOTE') {
+            // Auto-Target Active Zone
+            if (!d.zoneId && (State.activity.type === 'ZONE_ACT' || State.activity.type === 'OPEN_ZONE')) {
+                d.zoneId = State.activity.targetId;
+            }
+
             let i = State.items.find(x => x.id === d.id);
             if(!i) {
                 i = { id:d.id, type:'note', sub:d.sub, text:d.text, author:State.students[pid]?.name, w:200, h:150, votes:0, groupId: null };
@@ -2670,6 +2906,12 @@ window.Network = {
         }
         else if(d.type === 'IMG_NOTE') {
              if (!d.src) return;
+             
+             // Auto-Target Active Zone
+             if (!d.zoneId && (State.activity.type === 'ZONE_ACT' || State.activity.type === 'OPEN_ZONE')) {
+                 d.zoneId = State.activity.targetId;
+             }
+
              let i = { id:d.id, type:'note', sub:'sketch', src:d.src, text:d.text, author:State.students[pid]?.name, w:200, h:200, votes:0, groupId: null };
              
              const pos = Board.getFreeSpace(-State.view.x+100, -State.view.y+100, 200, 200);
@@ -2689,7 +2931,7 @@ window.Network = {
              Render.all(); Board.save(true);
              Network.broadcast(d);
         }
-        else if(d.type === 'DELETE_NOTE') { State.items = State.items.filter(x => x.id !== d.id); Render.all(); Board.save(true); Network.broadcast(d); }
+        else if(d.type === 'DELETE_NOTE') { HierarchyManager.delete(d.id); }
         else if(d.type === 'POLL_VOTE') { 
             const p = State.items.find(x => x.id === d.actId); 
             if(p && p.opts[d.idx]) { p.opts[d.idx].v++; Render.all(); confetti({particleCount: 50, spread: 60, origin: { y: 0.8 }}); } 
@@ -2701,7 +2943,8 @@ window.Network = {
             Network.updateResults(d.actId);
         }
         else if(d.type === 'COMMENT') { State.comments.push(d); Network.updateDiscussion(); Render.all(); }
-        else if(d.type === 'JIGGLE_NOTE') { const el = document.getElementById(d.id); if(el) { el.classList.add('jiggling'); setTimeout(() => el.classList.remove('jiggling'), 2000); } }
+        else if(d.type === 'JIGGLE_NOTE') {
+            const el = document.getElementById(d.id); if(el) { el.classList.add('jiggling'); setTimeout(() => el.classList.remove('jiggling'), 2000); } }
 
         else if(d.type === 'EXIT_SUBMIT') {
             const zone = State.items.find(x => x.id === d.actId && x.zoneType === 'exit');
