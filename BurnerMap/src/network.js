@@ -58,11 +58,15 @@ Object.assign(app, {
     send: (data) => {
         data = { ...data, username: app.username, from: app.myId, battery: app.battery };
         
-        // Show own message in UI immediately
-        if (data.type === 'chat' || data.type === 'private_chat' || data.type === 'waypoint_chat' || data.type === 'rally_chat') {
-            app.handleData(data);
+        // Cache and display own messages
+        if (data.type.includes('chat')) {
+            let chatId = data.type === 'chat' ? 'public' : data.to;
+            if (!app.chatHistory[chatId]) app.chatHistory[chatId] = [];
+            app.chatHistory[chatId].push(data);
+            app.addChat(data);
         }
 
+        // Send over network
         if (app.isHost) {
             if (data.to) { // Private message from host
                 const recipient = app.connections.find(c => c.peer === data.to);
@@ -70,13 +74,15 @@ Object.assign(app, {
                     recipient.send(data);
                 }
             } else { // Broadcast from host
-                if (data.type !== 'ping' && !data.type.includes('chat')) { // prevent re-displaying own public chat
-                    app.handleData(data);
-                }
                 app.broadcast(data);
             }
         } else if (app.conn?.open) { // Client sends everything to host
             app.conn.send(data);
+        }
+
+        // Host also processes non-chat data for itself
+        if (app.isHost && !data.type.includes('chat')) {
+            app.handleData(data);
         }
     },
 
@@ -86,10 +92,21 @@ Object.assign(app, {
             app.users[data.from] = { username: data.username };
         }
 
+        // Cache received chat messages
+        if (data.from !== app.myId && data.type.includes('chat')) {
+            let chatId = data.type === 'chat' ? 'public' : data.from;
+            if (!app.chatHistory[chatId]) app.chatHistory[chatId] = [];
+            app.chatHistory[chatId].push(data);
+        }
+
         switch(data.type) {
             case 'loc': app.updateMarker(data); break;
-            case 'chat': app.addChat(data); break;
-            case 'private_chat': app.addChat(data); break;
+            case 'chat':
+            case 'private_chat':
+            case 'waypoint_chat':
+            case 'rally_chat':
+                app.addChat(data); 
+                break;
             case 'sonar': app.triggerSonar(data); break;
             case 'rally': app.setRally(data); break;
             case 'focus': 
@@ -104,8 +121,6 @@ Object.assign(app, {
             case 'waypoint_new': app.drawWaypoint(data.waypoint); if(!app.waypoints.find(w => w.id === data.waypoint.id)) app.waypoints.push(data.waypoint); break;
             case 'waypoint_update': app.updateWaypoint(data.waypoint); break;
             case 'waypoint_delete': app.removeWaypoint(data.id); break;
-            case 'waypoint_chat': app.addChat(data); break;
-            case 'rally_chat': app.addChat(data); break;
             case 'rally_delete': if (app.rallyMarker) { app.map.removeLayer(app.rallyMarker); app.rallyMarker = null; } break;
         }
     },

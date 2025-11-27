@@ -13,14 +13,7 @@
 
     <link rel="stylesheet" href="src/style.css"/>
 </head>
-<body class="dark">
-
-    <!-- STROBE OVERLAY -->
-    <div id="strobe-overlay" onclick="app.toggleStrobe()">
-        <div class="absolute inset-0 flex items-center justify-center">
-            <h1 class="text-black font-black text-4xl bg-white p-4">TAP TO STOP</h1>
-        </div>
-    </div>
+<body class="">
 
     <!-- AUDIO ELEMENTS -->
     <audio id="sound-msg" src="https://assets.mixkit.co/active_storage/sfx/2354/2354-preview.m4a"></audio>
@@ -28,7 +21,7 @@
 
     <!-- HEADER -->
     <div class="header-left glass">
-        <button onclick="app.toggleTheme()" class="text-yellow-500 mr-3"><i id="theme-icon" class="fa-solid fa-sun"></i></button>
+        <button onclick="app.toggleTheme()" class="text-yellow-500 mr-3"><i id="theme-icon" class="fa-solid fa-moon"></i></button>
         <div class="flex flex-col leading-none">
             <span class="font-black text-xs tracking-wide">BURNER<span class="text-blue-500">MAP</span></span>
             <span id="conn-status" class="text-[9px] opacity-60 font-bold mt-1 tracking-widest uppercase">OFFLINE</span>
@@ -37,7 +30,6 @@
     </div>
 
     <div class="header-right">
-        <button onclick="app.toggleStrobe()" class="icon-btn glass text-white bg-slate-800 border-2 border-white/20"><i class="fa-solid fa-bolt"></i></button>
         <button onclick="app.toggleQR()" class="icon-btn glass"><i class="fa-solid fa-qrcode"></i></button>
     </div>
 
@@ -62,8 +54,9 @@
         <div id="chat-scroll" class="no-scrollbar">
             <div id="msg-list" class="flex flex-col gap-4"></div>
         </div>
+        <div id="mention-suggestions" class="absolute bottom-[170px] left-4 right-4 z-40 glass rounded-xl p-2 hidden"></div>
         <div class="absolute bottom-[110px] left-4 right-4 z-30 glass p-2 rounded-3xl flex gap-2">
-            <input type="text" id="msg-input" placeholder="Message..." autocomplete="off" class="flex-1 bg-transparent px-4 outline-none text-base">
+            <input type="text" id="msg-input" placeholder="Message... (@ to mention)" autocomplete="off" class="flex-1 bg-transparent px-4 outline-none text-base">
             <button onclick="app.sendMessage(event)" class="w-10 h-10 bg-blue-600 rounded-full text-white shadow-lg"><i class="fa-solid fa-arrow-up"></i></button>
         </div>
     </div>

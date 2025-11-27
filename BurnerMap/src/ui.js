@@ -1,47 +1,111 @@
 
 // Contains all UI related functions
 Object.assign(app, {
+    initUI: () => {
+        document.getElementById('msg-input').addEventListener('keyup', app.handleMentionInput);
+        document.addEventListener('click', () => app.hideMentionSuggestions());
+    },
+
     toggleTheme: () => {
         app.isLight = !app.isLight;
-        document.body.className = app.isLight ? 'light' : 'dark';
+        document.body.className = app.isLight ? '' : 'dark';
         document.getElementById('theme-icon').className = app.isLight ? "fa-solid fa-moon" : "fa-solid fa-sun";
+        
+        // This is a bit of a hack, but this function is called once at the start
+        // which makes it a good place to initialize UI components.
+        if (!app.uiInitialized) {
+            app.initUI();
+            app.uiInitialized = true;
+        }
+
+        // Deselect the dark layer and select the light layer if not in satellite mode
         if(app.layerMode !== 'sat') {
-            if(app.isLight) { app.map.removeLayer(app.layers.dark); app.layers.light.addTo(app.map); app.layerMode = 'light'; }
-            else { app.map.removeLayer(app.layers.light); app.layers.dark.addTo(app.map); app.layerMode = 'dark'; }
+            if (app.isLight) {
+                if (app.map.hasLayer(app.layers.dark)) app.map.removeLayer(app.layers.dark);
+                if (!app.map.hasLayer(app.layers.light)) app.layers.light.addTo(app.map);
+                app.layerMode = 'light';
+            } else {
+                if (app.map.hasLayer(app.layers.light)) app.map.removeLayer(app.layers.light);
+                if (!app.map.hasLayer(app.layers.dark)) app.layers.dark.addTo(app.map);
+                app.layerMode = 'dark';
+            }
         }
     },
 
-    toggleStrobe: () => {
-        const s = document.getElementById('strobe-overlay');
-        s.style.display = s.style.display === 'block' ? 'none' : 'block';
+    handleMentionInput: (e) => {
+        const input = e.target;
+        const text = input.value;
+        const cursorPos = input.selectionStart;
+        
+        const atMatch = text.substring(0, cursorPos).match(/@([\w\s]*)$/);
+        
+        if (atMatch) {
+            const query = atMatch[1].toLowerCase();
+            const mentions = [];
+            Object.values(app.users).forEach(user => mentions.push(user.username));
+            app.waypoints.forEach(wp => mentions.push(wp.name));
+            if(app.rallyMarker) mentions.push('Rally Point');
+
+            const filtered = mentions.filter(name => name.toLowerCase().includes(query));
+            app.showMentionSuggestions(filtered, atMatch);
+        } else {
+            app.hideMentionSuggestions();
+        }
     },
 
-    addChat: (d) => {
+    showMentionSuggestions: (suggestions, match) => {
+        const container = document.getElementById('mention-suggestions');
+        if (suggestions.length === 0) {
+            app.hideMentionSuggestions();
+            return;
+        }
+        container.innerHTML = suggestions.map(name => `<div class="mention-item" onclick="app.selectMention(event, '${name}')">${name}</div>`).join('');
+        container.classList.remove('hidden');
+    },
+
+    hideMentionSuggestions: () => {
+        document.getElementById('mention-suggestions').classList.add('hidden');
+    },
+
+    selectMention: (e, name) => {
+        e.stopPropagation();
+        const input = document.getElementById('msg-input');
+        const text = input.value;
+        const cursorPos = input.selectionStart;
+        const atMatch = text.substring(0, cursorPos).match(/@([\w\s]*)$/);
+        const newText = text.substring(0, atMatch.index) + `@${name} ` + text.substring(cursorPos);
+        
+        input.value = newText;
+        input.focus();
+        app.hideMentionSuggestions();
+    },
+
+    addChat: (d, fromHistory = false) => {
         const isMe = d.from === app.myId;
 
-        // Message filtering logic
-        if (app.privateChat) { // We are in a private/waypoint/rally chat
-            if (d.to !== app.privateChat.id) {
-                // This message is not for the current private chat
-                if ((d.type === 'private_chat' || d.type === 'waypoint_chat' || d.type === 'rally_chat') && !isMe) {
-                    app.showToast(`New msg from ${d.username}`);
-                    app.notify('msg');
+        if (!fromHistory) {
+            // Message filtering logic
+            if (app.privateChat) { // We are in a private/waypoint/rally chat
+                if (d.to !== app.privateChat.id) {
+                    if ((d.type === 'private_chat' || d.type === 'waypoint_chat' || d.type === 'rally_chat') && !isMe) {
+                        app.showToast(`New msg from ${d.username}`);
+                        app.notify('msg');
+                    }
+                    return; 
                 }
-                return; // Don't display
-            }
-        } else { // We are in public chat
-            if (d.type !== 'chat') {
-                // Incoming private message while in public chat
-                if (!isMe) {
-                    const chatType = d.type.replace('_', ' ');
-                    app.showToast(`New ${chatType}`);
-                    app.notify('msg');
-                    document.getElementById('unread-dot').classList.remove('hidden');
+            } else { // We are in public chat
+                if (d.type !== 'chat') {
+                    if (!isMe) {
+                        const chatType = d.type.replace('_', ' ');
+                        app.showToast(`New ${chatType}`);
+                        app.notify('msg');
+                        document.getElementById('unread-dot').classList.remove('hidden');
+                    }
+                    return; 
                 }
-                return; // Don't display
             }
         }
-
+        
         const list = document.getElementById('msg-list');
         const div = document.createElement('div');
         div.className = `flex flex-col ${isMe ? 'items-end' : 'items-start'}`;
@@ -55,19 +119,16 @@ Object.assign(app, {
             indicator = '<span class="font-bold text-orange-500 text-[10px]">[RALLY] </span>';
         }
 
-        // Mention parsing and rendering
         let processedMsg = d.msg;
-        if(d.type === 'chat') { // Only process mentions in public chat
+        if(d.type === 'chat') { 
             const mentions = [];
             Object.entries(app.users).forEach(([id, user]) => mentions.push({id: id, name: user.username, type: 'user'}));
             app.waypoints.forEach(wp => mentions.push({id: wp.id, name: wp.name, type: 'waypoint'}));
             if(app.rallyMarker) mentions.push({id: 'rally', name: 'Rally Point', type: 'rally'});
             
-            // Sort by name length, descending, to match longer names first
             mentions.sort((a, b) => b.name.length - a.name.length);
 
             mentions.forEach(entity => {
-                // Use a regex to avoid replacing parts of words or already processed mentions
                 const regex = new RegExp(`@${entity.name.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')}(?!\\w)`, 'g');
                 processedMsg = processedMsg.replace(regex, `<span class="mention" onclick="app.panToEntity('${entity.type}', '${entity.id}')">@${entity.name}</span>`);
             });
@@ -75,14 +136,25 @@ Object.assign(app, {
         
         div.innerHTML = `<div class="${isMe ? 'bg-blue-600 text-white' : 'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10 shadow">${indicator}${processedMsg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
         list.appendChild(div);
-        document.getElementById('chat-scroll').scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+        
+        // Always scroll when a new message is added, unless rendering history.
+        if (!fromHistory) {
+            document.getElementById('chat-scroll').scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
+        }
 
         if (!isMe && document.getElementById('view-chat').style.transform !== 'translate3d(0px, 0px, 0px)') {
             document.getElementById('unread-dot').classList.remove('hidden');
         }
-        if (!isMe) {
+        if (!isMe && !fromHistory) {
             app.notify('msg');
         }
+    },
+    renderChat: (chatId) => {
+        const list = document.getElementById('msg-list');
+        list.innerHTML = '';
+        const history = app.chatHistory[chatId] || [];
+        history.forEach(msg => app.addChat(msg, true)); // pass true to skip filtering and caching
+        list.scrollTo({ top: list.scrollHeight });
     },
 
     notify: (type) => {
@@ -92,8 +164,23 @@ Object.assign(app, {
 
     switchTab: (tab) => {
         const chat = document.getElementById('view-chat');
-        if(tab === 'map') { chat.style.transform = 'translate3d(100%, 0, 0)'; document.getElementById('btn-map').classList.add('active'); document.getElementById('btn-chat').classList.remove('active'); }
-        else { chat.style.transform = 'translate3d(0, 0, 0)'; document.getElementById('btn-chat').classList.add('active'); document.getElementById('btn-map').classList.remove('active'); document.getElementById('unread-dot').classList.add('hidden'); }
+        if(tab === 'map') { 
+            chat.style.transform = 'translate3d(100%, 0, 0)'; 
+            document.getElementById('btn-map').classList.add('active'); 
+            document.getElementById('btn-chat').classList.remove('active'); 
+        }
+        else { 
+            chat.style.transform = 'translate3d(0, 0, 0)'; 
+            document.getElementById('btn-chat').classList.add('active'); 
+            document.getElementById('btn-map').classList.remove('active'); 
+            document.getElementById('unread-dot').classList.add('hidden');
+            // Render the correct chat when switching to the tab
+            if (app.privateChat) {
+                app.renderChat(app.privateChat.id);
+            } else {
+                app.renderChat('public');
+            }
+        }
     },
 
     toggleQR: () => {

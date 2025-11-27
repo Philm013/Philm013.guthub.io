@@ -42,14 +42,14 @@ Object.assign(app, {
             isWaypoint: !!target.isWaypoint,
             isRally: !!target.isRally,
         };
-        document.getElementById('msg-list').innerHTML = '';
+        app.renderChat(target.from);
         app.switchTab('chat');
         app.updateChatUI();
     },
 
     exitPrivateChat: () => {
         app.privateChat = null;
-        document.getElementById('msg-list').innerHTML = '';
+        app.renderChat('public');
         app.updateChatUI();
     }
 });
