@@ -1,15 +1,15 @@
 <!-- 
-  BURNERMAP v4.0: The Best of Both Worlds
-  - v3.1 UI Engine (Fixes Layout/Overlaps)
-  - v3.0 Feature Set (Avatars/Persistence)
-  - v2.0 Location Logic (The one that works)
+  BURNERMAP v5.0: Diagnostic Permission Handling
+  - Checks Permission Status API before asking
+  - Requests Location FIRST (on click)
+  - Increased Timeouts
 -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v4.0</title>
+    <title>BurnerMap v5.0</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -27,11 +27,9 @@
         :root { --app-height: 100dvh; }
         body { font-family: 'Inter', sans-serif; background-color: #0f172a; color: #e2e8f0; height: var(--app-height); width: 100vw; overflow: hidden; overscroll-behavior: none; }
         
-        /* Layout Engine */
+        /* Layout Engine (v3.1 Fixes) */
         #app { height: 100%; width: 100%; position: relative; }
         .view-section { position: absolute; inset: 0; height: 100%; width: 100%; transition: opacity 0.3s ease; }
-        
-        /* Z-Index Swapping (Fixes Overlap Issues) */
         .view-active { z-index: 20; opacity: 1; pointer-events: auto; }
         .view-hidden { z-index: 0; opacity: 0; pointer-events: none; }
 
@@ -91,21 +89,18 @@
 
         <!-- === CHAT VIEW === -->
         <div id="view-chat" class="view-section view-hidden bg-slate-900 flex flex-col">
-            <!-- Spacer for Header -->
             <div class="pt-safe pb-4 px-4 bg-slate-900 border-b border-white/5 shrink-0 min-h-[100px] flex items-end">
                 <div>
                     <h2 class="text-xl font-bold text-white">Live Chat</h2>
                     <p class="text-xs text-slate-400 uppercase tracking-wide">Encrypted P2P Mesh</p>
                 </div>
             </div>
-            <!-- Messages -->
             <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
                 <div class="text-center mt-4 opacity-30">
                     <i class="fa-solid fa-comments text-4xl mb-2"></i>
                     <p class="text-xs">Chat History Started</p>
                 </div>
             </div>
-            <!-- Input (Padded for Bottom Nav) -->
             <div class="p-3 bg-slate-800 border-t border-white/5 shrink-0 pb-[100px]">
                 <form onsubmit="app.sendMessage(event)" class="flex gap-2">
                     <input type="text" id="msg-input" placeholder="Type message..." autocomplete="off" class="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm">
@@ -137,7 +132,7 @@
                 <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-map text-3xl text-white"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v4.0</h1>
+                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v5.0</h1>
                 <p class="text-xs text-slate-400 mb-6">Secure • Ephemeral • Real-time</p>
                 
                 <div class="mb-4">
@@ -149,6 +144,11 @@
                 <!-- Action Button -->
                 <button id="btn-start" onclick="app.startSession()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                     Start Session
+                </button>
+                
+                <!-- Reset Button -->
+                <button onclick="app.hardReset()" class="mt-6 text-[10px] text-slate-500 hover:text-red-400 underline">
+                    App Stuck? Factory Reset
                 </button>
             </div>
         </div>
@@ -262,52 +262,91 @@
                 });
             },
 
-            // === THE FIX: Using v2.0 Location Logic ===
-            startSession: function() {
+            // === THE CRITICAL FIX: Explicit Permission Check + Immediate Request ===
+            startSession: async function() {
                 const input = document.getElementById('username-input');
                 if(!input.value.trim()) return input.classList.add('border-red-500');
                 this.username = input.value.trim();
 
-                // 1. Hide Modal
+                const btn = document.getElementById('btn-start');
+                
+                // 1. Check Permissions API (Diagnostic)
+                if (navigator.permissions) {
+                    try {
+                        const result = await navigator.permissions.query({ name: 'geolocation' });
+                        if (result.state === 'denied') {
+                            alert("⚠️ PERMISSION BLOCKED\n\nYour browser has blocked location access for this site.\n\nYou must go to your Browser Settings -> Site Settings and 'Reset Permissions' or 'Allow Location' for this page.");
+                            return; // Stop here
+                        }
+                    } catch (e) {
+                        console.log("Permissions API not fully supported, proceeding anyway.");
+                    }
+                }
+
+                // 2. Immediate "Hard" Request
+                // We ask for getCurrentPosition FIRST to force the prompt immediately on click.
+                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Asking Permission...`;
+                
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        // SUCCESS! We have permission. Now we can start everything.
+                        console.log("Initial Location Lock Acquired");
+                        this.launchApp(pos);
+                    },
+                    (err) => {
+                        // ERROR
+                        console.error(err);
+                        btn.innerHTML = `Start Session`;
+                        if(err.code === 1) {
+                            alert("❌ LOCATION DENIED\n\nYou clicked 'Block' or 'Not Now'.\n\nPlease reload the page and click 'Allow' when prompted.");
+                        } else if (err.code === 2) {
+                            alert("❌ GPS UNAVAILABLE\n\nYour device cannot find a signal. Are you indoors?");
+                        } else {
+                            alert("❌ TIMEOUT\n\nLocation request took too long. Please try again.");
+                        }
+                    },
+                    { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
+                );
+            },
+
+            launchApp: function(initialPos) {
+                // Hide Modal
                 document.getElementById('modal-onboarding').style.opacity = '0';
                 setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
 
-                // 2. Start PeerJS
+                // Start PeerJS
                 this.initPeer();
                 
-                // 3. Start Location (v2.0 Logic)
-                this.attemptLocation();
+                // Start Continuous Tracking
+                this.startTracking();
                 
-                // 4. Save State
+                // Use the initial position immediately
+                this.updateMyLocation(initialPos.coords.latitude, initialPos.coords.longitude);
+
+                // Save State
                 this.saveState();
             },
 
-            attemptLocation: function() {
-                if (!navigator.geolocation) {
-                    this.showToast('GPS not supported on this device');
-                    return;
-                }
-
+            startTracking: function() {
                 navigator.geolocation.watchPosition(
                     (pos) => {
-                        this.hasLocationAccess = true;
-                        const { latitude, longitude } = pos.coords;
-                        this.myLocation = { lat: latitude, lng: longitude };
-                        
-                        this.updateMarker(this.myId, latitude, longitude, 'You', this.avatar, this.color, true);
-                        
-                        if (!this.mapCentered) {
-                            this.map.setView([latitude, longitude], 16);
-                            this.mapCentered = true;
-                        }
-                        this.send({ type: 'location', lat: latitude, lng: longitude });
+                        this.updateMyLocation(pos.coords.latitude, pos.coords.longitude);
                     },
-                    (err) => {
-                        console.warn("Location Error:", err);
-                        if(err.code === 1) this.showToast('GPS Permission Denied'); 
-                    },
-                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+                    (err) => console.warn("Watch Error:", err),
+                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
                 );
+            },
+
+            updateMyLocation: function(lat, lng) {
+                this.hasLocationAccess = true;
+                this.myLocation = { lat, lng };
+                this.updateMarker(this.myId, lat, lng, 'You', this.avatar, this.color, true);
+                
+                if (!this.mapCentered) {
+                    this.map.setView([lat, lng], 16);
+                    this.mapCentered = true;
+                }
+                this.send({ type: 'location', lat, lng });
             },
             // ==========================================
 
@@ -554,11 +593,12 @@
                     window.location.href = window.location.pathname;
                 }
             },
-
-            escapeHtml: function(text) {
-                const div = document.createElement('div');
-                div.textContent = text;
-                return div.innerHTML;
+            
+            hardReset: function() {
+                if(confirm("This will wipe all data and reset the app. Continue?")) {
+                    localStorage.clear();
+                    window.location.href = window.location.pathname;
+                }
             }
         };
 
