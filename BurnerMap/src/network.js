@@ -9,6 +9,14 @@ Object.assign(app, {
             if(app.isHost) { app.updateStatus('online', 'HOST'); app.peer.on('connection', app.handleHostConn); }
             else app.connectToHost();
         });
+        app.peer.on('error', (err) => {
+            console.error('PeerJS error:', err);
+            app.showToast(`Error: ${err.type}`);
+            app.updateStatus('error', err.type);
+        });
+        app.peer.on('disconnected', () => {
+            app.updateStatus('error', 'Disconnected from server');
+        });
     },
 
     connectToHost: () => {
@@ -17,6 +25,10 @@ Object.assign(app, {
         app.conn.on('open', () => { app.updateStatus('online', 'LINKED'); app.showToast('Secure Channel Active'); });
         app.conn.on('data', app.handleData);
         app.conn.on('close', () => app.updateStatus('error', 'LOST HOST'));
+        app.conn.on('error', (err) => {
+            console.error('PeerJS connection error:', err);
+            app.showToast(`Connection Error: ${err.type}`);
+        });
     },
 
     handleHostConn: (conn) => {
@@ -28,6 +40,7 @@ Object.assign(app, {
             // Send existing rally point and waypoints to new user
             if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng });
             app.waypoints.forEach(wp => conn.send({ type: 'waypoint_new', waypoint: wp }));
+            app.showToast(`${username} has joined.`);
         });
         conn.on('data', (data) => {
             // Ensure username and from are set, even if client fails to send them
@@ -49,10 +62,16 @@ Object.assign(app, {
             }
         });
         conn.on('close', () => { 
+            const closedUsername = app.users[conn.peer]?.username || 'A user';
+            app.showToast(`${closedUsername} has left.`);
             app.connections = app.connections.filter(c => c.peer !== conn.peer); 
             app.removeMarker(conn.peer); 
             app.broadcast({ type: 'disconnect', from: conn.peer });
             delete app.users[conn.peer];
+        });
+        conn.on('error', (err) => {
+            console.error('PeerJS connection error:', err);
+            app.showToast(`Connection Error with a user: ${err.type}`);
         });
     },
 
