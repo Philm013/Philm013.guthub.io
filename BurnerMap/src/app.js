@@ -5,9 +5,9 @@ Object.assign(app, {
         window.addEventListener('resize', setVh); setVh();
         if(navigator.getBattery) navigator.getBattery().then(b => { app.battery = Math.round(b.level*100); b.addEventListener('levelchange', () => app.battery = Math.round(b.level*100)); });
 
+const saved = JSON.parse(localStorage.getItem('snapmeet_v1'));
         const urlParams = new URLSearchParams(window.location.search);
         const joinId = urlParams.get('join');
-        const saved = JSON.parse(localStorage.getItem('meetup_v1'));
 
         if (joinId) {
             // User is explicitly joining. They are a CLIENT.
@@ -40,10 +40,10 @@ Object.assign(app, {
         setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 500);
         document.getElementById('view-map').style.visibility = 'visible';
         app.initMap(); app.initPeer(); app.startLocation();
-        localStorage.setItem('meetup_v1', JSON.stringify({ username: app.username, hostId: app.hostId }));
+        localStorage.setItem('snapmeet_v1', JSON.stringify({ username: app.username, hostId: app.hostId }));
     },
 
-    burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('meetup_v1'); window.location.href = window.location.pathname; }},
+    burn: () => { if(confirm('Burn Session?')) { localStorage.removeItem('snapmeet_v1'); window.location.href = window.location.pathname; }},
 
     getShareUrl: () => {
         const joinId = app.isHost ? app.myId : app.hostId;
