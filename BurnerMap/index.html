@@ -1,5 +1,5 @@
 <!-- 
-  BURNERMAP v3.2: Robust Permission Handling & Manual Fallback
+  BURNERMAP v3.3: Restored "Force GPS" Logic
   Single File Implementation
 -->
 <!DOCTYPE html>
@@ -7,7 +7,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>BurnerMap v3.2</title>
+    <title>BurnerMap v3.3</title>
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -58,20 +58,13 @@
         
         <!-- === TOP HEADER === -->
         <header class="absolute top-0 left-0 right-0 z-50 pt-safe px-4 pb-6 glass-header pointer-events-none flex justify-between items-start">
-            <!-- Status -->
             <div class="pointer-events-auto flex flex-col gap-2 mt-1">
                 <div class="bg-slate-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-white/10 flex items-center gap-2 shadow-lg w-max">
                     <div id="heartbeat-icon" class="text-[10px] text-slate-500"><i class="fa-solid fa-signal"></i></div>
                     <span id="connection-status" class="text-[10px] font-bold tracking-wider text-slate-300 uppercase">OFFLINE</span>
                 </div>
-                <!-- Manual Mode Indicator -->
-                <div id="manual-mode-badge" class="hidden bg-amber-900/80 backdrop-blur px-3 py-1.5 rounded-full border border-amber-500/30 flex items-center gap-2 shadow-lg w-max">
-                    <i class="fa-solid fa-hand-pointer text-amber-400 text-[10px]"></i>
-                    <span class="text-[10px] font-bold text-amber-100 uppercase">Manual Loc</span>
-                </div>
             </div>
 
-            <!-- Actions -->
             <div class="pointer-events-auto flex gap-3 mt-1">
                 <button id="btn-settings" onclick="app.toggleSettings()" class="hidden bg-slate-800 hover:bg-slate-700 text-white w-10 h-10 rounded-full shadow-lg border border-white/10 flex items-center justify-center transition-all active:scale-95">
                     <i class="fa-solid fa-gear"></i>
@@ -132,17 +125,9 @@
                 <div class="w-16 h-16 bg-blue-600 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/30">
                     <i class="fa-solid fa-map text-3xl text-white"></i>
                 </div>
-                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v3.2</h1>
+                <h1 class="text-2xl font-bold text-white mb-1">BurnerMap v3.3</h1>
                 <p class="text-xs text-slate-400 mb-6">Secure • Ephemeral • Real-time</p>
                 
-                <!-- HTTPS Warning -->
-                <div id="https-warning" class="hidden mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-left">
-                    <p class="text-[10px] text-red-300 leading-relaxed">
-                        <i class="fa-solid fa-lock-open mr-1"></i> 
-                        <b>Insecure Connection:</b> Browsers block GPS on "http" or "file". Please use "https" or "localhost".
-                    </p>
-                </div>
-
                 <div class="mb-4">
                     <div class="grid grid-cols-5 gap-3" id="avatar-grid"></div>
                 </div>
@@ -150,23 +135,9 @@
                 <input type="text" id="username-input" class="w-full bg-slate-800 text-white px-4 py-3 rounded-xl mb-4 focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold border border-white/5" placeholder="Enter Alias">
 
                 <!-- Action Button -->
-                <button id="btn-start" onclick="app.requestLocationAndStart()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-location-crosshairs"></i> Enable GPS & Start
+                <button id="btn-start" onclick="app.startSession()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                    Start Session
                 </button>
-                
-                <button onclick="app.startManualMode()" class="mt-4 text-xs text-slate-500 hover:text-white underline">
-                    GPS Broken? Use Manual Mode
-                </button>
-            </div>
-        </div>
-
-        <!-- === MANUAL MODE MODAL === -->
-        <div id="modal-manual" class="hidden absolute inset-0 z-[70] bg-slate-900/90 flex items-center justify-center p-6 text-center">
-            <div class="bg-slate-800 p-6 rounded-2xl border border-white/10 max-w-xs w-full">
-                <i class="fa-solid fa-hand-pointer text-4xl text-amber-500 mb-4"></i>
-                <h2 class="text-lg font-bold text-white mb-2">Tap Your Location</h2>
-                <p class="text-xs text-slate-400 mb-4">Since GPS is disabled, tap the map where you are right now.</p>
-                <button onclick="document.getElementById('modal-manual').classList.add('hidden')" class="bg-amber-600 text-white px-6 py-2 rounded-xl font-bold w-full">Okay</button>
             </div>
         </div>
 
@@ -208,11 +179,6 @@
                 window.addEventListener('resize', setVh);
                 setVh();
 
-                // Check Secure Context
-                if (!window.isSecureContext && window.location.hostname !== 'localhost') {
-                    document.getElementById('https-warning').classList.remove('hidden');
-                }
-
                 this.renderAvatars();
                 this.initMap();
                 
@@ -229,7 +195,7 @@
                     this.myId = saved.myId;
                     document.getElementById('username-input').value = this.username;
                     this.selectAvatar(this.avatar);
-                    document.getElementById('btn-start').innerHTML = `<i class="fa-solid fa-rotate-left"></i> Rejoin Session`;
+                    document.getElementById('btn-start').innerHTML = `Rejoin Session`;
                 }
 
                 this.isHost = !this.hostId;
@@ -257,10 +223,11 @@
                 this.map = L.map('map', { zoomControl: false, attributionControl: false }).setView([20,0], 2);
                 L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(this.map);
                 
+                // Manual override if GPS failed
                 this.map.on('click', (e) => {
                     if (this.manualMode) {
                         this.updateMyLocation(e.latlng.lat, e.latlng.lng);
-                        this.showToast("Location Updated");
+                        this.showToast("Location Set Manually");
                     }
                 });
 
@@ -272,65 +239,46 @@
                 });
             },
 
-            requestLocationAndStart: function() {
+            startSession: function() {
                 const input = document.getElementById('username-input');
                 if(!input.value.trim()) return input.classList.add('border-red-500');
                 this.username = input.value.trim();
 
-                // Explicitly request location NOW
+                // 1. Close Modal Immediately
+                document.getElementById('modal-onboarding').style.opacity = '0';
+                setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
+
+                // 2. Start PeerJS
+                this.initPeer();
+                this.saveState();
+
+                // 3. FORCE GPS REQUEST (The "Original" Way)
                 if (!navigator.geolocation) {
-                    alert("GPS not supported. Switching to manual mode.");
-                    this.startManualMode();
+                    this.enableManualMode("GPS Not Supported");
                     return;
                 }
 
-                const btn = document.getElementById('btn-start');
-                btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Locating...`;
-
-                navigator.geolocation.getCurrentPosition(
+                this.showToast("Requesting GPS...");
+                
+                navigator.geolocation.watchPosition(
                     (pos) => {
-                        // Success!
-                        this.finishOnboarding();
-                        this.startTracking(true); // Start watcher
+                        this.updateMyLocation(pos.coords.latitude, pos.coords.longitude);
                     },
                     (err) => {
-                        // Error
                         console.warn(err);
-                        if(err.code === 1) alert("Location Denied. Please enable permissions or use Manual Mode.");
-                        else if (err.code === 2) alert("GPS Signal Unavailable. Try Manual Mode.");
-                        else alert("GPS Timeout. Try Manual Mode.");
-                        
-                        btn.innerHTML = `<i class="fa-solid fa-location-crosshairs"></i> Try Again`;
+                        this.enableManualMode("GPS Denied. Tap map to set location.");
                     },
-                    { enableHighAccuracy: true, timeout: 10000 }
+                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 10000 }
                 );
             },
 
-            startManualMode: function() {
-                const input = document.getElementById('username-input');
-                if(!input.value.trim()) return input.classList.add('border-red-500');
-                this.username = input.value.trim();
-                
+            enableManualMode: function(msg) {
                 this.manualMode = true;
-                document.getElementById('manual-mode-badge').classList.remove('hidden');
-                this.finishOnboarding();
-                document.getElementById('modal-manual').classList.remove('hidden');
-            },
-
-            finishOnboarding: function() {
-                document.getElementById('modal-onboarding').style.opacity = '0';
-                setTimeout(() => document.getElementById('modal-onboarding').style.display = 'none', 300);
-                this.initPeer();
-                this.saveState();
-            },
-
-            startTracking: function(watch) {
-                if(watch) {
-                    navigator.geolocation.watchPosition(
-                        (pos) => this.updateMyLocation(pos.coords.latitude, pos.coords.longitude),
-                        (err) => console.warn(err),
-                        { enableHighAccuracy: true }
-                    );
+                this.showToast(msg);
+                // Center map on a default location so they can see where to click
+                if(!this.mapCentered) {
+                    this.map.setView([40.7128, -74.0060], 4); // Default to US view, user can pan
+                    this.mapCentered = true;
                 }
             },
 
@@ -350,7 +298,7 @@
                 }));
             },
 
-            // --- PEER JS & NETWORKING (Same as v3.1) ---
+            // --- PEER JS & NETWORKING ---
             initPeer: function() {
                 this.updateStatus('connecting', 'INIT...');
                 this.peer = new Peer(null, { debug: 0 }); 
