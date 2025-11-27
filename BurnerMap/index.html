@@ -1,0 +1,588 @@
+<!-- 
+  BURNERMAP v2.0: Stable Mobile Layout & HTTPS Handling
+  Single File Implementation
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <!-- CRITICAL: Fixes mobile scaling and prevents zooming on inputs -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>BurnerMap | Stealth Meetup</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        /* --- CORE LAYOUT FIXES --- */
+        :root {
+            /* Use dynamic viewport height to fix mobile address bar issues */
+            --app-height: 100dvh; 
+        }
+        
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #0f172a; 
+            color: #e2e8f0; 
+            height: var(--app-height); 
+            width: 100vw; 
+            overflow: hidden; 
+            /* Disable pull-to-refresh on mobile */
+            overscroll-behavior: none;
+        }
+
+        #app {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        /* Map Layering */
+        #map { height: 100%; width: 100%; z-index: 0; background: #0f172a; }
+        
+        /* UI Utilities */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Glassmorphism */
+        .glass { 
+            background: rgba(15, 23, 42, 0.85); 
+            backdrop-filter: blur(12px); 
+            -webkit-backdrop-filter: blur(12px); 
+            border: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+        /* Safe Area for iPhone Home Bar */
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom, 20px); }
+        .pt-safe { padding-top: env(safe-area-inset-top, 20px); }
+
+        /* Map Markers */
+        .leaflet-control-attribution { display: none; }
+        .custom-marker {
+            border: 2px solid white;
+            border-radius: 50%;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 800;
+            font-size: 11px;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        }
+        
+        /* Animations */
+        @keyframes pulse-ring {
+            0% { transform: scale(0.8); opacity: 0.5; }
+            100% { transform: scale(2.2); opacity: 0; }
+        }
+        .pulse-dot::before {
+            content: ''; position: absolute; width: 100%; height: 100%; background: inherit; border-radius: 50%; z-index: -1;
+            animation: pulse-ring 2s infinite;
+        }
+
+        /* Toast Animation */
+        .toast-enter { transform: translate(-50%, -200%); }
+        .toast-active { transform: translate(-50%, 20px); }
+    </style>
+</head>
+<body>
+
+    <!-- APP CONTAINER -->
+    <div id="app">
+
+        <!-- TOP BAR (Fixed Z-Index) -->
+        <header class="absolute top-0 left-0 right-0 z-30 pt-safe px-4 pb-2 pointer-events-none flex justify-between items-start">
+            <!-- Connection Status -->
+            <div class="pointer-events-auto bg-slate-900/90 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 flex items-center gap-2 shadow-lg mt-2">
+                <div id="status-indicator" class="w-2 h-2 rounded-full bg-yellow-500"></div>
+                <span id="connection-status" class="text-[10px] font-bold tracking-wider text-slate-300 uppercase">Offline</span>
+            </div>
+            
+            <!-- Share Button -->
+            <button onclick="app.copyLink()" class="pointer-events-auto bg-blue-600 hover:bg-blue-500 text-white w-10 h-10 rounded-full shadow-lg transition-all active:scale-95 flex items-center justify-center mt-2">
+                <i class="fa-solid fa-link"></i>
+            </button>
+        </header>
+
+        <!-- MAIN VIEWPORT -->
+        <main class="flex-1 relative w-full h-full overflow-hidden">
+            
+            <!-- VIEW: MAP -->
+            <div id="view-map" class="absolute inset-0 w-full h-full transition-opacity duration-300 z-0">
+                <div id="map"></div>
+            </div>
+
+            <!-- VIEW: CHAT -->
+            <div id="view-chat" class="absolute inset-0 w-full h-full bg-slate-900 flex flex-col opacity-0 pointer-events-none transition-opacity duration-300 z-10">
+                <!-- Chat Header -->
+                <div class="pt-safe px-4 pb-3 bg-slate-900 border-b border-white/5 shadow-md z-20">
+                    <div class="mt-2 flex justify-between items-end">
+                        <div>
+                            <h2 class="text-lg font-bold text-white leading-none">Secure Channel</h2>
+                            <p class="text-[10px] text-slate-400 mt-1 uppercase tracking-wide">History is not saved</p>
+                        </div>
+                        <button onclick="app.switchTab('map')" class="text-slate-400 hover:text-white p-2">
+                            <i class="fa-solid fa-xmark text-xl"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Messages Area -->
+                <div id="chat-container" class="flex-1 overflow-y-auto p-4 space-y-4 no-scrollbar">
+                    <!-- Dynamic Messages -->
+                    <div class="flex justify-center my-4 opacity-50">
+                        <span class="text-[10px] text-slate-500 uppercase tracking-widest">Chat Started</span>
+                    </div>
+                </div>
+
+                <!-- Input Area (Fixed to bottom of chat view, above nav) -->
+                <div class="p-3 bg-slate-800 border-t border-white/5 pb-[calc(env(safe-area-inset-bottom)+80px)]">
+                    <form onsubmit="app.sendMessage(event)" class="flex gap-2">
+                        <input type="text" id="msg-input" placeholder="Message..." autocomplete="off"
+                            class="flex-1 bg-slate-700 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-400 text-sm">
+                        <button type="submit" class="bg-blue-600 text-white px-4 rounded-xl hover:bg-blue-500 transition-all active:scale-95 font-bold">
+                            <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- BOTTOM NAV (Fixed & Safe Area Aware) -->
+        <div class="absolute bottom-6 left-0 right-0 z-40 flex justify-center pb-safe pointer-events-none">
+            <nav class="glass pointer-events-auto rounded-2xl p-1.5 flex gap-1 shadow-2xl w-[90%] max-w-sm">
+                <button onclick="app.switchTab('map')" id="btn-map" class="flex-1 py-3 rounded-xl text-center transition-all bg-slate-700 text-white shadow-inner">
+                    <i class="fa-solid fa-map-location-dot text-lg mb-0.5 block"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Map</span>
+                </button>
+                <button onclick="app.switchTab('chat')" id="btn-chat" class="flex-1 py-3 rounded-xl text-center transition-all text-slate-400 hover:text-white hover:bg-white/5">
+                    <div class="relative inline-block">
+                        <i class="fa-solid fa-comments text-lg mb-0.5 block"></i>
+                        <span id="unread-badge" class="absolute -top-1 -right-2 w-4 h-4 bg-red-500 rounded-full text-[9px] flex items-center justify-center hidden shadow-sm">0</span>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider block">Chat</span>
+                </button>
+                <button onclick="app.burn()" class="flex-1 py-3 rounded-xl text-center transition-all text-red-400 hover:text-red-300 hover:bg-red-500/10">
+                    <i class="fa-solid fa-fire text-lg mb-0.5 block"></i>
+                    <span class="text-[10px] font-bold uppercase tracking-wider">Burn</span>
+                </button>
+            </nav>
+        </div>
+
+        <!-- ONBOARDING MODAL -->
+        <div id="modal-onboarding" class="absolute inset-0 z-50 bg-slate-900 flex items-center justify-center p-6 transition-opacity duration-300">
+            <div class="w-full max-w-sm text-center">
+                <div class="w-16 h-16 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl mx-auto flex items-center justify-center mb-6 shadow-lg shadow-blue-500/20">
+                    <i class="fa-solid fa-location-arrow text-2xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-white mb-2">BurnerMap</h1>
+                <p class="text-sm text-slate-400 mb-8">Ephemeral location sharing.<br>Data is wiped on reload.</p>
+                
+                <div class="bg-slate-800/50 border border-white/5 p-1 rounded-2xl mb-4">
+                    <input type="text" id="username-input" class="w-full bg-slate-800 text-white px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-center font-bold" placeholder="Enter Alias">
+                </div>
+
+                <div id="https-warning" class="hidden mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+                    <p class="text-[10px] text-amber-400 text-left leading-relaxed">
+                        <i class="fa-solid fa-triangle-exclamation mr-1"></i> 
+                        <b>Location Warning:</b> Browser is blocking GPS. You might be using "file://" or "http://". Please use HTTPS or localhost.
+                    </p>
+                </div>
+
+                <button onclick="app.startSession()" class="w-full bg-blue-600 hover:bg-blue-500 text-white py-3.5 rounded-xl font-bold shadow-lg shadow-blue-900/40 transition-all active:scale-95">
+                    Start Session
+                </button>
+            </div>
+        </div>
+
+        <!-- TOAST NOTIFICATION -->
+        <div id="toast" class="absolute top-0 left-1/2 bg-slate-800 text-white px-5 py-3 rounded-full shadow-2xl border border-white/10 z-[60] flex items-center gap-3 text-xs font-medium toast-enter transition-transform duration-500 w-max max-w-[90%]">
+            <i class="fa-solid fa-circle-info text-blue-400"></i>
+            <span id="toast-msg">Notification</span>
+        </div>
+
+    </div>
+
+    <!-- SCRIPTS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
+
+    <script>
+        const app = {
+            peer: null,
+            conn: null,
+            connections: [],
+            myId: null,
+            hostId: null,
+            isHost: false,
+            username: 'Anon',
+            color: '#3b82f6',
+            map: null,
+            markers: {},
+            activeTab: 'map',
+            unreadCount: 0,
+            hasLocationAccess: false,
+
+            init: function() {
+                // Fix Viewport Height on Mobile
+                const setVh = () => {
+                    const vh = window.innerHeight * 0.01;
+                    document.documentElement.style.setProperty('--vh', `${vh}px`);
+                };
+                window.addEventListener('resize', setVh);
+                setVh();
+
+                // Check Protocol for Geolocation Warning
+                if (window.location.protocol !== 'https:' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') {
+                    document.getElementById('https-warning').classList.remove('hidden');
+                }
+
+                // Check URL for join param
+                const urlParams = new URLSearchParams(window.location.search);
+                this.hostId = urlParams.get('join');
+                this.isHost = !this.hostId;
+                
+                // Random Color
+                const colors = ['#ef4444', '#f97316', '#f59e0b', '#84cc16', '#10b981', '#06b6d4', '#3b82f6', '#8b5cf6', '#ec4899', '#f43f5e'];
+                this.color = colors[Math.floor(Math.random() * colors.length)];
+
+                this.initMap();
+            },
+
+            initMap: function() {
+                this.map = L.map('map', { 
+                    zoomControl: false,
+                    attributionControl: false 
+                }).setView([20, 0], 2);
+                
+                L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    maxZoom: 19
+                }).addTo(this.map);
+            },
+
+            startSession: function() {
+                const input = document.getElementById('username-input');
+                if(!input.value.trim()) {
+                    input.classList.add('ring-2', 'ring-red-500');
+                    return;
+                }
+                this.username = input.value.trim();
+                
+                // Fade out modal
+                const modal = document.getElementById('modal-onboarding');
+                modal.style.opacity = '0';
+                setTimeout(() => modal.style.display = 'none', 300);
+
+                this.initPeer();
+                this.attemptLocation();
+            },
+
+            initPeer: function() {
+                this.updateStatus('connecting', 'Connecting...');
+                
+                this.peer = new Peer(null, { debug: 0 }); // Debug 0 for cleaner console
+
+                this.peer.on('open', (id) => {
+                    this.myId = id;
+                    if (this.isHost) {
+                        this.updateStatus('online', 'Hosting');
+                        this.showToast('Session started. Share the link!');
+                        this.peer.on('connection', (conn) => this.handleHostConnection(conn));
+                    } else {
+                        this.connectToHost();
+                    }
+                });
+
+                this.peer.on('error', (err) => {
+                    this.updateStatus('error', 'Net Error');
+                    this.showToast('Network Error. Try reloading.');
+                });
+            },
+
+            connectToHost: function() {
+                if (!this.hostId) return;
+                this.conn = this.peer.connect(this.hostId, {
+                    metadata: { username: this.username, color: this.color }
+                });
+
+                this.conn.on('open', () => {
+                    this.updateStatus('online', 'Connected');
+                    this.showToast('Connected to Host');
+                    if (this.hasLocationAccess && this.myLocation) {
+                        this.send({ type: 'location', lat: this.myLocation.lat, lng: this.myLocation.lng });
+                    }
+                });
+
+                this.conn.on('data', (data) => this.handleData(data));
+                this.conn.on('close', () => {
+                    this.updateStatus('error', 'Disconnected');
+                    this.showToast('Host ended the session');
+                });
+            },
+
+            handleHostConnection: function(conn) {
+                this.connections.push(conn);
+                conn.on('open', () => {
+                    this.showToast(`${conn.metadata.username} joined`);
+                    // Send Host info
+                    conn.send({ type: 'info', from: this.myId, username: this.username, color: this.color });
+                    // Send Host location
+                    if (this.myLocation) {
+                        conn.send({ 
+                            type: 'location', 
+                            from: this.myId, 
+                            lat: this.myLocation.lat, 
+                            lng: this.myLocation.lng,
+                            username: this.username,
+                            color: this.color
+                        });
+                    }
+                });
+
+                conn.on('data', (data) => {
+                    if (!data.from) data.from = conn.peer;
+                    if (!data.username) data.username = conn.metadata.username;
+                    if (!data.color) data.color = conn.metadata.color;
+                    this.handleData(data);
+                    this.broadcast(data, conn.peer);
+                });
+
+                conn.on('close', () => {
+                    this.connections = this.connections.filter(c => c.peer !== conn.peer);
+                    this.removeMarker(conn.peer);
+                    this.showToast(`${conn.metadata.username} left`);
+                });
+            },
+
+            broadcast: function(data, excludeId) {
+                this.connections.forEach(c => {
+                    if (c.peer !== excludeId && c.open) c.send(data);
+                });
+            },
+
+            handleData: function(data) {
+                if (data.type === 'chat') {
+                    this.addMessageToUI(data.username, data.msg, data.color, false);
+                    if (this.activeTab !== 'chat') {
+                        this.unreadCount++;
+                        this.updateBadge();
+                        this.showToast(`Msg: ${data.username}`);
+                    }
+                } else if (data.type === 'location') {
+                    this.updateMarker(data.from, data.lat, data.lng, data.username, data.color);
+                }
+            },
+
+            send: function(data) {
+                data.from = this.myId;
+                data.username = this.username;
+                data.color = this.color;
+
+                if (this.isHost) {
+                    this.handleData(data);
+                    this.broadcast(data);
+                } else if (this.conn && this.conn.open) {
+                    this.conn.send(data);
+                    if (data.type === 'chat') this.addMessageToUI('You', data.msg, this.color, true);
+                }
+            },
+
+            attemptLocation: function() {
+                if (!navigator.geolocation) {
+                    this.showToast('GPS not supported on this device');
+                    return;
+                }
+
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        this.hasLocationAccess = true;
+                        const { latitude, longitude } = pos.coords;
+                        this.myLocation = { lat: latitude, lng: longitude };
+                        
+                        this.updateMarker(this.myId, latitude, longitude, 'You', this.color, true);
+                        
+                        if (!this.mapCentered) {
+                            this.map.setView([latitude, longitude], 16);
+                            this.mapCentered = true;
+                        }
+                        this.send({ type: 'location', lat: latitude, lng: longitude });
+                    },
+                    (err) => {
+                        console.warn("Location Error:", err);
+                        // Don't spam toasts, just log it. 
+                        // If it's a protocol error, the user already saw the warning in the modal.
+                        if(err.code === 1) this.showToast('GPS Permission Denied'); 
+                    },
+                    { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+                );
+            },
+
+            updateMarker: function(id, lat, lng, label, color, isSelf = false) {
+                if (this.markers[id]) {
+                    this.markers[id].setLatLng([lat, lng]);
+                } else {
+                    const initial = label.charAt(0).toUpperCase();
+                    const className = isSelf ? 'custom-marker pulse-dot' : 'custom-marker';
+                    const zIndex = isSelf ? 1000 : 500;
+                    
+                    const icon = L.divIcon({
+                        className: 'bg-transparent',
+                        html: `<div class="${className}" style="background-color: ${isSelf ? '#10b981' : color}; width: 32px; height: 32px; border-color: ${isSelf ? '#fff' : '#e2e8f0'};">${initial}</div>`
+                    });
+
+                    const marker = L.marker([lat, lng], { icon: icon, zIndexOffset: zIndex }).addTo(this.map);
+                    marker.bindPopup(`<div class="text-slate-900 font-bold">${label}</div>`, { closeButton: false, offset: [0, -15] });
+                    this.markers[id] = marker;
+                }
+            },
+
+            removeMarker: function(id) {
+                if (this.markers[id]) {
+                    this.map.removeLayer(this.markers[id]);
+                    delete this.markers[id];
+                }
+            },
+
+            sendMessage: function(e) {
+                e.preventDefault();
+                const input = document.getElementById('msg-input');
+                const msg = input.value.trim();
+                if (!msg) return;
+
+                this.send({ type: 'chat', msg: msg });
+                input.value = '';
+                // Keep focus on input for rapid typing, but might hide keyboard on mobile. 
+                // Usually better to leave focus unless user taps away.
+                input.focus(); 
+            },
+
+            addMessageToUI: function(username, msg, color, isSelf) {
+                const container = document.getElementById('chat-container');
+                const div = document.createElement('div');
+                div.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} animate-fade-in`;
+                
+                div.innerHTML = `
+                    <div class="flex items-center gap-2 mb-1 px-1">
+                        <span class="text-[10px] font-bold opacity-70" style="color: ${isSelf ? '#94a3b8' : color}">${username}</span>
+                    </div>
+                    <div class="${isSelf ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-200'} px-4 py-2.5 rounded-2xl ${isSelf ? 'rounded-tr-sm' : 'rounded-tl-sm'} max-w-[85%] text-sm shadow-sm break-words leading-relaxed">
+                        ${this.escapeHtml(msg)}
+                    </div>
+                `;
+                
+                container.appendChild(div);
+                container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+            },
+
+            switchTab: function(tab) {
+                this.activeTab = tab;
+                const mapBtn = document.getElementById('btn-map');
+                const chatBtn = document.getElementById('btn-chat');
+                const mapView = document.getElementById('view-map');
+                const chatView = document.getElementById('view-chat');
+
+                if (tab === 'map') {
+                    mapBtn.className = "flex-1 py-3 rounded-xl text-center transition-all bg-slate-700 text-white shadow-inner";
+                    chatBtn.className = "flex-1 py-3 rounded-xl text-center transition-all text-slate-400 hover:text-white hover:bg-white/5";
+                    
+                    mapView.style.opacity = '1';
+                    chatView.style.opacity = '0';
+                    chatView.style.pointerEvents = 'none';
+                    setTimeout(() => this.map.invalidateSize(), 300);
+                } else {
+                    chatBtn.className = "flex-1 py-3 rounded-xl text-center transition-all bg-slate-700 text-white shadow-inner";
+                    mapBtn.className = "flex-1 py-3 rounded-xl text-center transition-all text-slate-400 hover:text-white hover:bg-white/5";
+                    
+                    chatView.style.opacity = '1';
+                    chatView.style.pointerEvents = 'auto';
+                    mapView.style.opacity = '0';
+                    
+                    this.unreadCount = 0;
+                    this.updateBadge();
+                }
+            },
+
+            updateBadge: function() {
+                const badge = document.getElementById('unread-badge');
+                if (this.unreadCount > 0) {
+                    badge.innerText = this.unreadCount;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            },
+
+            updateStatus: function(type, text) {
+                const indicator = document.getElementById('status-indicator');
+                const label = document.getElementById('connection-status');
+                label.innerText = text;
+                
+                if (type === 'online') {
+                    indicator.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]';
+                    label.className = 'text-[10px] font-bold tracking-wider text-emerald-400 uppercase';
+                } else if (type === 'connecting') {
+                    indicator.className = 'w-2 h-2 rounded-full bg-yellow-500 animate-pulse';
+                    label.className = 'text-[10px] font-bold tracking-wider text-yellow-400 uppercase';
+                } else {
+                    indicator.className = 'w-2 h-2 rounded-full bg-red-500';
+                    label.className = 'text-[10px] font-bold tracking-wider text-red-400 uppercase';
+                }
+            },
+
+            copyLink: function() {
+                if (!this.myId) return;
+                const idToShare = this.isHost ? this.myId : this.hostId;
+                const url = `${window.location.origin}${window.location.pathname}?join=${idToShare}`;
+                
+                if (navigator.share) {
+                    navigator.share({
+                        title: 'Join BurnerMap',
+                        text: 'Join my secure location channel',
+                        url: url
+                    }).catch(console.error);
+                } else {
+                    navigator.clipboard.writeText(url).then(() => this.showToast('Link copied!')).catch(() => this.showToast('Copy failed'));
+                }
+            },
+
+            showToast: function(msg) {
+                const toast = document.getElementById('toast');
+                document.getElementById('toast-msg').innerText = msg;
+                toast.classList.add('toast-active');
+                
+                if (this.toastTimeout) clearTimeout(this.toastTimeout);
+                this.toastTimeout = setTimeout(() => {
+                    toast.classList.remove('toast-active');
+                }, 3000);
+            },
+
+            burn: function() {
+                if(confirm("BURN SESSION?\nDisconnect and wipe data?")) {
+                    window.location.href = window.location.pathname;
+                }
+            },
+
+            escapeHtml: function(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+        };
+
+        window.addEventListener('DOMContentLoaded', () => app.init());
+    </script>
+</body>
+</html>
