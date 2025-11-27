@@ -11,16 +11,21 @@ Object.assign(app, {
             document.getElementById('host-hint').style.opacity = '1';
         }
         app.map.on('dblclick', (e) => {
-                if (app.isHost) {
-                    app.setRally(e.latlng);
-                    app.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng });
+            if (app.isHost) {
+                app.setRally(e.latlng);
+                app.send({ type: 'rally', lat: e.latlng.lat, lng: e.latlng.lng });
+            } else {
+                if (confirm('Suggest this spot as a new Rally Point?')) {
+                    app.send({ type: 'suggest_rally', lat: e.latlng.lat, lng: e.latlng.lng });
+                    app.showToast('Rally suggestion sent to host!');
                 }
-            });
-            app.map.on('click', (e) => {
-                if (app.waypointAddMode) {
-                    app.addWaypoint(e.latlng);
-                }
-            });
+            }
+        });
+        app.map.on('click', (e) => {
+            if (app.waypointAddMode) {
+                app.addWaypoint(e.latlng);
+            }
+        });
     },
 
     toggleWaypointMode: () => {

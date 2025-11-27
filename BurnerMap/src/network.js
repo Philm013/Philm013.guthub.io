@@ -21,14 +21,17 @@ Object.assign(app, {
 
     handleHostConn: (conn) => {
         app.connections.push(conn);
-        app.users[conn.peer] = { username: conn.metadata.username };
+        const username = conn.metadata?.username || `Ghost_${conn.peer.slice(-4)}`;
+        app.users[conn.peer] = { username: username };
+        
         conn.on('open', () => {
             // Send existing rally point and waypoints to new user
             if(app.rallyMarker) conn.send({ type: 'rally', lat: app.rallyMarker.getLatLng().lat, lng: app.rallyMarker.getLatLng().lng });
             app.waypoints.forEach(wp => conn.send({ type: 'waypoint_new', waypoint: wp }));
         });
         conn.on('data', (data) => {
-            if(!data.username) data.username = conn.metadata.username;
+            // Ensure username and from are set, even if client fails to send them
+            if(!data.username) data.username = app.users[conn.peer]?.username || `Ghost_${conn.peer.slice(-4)}`;
             if(!data.from) data.from = conn.peer;
 
             if (data.to) { // Private message
@@ -41,8 +44,8 @@ Object.assign(app, {
                     }
                 }
             } else { // Broadcast message
-                app.handleData(data); // Host handles it for map updates etc.
-                app.broadcast(data, conn.peer); // Host broadcasts to others
+                app.handleData(data);
+                app.broadcast(data, conn.peer);
             }
         });
         conn.on('close', () => { 
@@ -109,6 +112,14 @@ Object.assign(app, {
                 break;
             case 'sonar': app.triggerSonar(data); break;
             case 'rally': app.setRally(data); break;
+            case 'suggest_rally':
+                if (app.isHost) {
+                    if (confirm(`${data.username} suggests a new rally point here. Set it?`)) {
+                        app.setRally(data);
+                        app.send({ type: 'rally', lat: data.lat, lng: data.lng });
+                    }
+                }
+                break;
             case 'focus': 
                 app.map.flyTo([data.lat, data.lng], 18); 
                 app.showToast('Host Forced Focus'); 
