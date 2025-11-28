@@ -7,5 +7,7 @@ const app = {
     myLocation: null, centered: false, privateChat: null,
     waypoints: [], waypointAddMode: false,
     users: {},
-    chatHistory: {}
+    chatHistory: {},
+    wakeLock: null,
+    isWakeLockActive: false
 };
