@@ -1,4 +1,5 @@
 
+
 // Defines the initial state of the application
 const app = {
     peer: null, conn: null, connections: [], myId: null, hostId: null,
@@ -17,6 +18,7 @@ const app = {
     inCall: false,
     groupChats: {},
     chatListOpen: false,
-    boards: {},
-    currentBoard: null
+    boards: {}, // Ensure boards is initialized
+    currentBoard: null,
+    uiInitialized: false // Track UI init state
 };

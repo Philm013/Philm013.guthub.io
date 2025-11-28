@@ -1,66 +1,66 @@
---- START OF FILE ui.js ---
-
 
 // Contains all UI related functions
 Object.assign(app, {
     initUI: () => {
-        document.getElementById('msg-input').addEventListener('keyup', app.handleMentionInput);
+        const input = document.getElementById('msg-input');
+        if(input) input.addEventListener('keyup', app.handleMentionInput);
         document.addEventListener('click', () => app.hideMentionSuggestions());
 
         // Initialize Signal Button (Hold vs Tap)
         const signalBtn = document.getElementById('btn-signal');
-        let pressTimer;
-        let isLongPress = false;
+        if(signalBtn) {
+            let pressTimer;
+            let isLongPress = false;
 
-        const startPress = (e) => {
-            e.preventDefault(); // Prevent ghost clicks
-            isLongPress = false;
-            signalBtn.style.transform = "scale(0.9)";
-            pressTimer = setTimeout(() => {
-                isLongPress = true;
-                signalBtn.classList.add('bg-blue-600', 'text-white');
-                signalBtn.innerHTML = '<i class="fa-solid fa-magnet"></i>';
-                if(navigator.vibrate) navigator.vibrate(50);
-                app.forceFocus();
-            }, 800); // 800ms threshold for hold
-        };
+            const startPress = (e) => {
+                // e.preventDefault(); // Removed to allow click events to register properly if needed
+                isLongPress = false;
+                signalBtn.style.transform = "scale(0.9)";
+                pressTimer = setTimeout(() => {
+                    isLongPress = true;
+                    signalBtn.classList.add('bg-blue-600', 'text-white');
+                    signalBtn.innerHTML = '<i class="fa-solid fa-magnet"></i>';
+                    if(navigator.vibrate) navigator.vibrate(50);
+                    app.forceFocus();
+                }, 800); // 800ms threshold for hold
+            };
 
-        const endPress = (e) => {
-            e.preventDefault();
-            clearTimeout(pressTimer);
-            signalBtn.style.transform = "scale(1)";
-            signalBtn.classList.remove('bg-blue-600', 'text-white');
-            signalBtn.innerHTML = '<i class="fa-solid fa-bullseye"></i>';
-            
-            if (!isLongPress) {
-                // It was a tap
-                app.sendSonar();
-            }
-        };
+            const endPress = (e) => {
+                clearTimeout(pressTimer);
+                signalBtn.style.transform = "scale(1)";
+                signalBtn.classList.remove('bg-blue-600', 'text-white');
+                signalBtn.innerHTML = '<i class="fa-solid fa-bullseye"></i>';
+                
+                if (!isLongPress) {
+                    app.sendSonar();
+                }
+            };
 
-        signalBtn.addEventListener('mousedown', startPress);
-        signalBtn.addEventListener('touchstart', startPress);
-        signalBtn.addEventListener('mouseup', endPress);
-        signalBtn.addEventListener('touchend', endPress);
-        signalBtn.addEventListener('mouseleave', () => {
-            clearTimeout(pressTimer);
-            signalBtn.style.transform = "scale(1)";
-            signalBtn.classList.remove('bg-blue-600', 'text-white');
-            signalBtn.innerHTML = '<i class="fa-solid fa-bullseye"></i>';
-        });
+            signalBtn.addEventListener('mousedown', startPress);
+            signalBtn.addEventListener('touchstart', startPress);
+            signalBtn.addEventListener('mouseup', endPress);
+            signalBtn.addEventListener('touchend', endPress);
+            signalBtn.addEventListener('mouseleave', () => {
+                clearTimeout(pressTimer);
+                signalBtn.style.transform = "scale(1)";
+                signalBtn.classList.remove('bg-blue-600', 'text-white');
+                signalBtn.innerHTML = '<i class="fa-solid fa-bullseye"></i>';
+            });
+        }
     },
 
     toggleTheme: () => {
         app.isLight = !app.isLight;
         document.body.className = app.isLight ? '' : 'dark';
-        document.getElementById('theme-icon').className = app.isLight ? "fa-solid fa-moon" : "fa-solid fa-sun";
+        const themeIcon = document.getElementById('theme-icon');
+        if(themeIcon) themeIcon.className = app.isLight ? "fa-solid fa-moon" : "fa-solid fa-sun";
         
         if (!app.uiInitialized) {
             app.initUI();
             app.uiInitialized = true;
         }
 
-        if(app.layerMode !== 'sat') {
+        if(app.map && app.layerMode !== 'sat') {
             if (app.isLight) {
                 if (app.map.hasLayer(app.layers.dark)) app.map.removeLayer(app.layers.dark);
                 if (!app.map.hasLayer(app.layers.light)) app.layers.light.addTo(app.map);
@@ -410,9 +410,14 @@ Object.assign(app, {
             results.forEach(result => {
                 const div = document.createElement('div');
                 div.className = 'search-result';
+                
+                // Safe name handling
+                const rawName = result.name || result.display_name.split(',')[0] || 'Unknown';
+                const safeName = rawName.replace(/'/g, "\\'");
+                
                 div.innerHTML = `
                     <p class="text-sm font-bold text-left">${result.display_name}</p>
-                    <button class="add-poi-btn shrink-0" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${result.name.replace(/'/g, "\\'") || result.display_name.split(',')[0].replace(/'/g, "\\'")}')">Add POI</button>
+                    <button class="add-poi-btn shrink-0" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${safeName}')">Add POI</button>
                 `;
                 resultsContainer.appendChild(div);
             });

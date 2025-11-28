@@ -1,4 +1,3 @@
---- START OF FILE app.js ---
 
 // Main app logic
 Object.assign(app, {
@@ -45,8 +44,6 @@ Object.assign(app, {
         if (app.currentBoard) {
             app.renderBoardSpots();
         }
-        
-        // Removed specific check for btn-focus since it is now combined with sonar
     },
 
     startSession: () => {
