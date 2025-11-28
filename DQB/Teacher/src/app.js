@@ -586,12 +586,13 @@ window.Board = {
             State.view = b.view || { x: 0, y: 0, z: 1 };
             localStorage.setItem('lastBoard', State.id);
             ActionHistory.stack=[]; ActionHistory.index=-1; ActionHistory.push();
+            Board.fitContentToView();
             Board.start(); 
         } 
     },
     start: () => { 
         $('landing').style.display='none'; $('app').style.display='block'; $('board-name').value=State.name; 
-        Board.resetView(); // Call resetView here
+        Board.fitContentToView(); // Call resetView here
         Render.loop(); Render.all();
         setTool(State.tool);
         UI.loadMinimapSettings();
@@ -616,25 +617,60 @@ window.Board = {
         r.onload = e => { const d = JSON.parse(e.target.result); State.id=genId(); State.items=d.items||[]; State.ink=d.ink||[]; State.name=d.name||"Imported"; Board.start(); };
         r.readAsText(f);
     },
-    resetView: () => {
+    fitContentToView: () => {
         const viewportWidth = window.innerWidth;
         const viewportHeight = window.innerHeight;
-        
-        // If on mobile (less than 769px, as per CSS media queries)
-        if (viewportWidth <= 768) {
-            // Adjust initial zoom for mobile to fit an 'ideal' desktop width of 800px
-            State.view.z = Math.min(1, viewportWidth / 800); 
-            // Center horizontally and vertically by translating based on the new zoom
-            State.view.x = (viewportWidth / State.view.z - viewportWidth) / 2;
-            State.view.y = (viewportHeight / State.view.z - viewportHeight) / 2;
-        } else {
-            // Default desktop view
-            State.view.z = 1;
-            State.view.x = 0;
-            State.view.y = 0;
+        const padding = 100; // Padding around content
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        let hasItems = false;
+
+        // Calculate bounding box of all items
+        State.items.forEach(item => {
+            minX = Math.min(minX, item.x);
+            minY = Math.min(minY, item.y);
+            maxX = Math.max(maxX, item.x + item.w);
+            maxY = Math.max(maxY, item.y + item.h);
+            hasItems = true;
+        });
+
+        if (!hasItems) {
+            // Default view if no items, center around world 0,0
+            minX = -400; minY = -300; maxX = 400; maxY = 300; // A reasonable default visible area
         }
+
+        const contentWidth = maxX - minX;
+        const contentHeight = maxY - minY;
+
+        // Calculate zoom level
+        const zoomX = (viewportWidth - padding * 2) / contentWidth;
+        const zoomY = (viewportHeight - padding * 2) / contentHeight;
+        
+        // Prioritize fitting smaller dimension, but cap at 1 (no zoom-in beyond 100%)
+        let newZoom = Math.min(1, zoomX, zoomY);
+
+        // Ensure a minimum zoom level for visibility on mobile if newZoom is tiny
+        if (viewportWidth <= 768) {
+            newZoom = Math.max(0.2, newZoom); // Don't zoom out too much on mobile
+        }
+
+        State.view.z = newZoom;
+
+        // Calculate translation to center the bounding box
+        const centerX = minX + contentWidth / 2;
+        const centerY = minY + contentHeight / 2;
+
+        // State.view.x and State.view.y are the translateX/Y values in world coordinates
+        // We want the center of the content to be at the center of the viewport AFTER scaling
+        // So, (centerX + State.view.x) * State.view.z = viewportWidth / 2
+        // State.view.x = (viewportWidth / 2 / State.view.z) - centerX
+        State.view.x = (viewportWidth / 2 / State.view.z) - centerX;
+        State.view.y = (viewportHeight / 2 / State.view.z) - centerY;
+        
         Render.sync(); // Apply the new view settings
     },
+    // Collision-Aware Placement Algorithm
+    getFreeSpace: (x, y, w, h) => {
         let attempts = 0;
         let nx = x, ny = y;
         
@@ -1526,7 +1562,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    window.addEventListener('resize', Board.resetView); // Add this line
+    window.addEventListener('resize', Board.fitContentToView); // Add this line
 });
 
 function Tab(n) {
