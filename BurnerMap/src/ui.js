@@ -1,9 +1,53 @@
+--- START OF FILE ui.js ---
+
 
 // Contains all UI related functions
 Object.assign(app, {
     initUI: () => {
         document.getElementById('msg-input').addEventListener('keyup', app.handleMentionInput);
         document.addEventListener('click', () => app.hideMentionSuggestions());
+
+        // Initialize Signal Button (Hold vs Tap)
+        const signalBtn = document.getElementById('btn-signal');
+        let pressTimer;
+        let isLongPress = false;
+
+        const startPress = (e) => {
+            e.preventDefault(); // Prevent ghost clicks
+            isLongPress = false;
+            signalBtn.style.transform = "scale(0.9)";
+            pressTimer = setTimeout(() => {
+                isLongPress = true;
+                signalBtn.classList.add('bg-blue-600', 'text-white');
+                signalBtn.innerHTML = '<i class="fa-solid fa-magnet"></i>';
+                if(navigator.vibrate) navigator.vibrate(50);
+                app.forceFocus();
+            }, 800); // 800ms threshold for hold
+        };
+
+        const endPress = (e) => {
+            e.preventDefault();
+            clearTimeout(pressTimer);
+            signalBtn.style.transform = "scale(1)";
+            signalBtn.classList.remove('bg-blue-600', 'text-white');
+            signalBtn.innerHTML = '<i class="fa-solid fa-bullseye"></i>';
+            
+            if (!isLongPress) {
+                // It was a tap
+                app.sendSonar();
+            }
+        };
+
+        signalBtn.addEventListener('mousedown', startPress);
+        signalBtn.addEventListener('touchstart', startPress);
+        signalBtn.addEventListener('mouseup', endPress);
+        signalBtn.addEventListener('touchend', endPress);
+        signalBtn.addEventListener('mouseleave', () => {
+            clearTimeout(pressTimer);
+            signalBtn.style.transform = "scale(1)";
+            signalBtn.classList.remove('bg-blue-600', 'text-white');
+            signalBtn.innerHTML = '<i class="fa-solid fa-bullseye"></i>';
+        });
     },
 
     toggleTheme: () => {
@@ -11,14 +55,11 @@ Object.assign(app, {
         document.body.className = app.isLight ? '' : 'dark';
         document.getElementById('theme-icon').className = app.isLight ? "fa-solid fa-moon" : "fa-solid fa-sun";
         
-        // This is a bit of a hack, but this function is called once at the start
-        // which makes it a good place to initialize UI components.
         if (!app.uiInitialized) {
             app.initUI();
             app.uiInitialized = true;
         }
 
-        // Deselect the dark layer and select the light layer if not in satellite mode
         if(app.layerMode !== 'sat') {
             if (app.isLight) {
                 if (app.map.hasLayer(app.layers.dark)) app.map.removeLayer(app.layers.dark);
@@ -84,8 +125,7 @@ Object.assign(app, {
         const isMe = d.from === app.myId;
 
         if (!fromHistory) {
-            // Message filtering logic
-            if (app.privateChat) { // We are in a private/waypoint/rally chat
+            if (app.privateChat) { 
                 if (d.to !== app.privateChat.id) {
                     if ((d.type === 'private_chat' || d.type === 'waypoint_chat' || d.type === 'rally_chat') && !isMe) {
                         app.showToast(`New msg from ${d.username}`);
@@ -93,7 +133,7 @@ Object.assign(app, {
                     }
                     return; 
                 }
-            } else { // We are in public chat
+            } else { 
                 if (d.type !== 'chat') {
                     if (!isMe) {
                         const chatType = d.type.replace('_', ' ');
@@ -139,7 +179,6 @@ Object.assign(app, {
         div.innerHTML = `<div class="${isMe ? 'bg-blue-600 text-white' : 'glass'} px-5 py-3 rounded-2xl max-w-[85%] text-sm font-medium border border-white/10 shadow">${indicator}${processedMsg}</div><span class="text-[9px] opacity-50 mt-1 px-2 font-bold uppercase">${d.username}</span>`;
         list.appendChild(div);
         
-        // Always scroll when a new message is added, unless rendering history.
         if (!fromHistory) {
             document.getElementById('chat-scroll').scrollTo({ top: list.scrollHeight, behavior: 'smooth' });
         }
@@ -155,7 +194,7 @@ Object.assign(app, {
         const list = document.getElementById('msg-list');
         list.innerHTML = '';
         const history = app.chatHistory[chatId] || [];
-        history.forEach(msg => app.addChat(msg, true)); // pass true to skip filtering and caching
+        history.forEach(msg => app.addChat(msg, true));
         list.scrollTo({ top: list.scrollHeight });
     },
 
@@ -173,14 +212,12 @@ Object.assign(app, {
         </div>`;
         list.insertAdjacentHTML('beforeend', createGroupBtn);
 
-        // Add self to the top
         const selfHtml = `<div class="glass p-4 rounded-lg flex items-center justify-between">
             <span class="font-bold">${app.username} (You)</span>
             <button class="text-blue-500" onclick="app.locateMe()"><i class="fa-solid fa-location-crosshairs"></i></button>
         </div>`;
         list.insertAdjacentHTML('beforeend', selfHtml);
 
-        // Add other users
         Object.entries(app.users).forEach(([id, user]) => {
             if (id === app.myId) return;
             const userHtml = `<div class="glass p-4 rounded-lg flex items-center justify-between">
@@ -196,7 +233,6 @@ Object.assign(app, {
         const rosterView = document.getElementById('view-roster');
         const boardsView = document.getElementById('view-boards');
         
-        // Reset all views and buttons
         chatView.style.transform = 'translate3d(100%, 0, 0)';
         rosterView.style.transform = 'translate3d(-100%, 0, 0)';
         boardsView.classList.add('hidden');
@@ -211,7 +247,6 @@ Object.assign(app, {
             chatView.style.transform = 'translate3d(0, 0, 0)';
             document.getElementById('btn-chat').classList.add('active');
             document.getElementById('unread-dot').classList.add('hidden');
-            // Render the correct chat when switching to the tab
             if (app.privateChat) {
                 app.renderChat(app.privateChat.id);
             } else {
@@ -274,7 +309,7 @@ Object.assign(app, {
                 targetEntity = app.markers[app.privateChat.id];
             } else if (app.privateChat.isGroup) {
                 title = `Group Chat: ${app.privateChat.groupName}`;
-            } else { // private user chat
+            } else { 
                 title = `Private chat with ${app.privateChat.username}`;
                 targetEntity = app.markers[app.privateChat.id];
             }
@@ -345,32 +380,46 @@ Object.assign(app, {
         }
     },
 
-    searchLocation: async () => {
-        const query = document.getElementById('search-input').value;
-        if (!query) return;
-
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
-        const results = await response.json();
-
-        const resultsContainer = document.getElementById('search-content');
-        resultsContainer.innerHTML = '';
-
-        if (results.length === 0) {
-            resultsContainer.innerHTML = '<p>No results found.</p>';
-            return;
-        }
-
-        results.forEach(result => {
-            const div = document.createElement('div');
-            div.className = 'search-result';
-            div.innerHTML = `
-                <p>${result.display_name}</p>
-                <button class="add-poi-btn" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${result.display_name}')">Add as POI</button>
-            `;
-            resultsContainer.appendChild(div);
-        });
-
+    openSearch: () => {
+        app.poiPanelOpen = true;
+        document.getElementById('poi-panel').classList.remove('hidden');
         app.switchPoiTab('search');
+        setTimeout(() => document.getElementById('panel-search-input').focus(), 300);
+    },
+
+    searchLocation: async () => {
+        const query = document.getElementById('panel-search-input').value;
+        const resultsContainer = document.getElementById('search-results-list');
+        
+        if (!query) return;
+        
+        resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</p>';
+
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+            if (!response.ok) throw new Error("Network error");
+            const results = await response.json();
+
+            resultsContainer.innerHTML = '';
+
+            if (results.length === 0) {
+                resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4">No results found.</p>';
+                return;
+            }
+
+            results.forEach(result => {
+                const div = document.createElement('div');
+                div.className = 'search-result';
+                div.innerHTML = `
+                    <p class="text-sm font-bold text-left">${result.display_name}</p>
+                    <button class="add-poi-btn shrink-0" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${result.name.replace(/'/g, "\\'") || result.display_name.split(',')[0].replace(/'/g, "\\'")}')">Add POI</button>
+                `;
+                resultsContainer.appendChild(div);
+            });
+        } catch (e) {
+            console.error(e);
+            resultsContainer.innerHTML = '<p class="text-center text-red-400 py-4">Search failed.</p>';
+        }
     },
 
     switchPoiTab: (tab) => {

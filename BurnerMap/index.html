@@ -1,3 +1,5 @@
+--- START OF FILE index.html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -47,10 +49,9 @@
     <!-- MAP VIEW -->
     <div id="view-map">
         <div id="map"></div>
-        <div class="search-bar glass">
-            <input type="text" id="search-input" placeholder="Search location..." class="flex-1 bg-transparent px-4 outline-none text-base">
-            <button onclick="app.searchLocation()" class="w-10 h-10 bg-blue-600 rounded-full text-white shadow-lg"><i class="fa-solid fa-search"></i></button>
-        </div>
+        
+        <!-- REMOVED FLOATING SEARCH BAR -->
+
         <button onclick="app.togglePoiPanel()" class="poi-toggle-btn glass"><i class="fa-solid fa-list"></i></button>
 
         <div id="poi-panel" class="poi-panel glass hidden">
@@ -66,19 +67,32 @@
             <div id="poi-list" class="poi-panel-content">
                 <div id="pois-content" class="tab-content active"></div>
                 <div id="rally-content" class="tab-content"></div>
-                <div id="search-content" class="tab-content"></div>
+                
+                <!-- SEARCH CONTENT WITH EMBEDDED INPUT -->
+                <div id="search-content" class="tab-content">
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="panel-search-input" placeholder="Search places..." class="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none text-sm text-white border border-white/20">
+                        <button onclick="app.searchLocation()" class="bg-blue-600 px-3 py-2 rounded-lg text-white"><i class="fa-solid fa-search"></i></button>
+                    </div>
+                    <div id="search-results-list" class="flex flex-col gap-2"></div>
+                </div>
             </div>
         </div>
 
-
-        
         <!-- OPS STACK (Controls) -->
         <div class="ops-stack">
             <button onclick="app.locateMe()" class="ops-btn glass text-blue-500" title="Locate Me"><i class="fa-solid fa-location-crosshairs"></i></button>
             <button onclick="app.toggleSatellite()" class="ops-btn glass text-green-400" title="Satellite Mode"><i class="fa-solid fa-layer-group"></i></button>
+            
+            <!-- NEW SEARCH BUTTON -->
+            <button onclick="app.openSearch()" class="ops-btn glass text-white" title="Search"><i class="fa-solid fa-search"></i></button>
+            
             <button onclick="app.toggleWaypointMode()" id="btn-poi" class="ops-btn glass text-yellow-500" title="Add POI"><i class="fa-solid fa-map-pin"></i></button>
-            <button onclick="app.sendSonar()" class="ops-btn glass text-red-500" title="Sonar Ping"><i class="fa-solid fa-bullseye"></i></button>
-            <button id="btn-focus" onclick="app.forceFocus()" class="hidden ops-btn bg-blue-600 text-white shadow-lg shadow-blue-500/50" title="Force Group Focus"><i class="fa-solid fa-magnet"></i></button>
+            
+            <!-- COMBINED SIGNAL BUTTON -->
+            <button id="btn-signal" class="ops-btn glass text-red-500 transition-all duration-200" title="Tap: Sonar / Hold: Focus">
+                <i class="fa-solid fa-bullseye"></i>
+            </button>
         </div>
 
         <div id="host-hint" class="absolute top-24 left-1/2 -translate-x-1/2 z-[10] glass px-4 py-2 rounded-full text-xs font-bold opacity-0 pointer-events-none transition-opacity">Host: Double-Tap to Flag</div>
@@ -227,7 +241,6 @@
     <script src="src/map.js"></script>
     <script src="src/network.js"></script>
     <script src="src/app.js"></script>
-<script src="src/app.js"></script>
 
     <!-- SERVICE WORKER REGISTRATION -->
     <script>
@@ -239,6 +252,5 @@
             });
         }
     </script>
-</body>
 </body>
 </html>

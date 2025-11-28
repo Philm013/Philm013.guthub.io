@@ -1,3 +1,5 @@
+--- START OF FILE style.css ---
+
 
         :root {
             --bg-color: #f1f5f9; --text: #0f172a; --glass: rgba(255,255,255,0.85); --border: rgba(0,0,0,0.1);
@@ -126,13 +128,6 @@
         #modal-actions:not(.show) { pointer-events: none; }
         #modal-actions.show .action-sheet {
             transform: translateY(0);
-        }
-
-        /* --- SEARCH BAR --- */
-        .search-bar {
-            position: absolute; top: max(env(safe-area-inset-top), 16px); left: 50%; transform: translateX(-50%); z-index: 50;
-            width: calc(100% - 150px); max-width: 400px;
-            padding: 8px; border-radius: 99px; display: flex; align-items: center; gap: 8px;
         }
 
         /* --- POI PANEL --- */
@@ -267,5 +262,3 @@
         #view-boards .glass {
             margin-bottom: 20px;
         }
-
-    

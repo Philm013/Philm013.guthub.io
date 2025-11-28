@@ -1,3 +1,5 @@
+--- START OF FILE app.js ---
+
 // Main app logic
 Object.assign(app, {
     init: () => {
@@ -5,7 +7,7 @@ Object.assign(app, {
         window.addEventListener('resize', setVh); setVh();
         if(navigator.getBattery) navigator.getBattery().then(b => { app.battery = Math.round(b.level*100); b.addEventListener('levelchange', () => app.battery = Math.round(b.level*100)); });
 
-const saved = JSON.parse(localStorage.getItem('snapmeet_v1'));
+        const saved = JSON.parse(localStorage.getItem('snapmeet_v1'));
         const urlParams = new URLSearchParams(window.location.search);
         const joinId = urlParams.get('join');
 
@@ -43,8 +45,8 @@ const saved = JSON.parse(localStorage.getItem('snapmeet_v1'));
         if (app.currentBoard) {
             app.renderBoardSpots();
         }
-
-        if(app.isHost) document.getElementById('btn-focus').classList.remove('hidden');
+        
+        // Removed specific check for btn-focus since it is now combined with sonar
     },
 
     startSession: () => {
