@@ -1,6 +1,4 @@
-
-
-        :root {
+:root {
             --bg-color: #f1f5f9; --text: #0f172a; --glass: rgba(255,255,255,0.85); --border: rgba(0,0,0,0.1);
             --accent: #3b82f6; --danger: #ef4444; --success: #10b981;
         }
@@ -86,30 +84,30 @@
             100% { opacity: 0; }
         }
         .sonar-wave {
-                    background: rgba(239, 68, 68, 0.5);
-                    border-radius: 50%;
-                    animation: sonar-pulse 2s ease-out;
-                }
+            background: rgba(239, 68, 68, 0.5);
+            border-radius: 50%;
+            animation: sonar-pulse 2s ease-out;
+        }
         
-                .mention {
-                            font-weight: bold;
-                            color: #3b82f6;
-                            cursor: pointer;
-                        }
-                
-                        #mention-suggestions {
-                            max-height: 150px;
-                            overflow-y: auto;
-                        }
-                        .mention-item {
-                            padding: 8px 12px;
-                            cursor: pointer;
-                            border-radius: 8px;
-                        }
-                        .mention-item:hover {
-                            background: rgba(125,125,125,0.2);
-                        }
-                            /* --- ACTION SHEET --- */
+        .mention {
+            font-weight: bold;
+            color: #3b82f6;
+            cursor: pointer;
+        }
+        
+        #mention-suggestions {
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        .mention-item {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-radius: 8px;
+        }
+        .mention-item:hover {
+            background: rgba(125,125,125,0.2);
+        }
+        /* --- ACTION SHEET --- */
         .action-sheet {
             position: absolute;
             bottom: 0;
@@ -129,7 +127,7 @@
             transform: translateY(0);
         }
 
-        /* --- POI PANEL --- */
+        /* --- POI PANEL & SEARCH --- */
         .poi-toggle-btn {
             position: absolute; top: max(env(safe-area-inset-top), 16px); left: 80px; z-index: 50;
             width: 44px; height: 44px; border-radius: 50%;
@@ -167,6 +165,26 @@
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
+        .category-btn {
+            background-color: rgba(125,125,125,0.1);
+            padding: 6px 10px;
+            border-radius: 8px;
+            transition: background-color 0.2s;
+        }
+        .category-btn:hover { background-color: rgba(125,125,125,0.2); }
+
+        .search-result.highlighted {
+            background: rgba(59, 130, 246, 0.2); /* --accent with opacity */
+        }
+        .search-marker-icon {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            border: 2px solid var(--bg-color);
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
         /* --- CALL UI --- */
         .call-btn {
             width: 60px; height: 60px; border-radius: 50%;

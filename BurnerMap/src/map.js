@@ -7,6 +7,11 @@ Object.assign(app, {
         app.layers.light = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
         app.layers.sat = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, tileSize: 512, zoomOffset: -1 });
         app.layers.light.addTo(app.map);
+
+        // Initialize search results layer using MarkerCluster
+        app.searchResultsLayer = L.markerClusterGroup();
+        app.map.addLayer(app.searchResultsLayer);
+
         if (app.isHost) {
             document.getElementById('host-hint').style.opacity = '1';
         }
@@ -24,8 +29,22 @@ Object.assign(app, {
         app.map.on('click', (e) => {
             if (app.waypointAddMode) {
                 app.addWaypoint(e.latlng);
+            } else {
+                // Clear search results when clicking on the map
+                if (app.searchResultsLayer.getLayers().length > 0) {
+                    app.searchResultsLayer.clearLayers();
+                    document.getElementById('search-results-list').innerHTML = '';
+                    app.lastSearchQuery = '';
+                }
             }
         });
+        app.map.on('moveend', app.handleMapMove);
+    },
+
+    handleMapMove: () => {
+        if (app.lastSearchQuery) {
+            document.getElementById('search-this-area-btn').classList.remove('hidden');
+        }
     },
 
     toggleWaypointMode: () => {
@@ -188,12 +207,17 @@ Object.assign(app, {
         let marker;
         if (type === 'rally') {
             marker = app.rallyMarker;
+        } else if (type === 'search') {
+            marker = app.searchMarkers[id];
         } else {
             marker = app.markers[id];
         }
         
         if (marker) {
             app.map.flyTo(marker.getLatLng(), 18);
+            if (type === 'search' && app.searchResultsLayer.zoomToShowLayer) {
+                app.searchResultsLayer.zoomToShowLayer(marker, () => marker.fire('click'));
+            }
             app.switchTab('map');
         } else {
             app.showToast('Location not available.');
@@ -328,8 +352,34 @@ Object.assign(app, {
 
     triggerSonar: (d) => { const m = L.marker([d.lat, d.lng], { icon: L.divIcon({ className: 'sonar-wave', iconSize: [100,100], iconAnchor: [50,50] }), zIndexOffset: -100 }).addTo(app.map); setTimeout(() => app.map.removeLayer(m), 2000); },
 
+    // DEPRECATED - Now handled by search result actions
     addSearchResultAsPoi: (lat, lon, name) => {
         const latlng = { lat, lng: lon };
         app.addWaypoint(latlng, name);
+    },
+
+    drawSearchResultMarker: (result) => {
+        const iconHtml = `<div class="search-marker-icon"></div>`;
+        const icon = L.divIcon({
+            html: iconHtml,
+            className: 'bg-transparent',
+            iconSize: [12, 12],
+            iconAnchor: [6, 6]
+        });
+        const marker = L.marker([result.lat, result.lon], { icon });
+        
+        marker.on('click', () => {
+            // Highlight the corresponding list item
+            const listItem = document.getElementById(`search-result-${result.place_id}`);
+            if (listItem) {
+                listItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                app.highlightSearchResult(result.place_id, true);
+            }
+            app.showSearchResultActions(result);
+        });
+
+        marker.result_id = result.place_id;
+        app.searchMarkers[result.place_id] = marker;
+        app.searchResultsLayer.addLayer(marker);
     },
 });

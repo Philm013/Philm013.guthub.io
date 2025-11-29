@@ -1,4 +1,3 @@
-
 // Main app logic
 Object.assign(app, {
     init: () => {

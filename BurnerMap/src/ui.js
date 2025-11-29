@@ -386,23 +386,26 @@ Object.assign(app, {
         setTimeout(() => document.getElementById('panel-search-input').focus(), 300);
     },
 
-    searchLocation: async () => {
-        const query = document.getElementById('panel-search-input').value;
+    searchLocation: async (structuredQuery = null) => {
+        const query = structuredQuery || document.getElementById('panel-search-input').value;
         const resultsContainer = document.getElementById('search-results-list');
         
         if (!query) return;
+
+        // Clear previous results and hide "Search This Area" button
+        document.getElementById('search-this-area-btn').classList.add('hidden');
+        app.searchResultsLayer.clearLayers();
+        app.searchMarkers = {};
         
         resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4"><i class="fa-solid fa-spinner fa-spin"></i> Searching...</p>';
 
         try {
-            // Build URL with viewbox prioritization
-            let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&extratags=1&limit=20`;
+            app.lastSearchQuery = query; // Store query for "Search This Area"
+            let url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&addressdetails=1&extratags=1&limit=50`;
             
             if (app.map) {
                 const bounds = app.map.getBounds();
-                // Nominatim viewbox: left,top,right,bottom -> west,north,east,south
                 const viewbox = `${bounds.getWest()},${bounds.getNorth()},${bounds.getEast()},${bounds.getSouth()}`;
-                // 'bounded=1' restricts results to the viewbox area on the screen
                 url += `&viewbox=${viewbox}&bounded=1`;
             }
 
@@ -413,20 +416,23 @@ Object.assign(app, {
             resultsContainer.innerHTML = '';
 
             if (results.length === 0) {
-                resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4">No results found in this area.</p>';
+                resultsContainer.innerHTML = '<p class="text-center opacity-50 py-4">No results found in this area. Try panning the map.</p>';
                 return;
             }
 
             results.forEach(result => {
+                app.drawSearchResultMarker(result); // Add marker to map
+                
                 const div = document.createElement('div');
                 div.className = 'search-result';
+                div.id = `search-result-${result.place_id}`;
+                div.onclick = () => app.showSearchResultActions(result);
+                div.onmouseover = () => app.highlightSearchResult(result.place_id, true);
+                div.onmouseout = () => app.highlightSearchResult(result.place_id, false);
                 
-                // Safe name handling
-                const rawName = result.name || result.display_name.split(',')[0] || 'Unknown';
-                const safeName = rawName.replace(/'/g, "\\'");
+                const rawName = result.display_name.split(',')[0] || 'Unknown';
                 
-                // Formatting type info (e.g. "Restaurant (Italian)")
-                let typeInfo = (result.type ? result.type.charAt(0).toUpperCase() + result.type.slice(1) : 'Place'); 
+                let typeInfo = (result.type ? result.type.charAt(0).toUpperCase() + result.type.slice(1) : 'Place').replace(/_/g, ' ');
                 if (result.extratags && result.extratags.cuisine) {
                     typeInfo += ` • ${result.extratags.cuisine.charAt(0).toUpperCase() + result.extratags.cuisine.slice(1)}`;
                 } else if (result.address && result.address.city) {
@@ -434,18 +440,80 @@ Object.assign(app, {
                 }
 
                 div.innerHTML = `
-                    <div class="flex flex-col overflow-hidden mr-2">
+                    <div class="flex flex-col overflow-hidden">
                         <p class="text-sm font-bold text-left truncate">${rawName}</p>
                         <p class="text-[10px] opacity-70 text-left truncate">${typeInfo}</p>
                     </div>
-                    <button class="add-poi-btn shrink-0 bg-blue-600/20 hover:bg-blue-600/40 text-blue-500 px-3 py-1 rounded text-xs font-bold transition-colors" onclick="app.addSearchResultAsPoi(${result.lat}, ${result.lon}, '${safeName}')">ADD</button>
+                    <button class="shrink-0 text-blue-500 px-3 py-1 rounded text-lg transition-colors" onclick="event.stopPropagation(); app.panToEntity('search', ${result.place_id});">
+                        <i class="fa-solid fa-crosshairs"></i>
+                    </button>
                 `;
                 resultsContainer.appendChild(div);
             });
         } catch (e) {
             console.error(e);
-            resultsContainer.innerHTML = '<p class="text-center text-red-400 py-4">Search failed.</p>';
+            resultsContainer.innerHTML = '<p class="text-center text-red-400 py-4">Search failed. Please check your connection.</p>';
+            app.lastSearchQuery = ''; // Clear query on failure
         }
+    },
+
+    searchByCategory: (category) => {
+        const queries = {
+            food: '[food]',
+            coffee: 'cafe',
+            parks: 'park',
+            gas: 'fuel'
+        };
+        const query = queries[category];
+        document.getElementById('panel-search-input').value = category.charAt(0).toUpperCase() + category.slice(1);
+        app.searchLocation(query);
+    },
+
+    searchNearMe: () => {
+        if (app.myLocation) {
+            app.map.flyTo([app.myLocation.lat, app.myLocation.lng], 15, { animate: true });
+            // The 'moveend' event will trigger the "Search this area" button to appear
+        } else {
+            app.showToast("Your location isn't available yet.");
+        }
+    },
+
+    searchThisArea: () => {
+        if (app.lastSearchQuery) {
+            app.searchLocation(app.lastSearchQuery);
+        }
+        document.getElementById('search-this-area-btn').classList.add('hidden');
+    },
+
+    highlightSearchResult: (resultId, highlight) => {
+        const marker = app.searchMarkers[resultId];
+        const listItem = document.getElementById(`search-result-${resultId}`);
+
+        if (highlight) {
+            if (marker) marker.setZIndexOffset(1000);
+            if (listItem) listItem.classList.add('highlighted');
+        } else {
+            if (marker) marker.setZIndexOffset(0);
+            if (listItem) listItem.classList.remove('highlighted');
+        }
+    },
+
+    showSearchResultActions: (result) => {
+        const name = result.display_name.split(',')[0];
+        let address = result.display_name.substring(name.length + 2); // Simple address extraction
+
+        const content = `<h2 class="text-2xl font-bold">${name}</h2><p class="text-sm opacity-60">${address || ''}</p>`;
+        const buttons = [
+            { label: 'Pan To', action: () => app.panToEntity('search', result.place_id) },
+            { label: 'Create POI', action: () => app.addWaypoint({ lat: result.lat, lng: result.lon }, name), class: 'bg-green-600 text-white' },
+        ];
+        if (app.currentBoard) {
+            buttons.push({ label: `Add to '${app.boards[app.currentBoard].name}'`, action: () => app.addBoardSpot({ lat: result.lat, lng: result.lon }, name), class: 'bg-purple-600 text-white' });
+        }
+        if (app.isHost) {
+            buttons.push({ label: 'Set as Rally', action: () => { app.setRally({ lat: result.lat, lng: result.lon }); app.send({ type: 'rally', lat: result.lat, lng: result.lon }); }, class: 'bg-orange-500 text-white' });
+        }
+        app.showActions(content, buttons);
     },
 
     switchPoiTab: (tab) => {
@@ -463,7 +531,7 @@ Object.assign(app, {
             const div = document.createElement('div');
             div.className = 'poi-list-item';
             div.innerHTML = `
-                <span>${wp.name}</span>
+                <span>${wp.icon || ''} ${wp.name}</span>
                 <div>
                     <button onclick="app.showIconPicker('${wp.id}')"><i class="fa-solid fa-image"></i></button>
                     <button onclick="app.panToWaypoint({lat: ${wp.lat}, lng: ${wp.lng}})"><i class="fa-solid fa-crosshairs"></i></button>
@@ -477,9 +545,8 @@ Object.assign(app, {
         if (app.rallyMarker) {
             const div = document.createElement('div');
             div.className = 'poi-list-item';
-            const latlng = app.rallyMarker.getLatLng();
             div.innerHTML = `
-                <span>Rally Point</span>
+                <span>🚩 Rally Point</span>
                 <button onclick="app.panToEntity('rally', 'rally')"><i class="fa-solid fa-crosshairs"></i></button>
             `;
             rallyContainer.appendChild(div);
@@ -574,7 +641,7 @@ Object.assign(app, {
 
             const user = app.users[chatId];
             if (user) {
-                const privateChatHtml = `<div class="chat-list-item" onclick="app.startPrivateChat({ from: '${chatId}', username: '${user.username}'})">
+                const privateChatHtml = `<div class="chat-list-item" onclick="app.startPrivateChat({ id: '${chatId}', username: '${user.username}'})">
                     <span>Private with ${user.username}</span>
                 </div>`;
                 chatListContainer.insertAdjacentHTML('beforeend', privateChatHtml);

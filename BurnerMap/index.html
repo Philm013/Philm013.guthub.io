@@ -1,5 +1,3 @@
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -20,6 +18,10 @@
 
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <!-- Leaflet.markercluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.1/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.1/dist/MarkerCluster.Default.css" />
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;900&display=swap" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
@@ -50,7 +52,9 @@
     <div id="view-map">
         <div id="map"></div>
         
-        <!-- REMOVED FLOATING SEARCH BAR -->
+        <button id="search-this-area-btn" onclick="app.searchThisArea()" class="hidden absolute top-24 left-1/2 -translate-x-1/2 z-[20] glass px-4 py-2 rounded-full text-sm font-bold transition-all">
+            <i class="fa-solid fa-redo mr-2"></i>Search This Area
+        </button>
 
         <button onclick="app.togglePoiPanel()" class="poi-toggle-btn glass"><i class="fa-solid fa-list"></i></button>
 
@@ -68,11 +72,17 @@
                 <div id="pois-content" class="tab-content active"></div>
                 <div id="rally-content" class="tab-content"></div>
                 
-                <!-- SEARCH CONTENT WITH EMBEDDED INPUT -->
                 <div id="search-content" class="tab-content">
-                    <div class="flex gap-2 mb-4">
+                    <div class="flex gap-2 mb-3">
                         <input type="text" id="panel-search-input" placeholder="Search places..." class="flex-1 bg-white/10 px-3 py-2 rounded-lg outline-none text-sm text-white border border-white/20">
-                        <button onclick="app.searchLocation()" class="bg-blue-600 px-3 py-2 rounded-lg text-white"><i class="fa-solid fa-search"></i></button>
+                        <button onclick="app.searchNearMe()" class="bg-white/10 px-3 py-2 rounded-lg text-white" title="Search Near Me"><i class="fa-solid fa-location-arrow"></i></button>
+                        <button onclick="app.searchLocation()" class="bg-blue-600 px-3 py-2 rounded-lg text-white" title="Search"><i class="fa-solid fa-search"></i></button>
+                    </div>
+                    <div class="flex gap-2 mb-4 text-xs justify-center">
+                        <button onclick="app.searchByCategory('food')" class="category-btn"><i class="fa-solid fa-utensils mr-1"></i> Food</button>
+                        <button onclick="app.searchByCategory('coffee')" class="category-btn"><i class="fa-solid fa-coffee mr-1"></i> Coffee</button>
+                        <button onclick="app.searchByCategory('parks')" class="category-btn"><i class="fa-solid fa-tree mr-1"></i> Parks</button>
+                        <button onclick="app.searchByCategory('gas')" class="category-btn"><i class="fa-solid fa-gas-pump mr-1"></i> Gas</button>
                     </div>
                     <div id="search-results-list" class="flex flex-col gap-2"></div>
                 </div>
@@ -235,6 +245,8 @@
 
     <script src="https://unpkg.com/peerjs@1.4.7/dist/peerjs.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Leaflet.markercluster JS -->
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.1/dist/leaflet.markercluster.js"></script>
 
     <script src="src/state.js"></script>
     <script src="src/ui.js"></script>

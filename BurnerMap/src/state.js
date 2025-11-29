@@ -1,5 +1,3 @@
-
-
 // Defines the initial state of the application
 const app = {
     peer: null, conn: null, connections: [], myId: null, hostId: null,
@@ -20,5 +18,8 @@ const app = {
     chatListOpen: false,
     boards: {}, // Ensure boards is initialized
     currentBoard: null,
-    uiInitialized: false // Track UI init state
+    uiInitialized: false, // Track UI init state
+    searchResultsLayer: null,
+    searchMarkers: {},
+    lastSearchQuery: '',
 };
