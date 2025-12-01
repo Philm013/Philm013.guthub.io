@@ -1,7 +1,3 @@
-Of course. Here is the revised README with the requested technical specifications, including details about the AI context.
-
----
-
 # NGSS 3D + PE Explorer: README
 
 ## 1. Overview
