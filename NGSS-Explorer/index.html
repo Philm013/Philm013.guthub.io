@@ -495,7 +495,7 @@
         const handleEnd = document.getElementById('resize-handle-end');
 
         // --- 2. STATE MANAGEMENT ---
-        const CACHE_VERSION = '1.4'; // Updated cache version for new data structure
+        const CACHE_VERSION = '1.4'; // Incremented for lazy loading caching fix
         let currentView = 'pe';
         let activePeFilter = null;
         let peMap = new Map();
@@ -542,27 +542,59 @@
         const deleteAnalysisFromDB = (peId, part) => { if (!db) return; db.transaction(AI_STORE_NAME, 'readwrite').objectStore(AI_STORE_NAME).delete(`${peId}-${part}`); };
         const clearAllAnalyses = () => new Promise((resolve, reject) => { if (!db) { resolve(); return; } const r = db.transaction(AI_STORE_NAME, 'readwrite').objectStore(AI_STORE_NAME).clear(); r.onsuccess = () => { savedAnalyses = {}; resolve(); }; r.onerror = e => reject(e.target.errorCode); });
         const updateUrlFromState = () => { if (isNavigatingHistory) return; const p = new URLSearchParams(); p.set('view', currentView); const q = searchInput.value.trim(); if (q) p.set('q', q); if (currentView === 'pe') { const g = gradeFilters.querySelector('.active')?.dataset.filter; if (g && g !== 'all') p.set('grade', g); const t = [...document.querySelectorAll('#topic-filters .filter-btn.active')].map(b => b.dataset.filter); if (t.length > 0 && !t.includes('all')) p.set('topic', t.join(',')); if (activeElementFilters.size > 0) p.set('elements', [...activeElementFilters].join(',')); if (activeBundleFilter) p.set('bundleFilter', activeBundleFilter); const e = peTableBody.querySelector('.pe-main-row.expanded')?.dataset.peId; if (e) p.set('expanded', e); } else if (['3d', 'matrix'].includes(currentView)) { if (activePeFilter) p.set('highlight', activePeFilter); if (isolatedColumn && currentView === '3d') p.set('isolate', isolatedColumn); const d = dimensionFilters.querySelector('.active')?.dataset.filter; if (d) p.set('dim', d); const s = [...subDimensionFilters.querySelectorAll('.active')].map(b => b.dataset.filter); if (s.length > 0) p.set('subDim', s.join(',')); const m = [...dciMinorFilters.querySelectorAll('.active')].map(b => b.dataset.filter); if (m.length > 0) p.set('minorDim', m.join(',')); } else if (currentView === 'bundle' && peBundle.size > 0) p.set('bundlePEs', [...peBundle].join(',')); if (currentView === 'matrix' && matrixRowElements.size > 0) { const a = new Set(); window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => a.add(i.name.split(':')[0].trim()))); if (matrixRowElements.size !== a.size) p.set('matrixRows', [...matrixRowElements].join(',')); } const u = `${window.location.pathname}?${p.toString()}`; history.replaceState(null, '', u); };
-        const applyStateFromUrl = () => { isNavigatingHistory = true; const p = new URLSearchParams(window.location.search); searchInput.value = ''; document.querySelectorAll('.filter-btn.active').forEach(b => b.classList.remove('active')); gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); renderTopicFilters('all'); subDimensionFiltersContainer.style.display = 'none'; dciMinorFiltersContainer.style.display = 'none'; activeElementFilters.clear(); renderActiveElementFilters(); activeBundleFilter = null; renderBundleFilters(); clearPeFilter(); isolatedColumn = null; peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible')); matrixRowElements.clear(); window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => { const c = i.name.split(':')[0].trim(); if (c) matrixRowElements.add(c); })); if (p.has('bundlePEs')) { const ids = p.get('bundlePEs').split(','); peBundle = new Set(ids.filter(id => peMap.has(id))); if (peBundle.size > 0) { updateBundleControls(); renderBundleView(); isNavigatingHistory = false; return; } } const view = p.get('view') || 'pe'; searchInput.value = p.get('q') || ''; if (p.has('matrixRows')) matrixRowElements = new Set(p.get('matrixRows').split(',')); if (p.has('grade')) { const g = p.get('grade'); gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector(`[data-filter="${g}"]`)?.classList.add('active'); renderTopicFilters(g); } if (p.has('topic')) { const t = p.get('topic').split(','); document.querySelector('#topic-filters [data-filter="all"]')?.classList.remove('active'); t.forEach(topic => document.querySelector(`#topic-filters [data-filter="${topic}"]`)?.classList.add('active')); } if (p.has('elements')) { activeElementFilters = new Set(p.get('elements').split(',')); renderActiveElementFilters(); } if (p.has('bundleFilter')) { activeBundleFilter = p.get('bundleFilter'); renderBundleFilters(); } activePeFilter = p.get('highlight') || null; isolatedColumn = p.get('isolate') || null; if (p.has('dim')) { const d = p.get('dim'); dimensionFilters.querySelector(`[data-filter="${d}"]`)?.classList.add('active'); renderSubFilters(d); } if (p.has('subDim')) { const s = p.get('subDim').split(','); s.forEach(sub => subDimensionFilters.querySelector(`[data-filter="${sub}"]`)?.classList.add('active')); const d = p.get('dim'); if (d && d.startsWith('DCI') && s.length > 0) renderDciMinorFilters(s[0]); } if (p.has('minorDim')) { const m = p.get('minorDim').split(','); m.forEach(minor => dciMinorFilters.querySelector(`[data-filter="${minor}"]`)?.classList.add('active')); } switchView(view, null, false); if (p.has('expanded')) {
-            const id = p.get('expanded');
-            setTimeout(() => {
-                const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${id}"]`);
-                if (row) {
-                    // --- FIX: Populate content if empty before expanding ---
-                    const detailsRow = row.nextElementSibling;
-                    const detailsCell = detailsRow.querySelector('td');
-                    if (!detailsCell.hasChildNodes()) {
-                        const pe = peMap.get(id);
-                        if (pe) detailsCell.innerHTML = createPeDetailsHtml(pe);
-                    }
-                    // -----------------------------------------------------
-                    row.classList.add('expanded');
-                    row.nextElementSibling.classList.add('is-visible');
-                    
-                    // Optional: Scroll to it
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            }, 100);
-        }
+        const applyStateFromUrl = () => { 
+            isNavigatingHistory = true; 
+            const p = new URLSearchParams(window.location.search); 
+            searchInput.value = ''; 
+            document.querySelectorAll('.filter-btn.active').forEach(b => b.classList.remove('active')); 
+            gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); 
+            renderTopicFilters('all'); 
+            subDimensionFiltersContainer.style.display = 'none'; 
+            dciMinorFiltersContainer.style.display = 'none'; 
+            activeElementFilters.clear(); 
+            renderActiveElementFilters(); 
+            activeBundleFilter = null; 
+            renderBundleFilters(); 
+            clearPeFilter(); 
+            isolatedColumn = null; 
+            peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible')); 
+            matrixRowElements.clear(); 
+            window.allNgss3dElements.forEach(d => (d.elements || d.core_ideas?.flatMap(c => c.components) || []).forEach(i => { const c = i.name.split(':')[0].trim(); if (c) matrixRowElements.add(c); })); 
+            if (p.has('bundlePEs')) { const ids = p.get('bundlePEs').split(','); peBundle = new Set(ids.filter(id => peMap.has(id))); if (peBundle.size > 0) { updateBundleControls(); renderBundleView(); isNavigatingHistory = false; return; } } 
+            const view = p.get('view') || 'pe'; 
+            searchInput.value = p.get('q') || ''; 
+            if (p.has('matrixRows')) matrixRowElements = new Set(p.get('matrixRows').split(',')); 
+            if (p.has('grade')) { const g = p.get('grade'); gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector(`[data-filter="${g}"]`)?.classList.add('active'); renderTopicFilters(g); } 
+            if (p.has('topic')) { const t = p.get('topic').split(','); document.querySelector('#topic-filters [data-filter="all"]')?.classList.remove('active'); t.forEach(topic => document.querySelector(`#topic-filters [data-filter="${topic}"]`)?.classList.add('active')); } 
+            if (p.has('elements')) { activeElementFilters = new Set(p.get('elements').split(',')); renderActiveElementFilters(); } 
+            if (p.has('bundleFilter')) { activeBundleFilter = p.get('bundleFilter'); renderBundleFilters(); } 
+            activePeFilter = p.get('highlight') || null; 
+            isolatedColumn = p.get('isolate') || null; 
+            if (p.has('dim')) { const d = p.get('dim'); dimensionFilters.querySelector(`[data-filter="${d}"]`)?.classList.add('active'); renderSubFilters(d); } 
+            if (p.has('subDim')) { const s = p.get('subDim').split(','); s.forEach(sub => subDimensionFilters.querySelector(`[data-filter="${sub}"]`)?.classList.add('active')); const d = p.get('dim'); if (d && d.startsWith('DCI') && s.length > 0) renderDciMinorFilters(s[0]); } 
+            if (p.has('minorDim')) { const m = p.get('minorDim').split(','); m.forEach(minor => dciMinorFilters.querySelector(`[data-filter="${minor}"]`)?.classList.add('active')); } 
+            switchView(view, null, false); 
+            
+            // --- LAZY LOAD & EXPAND FROM URL ---
+            if (p.has('expanded')) { 
+                const id = p.get('expanded'); 
+                setTimeout(() => { 
+                    const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${id}"]`); 
+                    if (row) { 
+                        const detailsRow = row.nextElementSibling;
+                        const detailsCell = detailsRow.querySelector('td');
+                        if (!detailsCell.hasChildNodes()) {
+                            const pe = peMap.get(id);
+                            if (pe) detailsCell.innerHTML = createPeDetailsHtml(pe);
+                        }
+                        row.classList.add('expanded'); 
+                        row.nextElementSibling.classList.add('is-visible'); 
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    } 
+                }, 100); 
+            } 
+            isNavigatingHistory = false; 
+        };
         const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
         const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => { let lineMatched = false; ref.text.split('\n').forEach(line => { if (!line.trim()) return; const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel); if (specCode) { specCodes.add(specCode); const el = specificElementMap.get(specCode); if (el) { el.relatedPes.add(pe.id); if (el.parentCode) compCodes.add(el.parentCode); } lineMatched = true; } }); if (!lineMatched) { const cleanId = ref.id.replace(' (secondary)', '').trim(); let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim()); if (cCode) compCodes.add(cCode); } })); peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
         
@@ -600,12 +632,8 @@
             // 1. Try to load processed data from IndexedDB Cache
             const cache = await loadDataFromDB();
             
-            // We bump the version to 1.4 to force a re-cache of the new structure
-            // If you change this, change CACHE_VERSION at the top of your script to '1.4' as well
             if (cache && cache.version === CACHE_VERSION) {
-                // --- CACHE HIT: RESTORE DATA ---
                 console.log("Restoring data from browser cache...");
-                
                 peMap = new Map(cache.peMap);
                 peMap.forEach(pe => {
                     pe.associatedComponentCodes = new Set(pe.associatedComponentCodes);
@@ -620,16 +648,16 @@
                 allTopics = cache.allTopics;
                 sortedGradeLabels = cache.sortedGradeLabels;
                 
-                // IMPORTANT: Restore the raw data so we don't need to fetch it
+                // --- RESTORE RAW DATA FROM CACHE TO AVOID NETWORK REQUEST ---
                 if (cache.allNgss3dElements && cache.allNgssData) {
                     window.allNgss3dElements = cache.allNgss3dElements;
                     window.allNgssData = cache.allNgssData;
-                    return; // STOP HERE. Do not fetch from network.
+                    return; 
                 }
             }
 
             // 2. Cache Miss: Fetch JSON files from server
-            console.log("Cache empty or stale. Downloading data...");
+            console.log("Cache miss or empty. Downloading data...");
             await fetchRawData();
 
             // 3. Process the raw data
@@ -651,13 +679,13 @@
                 return (iA === -1 && iB === -1) ? a.localeCompare(b) : (iA === -1 ? 1 : (iB === -1 ? -1 : iA - iB));
             });
 
-            // 5. Save to Cache (IndexedDB)
+            // 5. Save to Cache
             const dataToCache = {
                 version: CACHE_VERSION,
-                // --- CRITICAL FIX: Save the raw data here ---
+                // --- SAVE RAW DATA TO CACHE ---
                 allNgss3dElements: window.allNgss3dElements,
                 allNgssData: window.allNgssData,
-                // -------------------------------------------
+                // ------------------------------
                 peMap: [...peMap].map(([id, pe]) => [id, { ...pe,
                     associatedComponentCodes: [...pe.associatedComponentCodes],
                     associatedSpecificCodes: [...pe.associatedSpecificCodes]
@@ -675,7 +703,6 @@
 
             try {
                 saveDataToDB(dataToCache);
-                console.log("Data saved to cache.");
             } catch (e) {
                 console.error("Error caching data:", e);
             }
@@ -684,7 +711,8 @@
         const buildMatrixDataMap = () => { elementToGradePeMap.clear(); for (const pe of peMap.values()) for (const code of pe.associatedComponentCodes) { if (!elementToGradePeMap.has(code)) elementToGradePeMap.set(code, new Map()); const gradeMap = elementToGradePeMap.get(code); if (!gradeMap.has(pe.gradeLabel)) gradeMap.set(pe.gradeLabel, new Set()); gradeMap.get(pe.gradeLabel).add(pe.id); } };
         
         // --- 4. UI RENDERING & NAVIGATION ---
-        const populatePeTable = () => {
+        const populatePeTable = () => { 
+            // --- LAZY LOADING: RENDER EMPTY DETAILS ROWS INITIALLY ---
             peTableBody.innerHTML = [...peMap.values()].map(pe => `
                 <tr class="pe-main-row" data-pe-id="${pe.id}" data-grade="${pe.gradeLabel}">
                     <td><input type="checkbox" class="pe-bundle-checkbox" data-pe-id="${pe.id}" ${peBundle.has(pe.id) ? 'checked' : ''}></td>
@@ -694,9 +722,9 @@
                     <td><span class="copyable">${pe.topicTitle}</span></td>
                 </tr>
                 <tr class="pe-details-row" data-pe-id="${pe.id}">
-                    <td colspan="5"></td> 
+                    <td colspan="5"></td>
                 </tr>`
-            ).join('');
+            ).join(''); 
         };
         const processAndLinkPeText = (text, peId) => { const pe = peMap.get(peId); if (!pe) return text; return text.split('\n').map(line => { if (!line.trim()) return line; const code = findBestMatchingSpecificElement(line, pe.gradeLabel); if (code) { const el = specificElementMap.get(code); if (el) return `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; } return line; }).join('<br>'); };
         const createPeDetailsHtml = (pe, inBundle = false) => { const linkPeCodes = (text, currentPe) => { if (!text) return 'N/A'; text = text.replace(/\(([A-Z0-9-]+)\)/g, (match, id) => { const p = peMap.get(id); if (p && id !== currentPe.id) return `<span class="pe-nav-link" data-pe-id="${id}" title="${`PE: ${id}\n${p.description}`.replace(/"/g, '&quot;')}">${match}</span>`; return match; }); return text.replace(/\b(?:[K\d]|MS|HS)(?:-\d)?\.([A-Z]{2,4}\d?(?:\.[A-Z])?)\b/g, (match, code) => { const el = elementMap.get(code); if (el) return `<span class="clickable-element-link" data-pe-id="${currentPe.id}" data-component-code="${code}" title="${`Dimension Element: ${el.name}`.replace(/"/g, '&quot;')}">${match}</span>`; return match; }); }; const createCol = (dim, title) => { const items = pe.details[dim] || []; if (!items.length) return ''; return `<div class="pe-details-column"><h4>${title}</h4><ul>${items.map(item => { const code = nameToCodeMap.get(item.id.replace(' (secondary)', '').trim()); const el = code ? elementMap.get(code) : null; return `<li><span class="clickable-element-link" ${code ? `data-component-code="${code}" data-pe-id="${pe.id}"` : ''} ${el ? `title="${el.name.replace(/"/g, '&quot;')}"` : ''}><strong class="copyable">${item.id}</strong></span><div class="copyable" style="padding-left:1rem;">${processAndLinkPeText(item.text, pe.id)}</div></li>`; }).join('')}</ul></div>`; }; const createConns = (conns, currentPe) => { if (!conns) return ''; const filterStr = text => { if (!text) return 'N/A'; const relevant = text.split(';').map(s => s.trim()).filter(Boolean).filter(e => e.includes(`(${currentPe.id})`)); return relevant.length ? linkPeCodes(relevant.join('; '), currentPe) : 'N/A'; }; const filterArr = items => items ? items.filter(i => i.text && i.text.includes(`(${currentPe.id})`)) : []; const ela = filterArr(conns.commonCoreStateStandards?.elaLiteracy).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join(''); const math = filterArr(conns.commonCoreStateStandards?.mathematics).map(i => `<li class="copyable"><strong>${i.id}:</strong> ${linkPeCodes(i.text, currentPe)}</li>`).join(''); return `<div class="pe-details-connections"><h3>Connections</h3><div class="pe-connections-grid"><div class="pe-connections-section"><h4>Connections to other DCIs in this grade-level</h4><p class="copyable">${filterStr(conns.connectionsToOtherDcisInGradeLevel)}</p></div><div class="pe-connections-section"><h4>Articulation of DCIs across grade levels</h4><p class="copyable">${filterStr(conns.articulationOfDcisAcrossGradeLevels)}</p></div><div class="pe-connections-section"><h4>Connections to Common Core (ELA)</h4><ul>${ela || '<li>N/A</li>'}</ul></div><div class="pe-connections-section"><h4>Connections to Common Core (Math)</h4><ul>${math || '<li>N/A</li>'}</ul></div></div></div>`; }; const savedDesc = savedAnalyses[pe.id]?.description || pe.description; const clarification = pe.details.clarificationStatement ? `<div class="pe-details-info-box"><h4>Clarification Statement</h4><p class="copyable">${pe.details.clarificationStatement}</p></div>` : ''; const boundary = pe.details.assessmentBoundary ? `<div class="pe-details-info-box"><h4>Assessment Boundary</h4><p class="copyable">${pe.details.assessmentBoundary}</p></div>` : ''; const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : ''; const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`; return `<div class="pe-details-wrapper"><div class="pe-description-header"><h3 class="copyable">${inBundle ? '' : pe.id + ':'}</h3>${analyzeBtn}</div><div class="pe-description-text ai-editable-content copyable" data-pe-id="${pe.id}" data-part="description">${savedDesc}</div><div style="margin-top:1.5rem;">${clarification}${boundary}</div><div class="pe-details-container" style="margin-top:1rem;">${createCol('sep', 'SEP')}${createCol('dci', 'DCI')}${createCol('ccc', 'CCC')}</div><div class="pe-details-actions">${esBtn}<button class="filter-btn active view-related-3d-btn" data-pe-id="${pe.id}">Show All Related in 3D View</button></div>${createConns(pe.connections, pe)}</div>`; };
@@ -704,48 +732,75 @@
         const renderTopicFilters = grade => { const cont = document.getElementById('topic-filters-container'), group = document.getElementById('topic-filters'); const topics = grade === 'all' ? allTopics : gradeToTopicsMap[grade]; if (!topics || !topics.length) { cont.style.display = 'none'; group.innerHTML = ''; return; } const active = new Set([...document.querySelectorAll('#topic-filters .filter-btn.active')].map(b => b.dataset.filter)); let hasActive = active.size > 0 && !active.has('all'); let html = `<button class="filter-btn ${!hasActive ? 'active' : ''}" data-filter="all">All Topics</button>`; html += topics.map(t => `<button class="filter-btn ${active.has(t) ? 'active' : ''}" data-filter="${t}">${t}</button>`).join(''); group.innerHTML = html; cont.style.display = 'block'; };
         const updateNavControls = () => navigationControls.style.display = navigationHistory.length > 0 ? 'flex' : 'none';
         const pushNavState = (isLinkNav = false) => { const cont = document.querySelector('.explorer-view.is-visible .table-container'); const state = { view: currentView, scrollTop: cont ? cont.scrollTop : 0, searchTerm: searchInput.value, activePeFilter, isLinkNavigation: isLinkNav }; if (currentView === 'pe') { state.activeGrade = gradeFilters.querySelector('.active')?.dataset.filter; state.expandedPe = peTableBody.querySelector('.pe-main-row.expanded')?.dataset.peId; state.activeElementFilters = new Set(activeElementFilters); state.activeBundleFilter = activeBundleFilter; } else if (['3d', 'matrix'].includes(currentView)) { state.activeDimension = dimensionFilters.querySelector('.active')?.dataset.filter; state.activeSubFilters = [...subDimensionFilters.querySelectorAll('.active')].map(b => b.dataset.filter); state.activeDciMinorFilters = [...dciMinorFilters.querySelectorAll('.active')].map(b => b.dataset.filter); if (currentView === '3d') state.isolatedColumn = isolatedColumn; } if (currentView === 'matrix') state.matrixRowElements = new Set(matrixRowElements); navigationHistory.push(state); updateNavControls(); };
-        const goBack = () => { if (!navigationHistory.length) return; const s = navigationHistory.pop(); activePeFilter = s.activePeFilter; searchInput.value = s.searchTerm; if (s.view === 'pe') { document.querySelectorAll('#grade-filters .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === s.activeGrade)); renderTopicFilters(s.activeGrade); activeElementFilters = s.activeElementFilters || new Set(); renderActiveElementFilters(); activeBundleFilter = s.activeBundleFilter; renderBundleFilters(); } else if (['3d', 'matrix'].includes(s.view)) { document.querySelectorAll('#dimension-filters .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === s.activeDimension)); renderSubFilters(s.activeDimension); if (s.activeSubFilters) document.querySelectorAll('#sub-dimension-filters .filter-btn').forEach(b => b.classList.toggle('active', s.activeSubFilters.includes(b.dataset.filter))); if (s.activeDimension && s.activeDimension.startsWith('DCI') && s.activeSubFilters.length > 0) { renderDciMinorFilters(s.activeSubFilters[0]); if (s.activeDciMinorFilters) document.querySelectorAll('#dci-minor-filters .filter-btn').forEach(b => b.classList.toggle('active', s.activeDciMinorFilters.includes(b.dataset.filter))); } if (s.view === '3d') s.isolatedColumn = isolatedColumn; } if (s.view === 'matrix') matrixRowElements = s.matrixRowElements || new Set(); switchView(s.view, null, false); setTimeout(() => {
-                const cont = document.querySelector('.explorer-view.is-visible .table-container');
-                if (cont) cont.scrollTop = s.scrollTop;
-                
-                if (s.view === 'pe' && s.expandedPe) {
-                    const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${s.expandedPe}"]`);
-                    if (row) {
-                        // --- FIX: Populate content if empty before expanding ---
+        const goBack = () => { 
+            if (!navigationHistory.length) return; 
+            const s = navigationHistory.pop(); 
+            activePeFilter = s.activePeFilter; 
+            searchInput.value = s.searchTerm; 
+            if (s.view === 'pe') { document.querySelectorAll('#grade-filters .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === s.activeGrade)); renderTopicFilters(s.activeGrade); activeElementFilters = s.activeElementFilters || new Set(); renderActiveElementFilters(); activeBundleFilter = s.activeBundleFilter; renderBundleFilters(); } else if (['3d', 'matrix'].includes(s.view)) { document.querySelectorAll('#dimension-filters .filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === s.activeDimension)); renderSubFilters(s.activeDimension); if (s.activeSubFilters) document.querySelectorAll('#sub-dimension-filters .filter-btn').forEach(b => b.classList.toggle('active', s.activeSubFilters.includes(b.dataset.filter))); if (s.activeDimension && s.activeDimension.startsWith('DCI') && s.activeSubFilters.length > 0) { renderDciMinorFilters(s.activeSubFilters[0]); if (s.activeDciMinorFilters) document.querySelectorAll('#dci-minor-filters .filter-btn').forEach(b => b.classList.toggle('active', s.activeDciMinorFilters.includes(b.dataset.filter))); } if (s.view === '3d') s.isolatedColumn = isolatedColumn; } if (s.view === 'matrix') matrixRowElements = s.matrixRowElements || new Set(); switchView(s.view, null, false); 
+            setTimeout(() => { 
+                const cont = document.querySelector('.explorer-view.is-visible .table-container'); 
+                if (cont) cont.scrollTop = s.scrollTop; 
+                if (s.view === 'pe' && s.expandedPe) { 
+                    const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${s.expandedPe}"]`); 
+                    if (row) { 
+                        // --- LAZY LOAD CONTENT ON BACK NAVIGATION ---
                         const detailsRow = row.nextElementSibling;
                         const detailsCell = detailsRow.querySelector('td');
                         if (!detailsCell.hasChildNodes()) {
                             const pe = peMap.get(s.expandedPe);
                             if (pe) detailsCell.innerHTML = createPeDetailsHtml(pe);
                         }
-                        // -----------------------------------------------------
-                        row.classList.add('expanded');
-                        row.nextElementSibling.classList.add('is-visible');
-                    }
-                }
-            }, 50); updateNavControls(); updateUrlFromState(); };
-        const navigateToPe = id => { pushNavState(true); currentView = 'pe'; navPeExplorer.classList.add('active'); navThreedExplorer.classList.remove('active'); navMatrixView.classList.remove('active'); peExplorerView.style.display = 'flex'; threedExplorerView.style.display = 'none'; matrixView.style.display = 'none'; bundleView.style.display = 'none'; peFiltersAll.style.display = 'block'; threedFiltersAll.style.display = 'none'; searchInput.value = ''; gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector('[data-filter="all"]').classList.add('active'); renderTopicFilters('all'); activeElementFilters.clear(); renderActiveElementFilters(); activeBundleFilter = null; renderBundleFilters(); applyFilters(); setTimeout(() => {
-                const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${id}"]`);
-                if (row) {
-                    peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible'));
+                        row.classList.add('expanded'); 
+                        row.nextElementSibling.classList.add('is-visible'); 
+                    } 
+                } 
+            }, 50); 
+            updateNavControls(); updateUrlFromState(); 
+        };
+        const navigateToPe = id => { 
+            pushNavState(true); 
+            currentView = 'pe'; 
+            navPeExplorer.classList.add('active'); 
+            navThreedExplorer.classList.remove('active'); 
+            navMatrixView.classList.remove('active'); 
+            peExplorerView.style.display = 'flex'; 
+            threedExplorerView.style.display = 'none'; 
+            matrixView.style.display = 'none'; 
+            bundleView.style.display = 'none'; 
+            peFiltersAll.style.display = 'block'; 
+            threedFiltersAll.style.display = 'none'; 
+            searchInput.value = ''; 
+            gradeFilters.querySelector('.active')?.classList.remove('active'); 
+            gradeFilters.querySelector('[data-filter="all"]').classList.add('active'); 
+            renderTopicFilters('all'); 
+            activeElementFilters.clear(); 
+            renderActiveElementFilters(); 
+            activeBundleFilter = null; 
+            renderBundleFilters(); 
+            applyFilters(); 
+            setTimeout(() => { 
+                const row = peTableBody.querySelector(`.pe-main-row[data-pe-id="${id}"]`); 
+                if (row) { 
+                    peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible')); 
                     
-                    // --- FIX: Populate content if empty before expanding ---
+                    // --- LAZY LOAD CONTENT FOR INTERNAL NAV ---
                     const detailsRow = row.nextElementSibling;
                     const detailsCell = detailsRow.querySelector('td');
                     if (!detailsCell.hasChildNodes()) {
                         const pe = peMap.get(id);
                         if (pe) detailsCell.innerHTML = createPeDetailsHtml(pe);
                     }
-                    // -----------------------------------------------------
-
-                    row.classList.add('expanded');
-                    row.nextElementSibling.classList.add('is-visible');
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    row.classList.add('scroll-target');
-                    setTimeout(() => row.classList.remove('scroll-target'), 1500);
-                }
-                updateUrlFromState();
-            }, 100); };
+                    
+                    row.classList.add('expanded'); 
+                    row.nextElementSibling.classList.add('is-visible'); 
+                    row.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
+                    row.classList.add('scroll-target'); 
+                    setTimeout(() => row.classList.remove('scroll-target'), 1500); 
+                } 
+                updateUrlFromState(); 
+            }, 100); 
+        };
         
         // --- 5. VIEW & FILTER LOGIC ---
         const switchView = (name, target = null, push = false) => { if (push && (currentView !== name || !navigationHistory[navigationHistory.length - 1]?.isLinkNavigation)) pushNavState(target !== null); currentView = name; navPeExplorer.classList.toggle('active', name === 'pe'); peExplorerView.style.display = name === 'pe' ? 'flex' : 'none'; navThreedExplorer.classList.toggle('active', name === '3d'); threedExplorerView.style.display = name === '3d' ? 'flex' : 'none'; navMatrixView.classList.toggle('active', name === 'matrix'); matrixView.style.display = name === 'matrix' ? 'flex' : 'none'; if (name !== 'bundle') bundleView.style.display = 'none'; sidebarFiltersContainer.style.display = 'block'; resultsCountSpan.style.display = 'block'; peFiltersAll.style.display = name === 'pe' ? 'block' : 'none'; threedFiltersAll.style.display = ['3d', 'matrix'].includes(name) ? 'block' : 'none'; if (name === 'matrix') renderMatrix(); else if (name === 'pe') syncCheckboxesWithBundle(); if (activePeFilter) { const pe = peMap.get(activePeFilter); activePeFilterTag.querySelector('span').textContent = `Highlighting for PE: ${pe ? pe.id : '...'}`; activePeFilterTag.style.display = 'flex'; activePeFilterTag.dataset.peId = activePeFilter; activePeFilterTag.style.cursor = 'pointer'; activePeFilterTag.title = `Click to go to ${activePeFilter} in PE Explorer`; } else { activePeFilterTag.style.display = 'none'; activePeFilterTag.removeAttribute('data-pe-id'); activePeFilterTag.style.cursor = 'default'; activePeFilterTag.removeAttribute('title'); } if (!target && !push && !isNavigatingHistory) { searchInput.value = ''; if (name === 'pe') { gradeFilters.querySelector('.active')?.classList.remove('active'); gradeFilters.querySelector('[data-filter="all"]')?.classList.add('active'); } else if (['3d', 'matrix'].includes(name)) dimensionFilters.querySelector('.active')?.classList.remove('active'); } if (name === '3d' && push) { dimensionFilters.querySelector('.active')?.classList.remove('active'); subDimensionFilters.innerHTML = ''; subDimensionFiltersContainer.style.display = 'none'; dciMinorFilters.innerHTML = ''; dciMinorFiltersContainer.style.display = 'none'; isolatedColumn = null; searchInput.value = ''; } applyFilters(); updateUrlFromState(); if (name === '3d' && target) { let el; if (target.specific) el = threedTableBody.querySelector(`.item[data-code="${target.specific}"]`); else if (target.component) el = threedTableBody.querySelector(`tr[data-component-code="${target.component}"]`); if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); if (target.specific) { el.classList.add('scroll-target'); setTimeout(() => el.classList.remove('scroll-target'), 1500); } } } };
@@ -1104,54 +1159,47 @@ The JSON object must contain:
             peTableBody.addEventListener('click', e => {
                 const link = e.target.closest('.pe-nav-link');
                 if (link) { e.stopPropagation(); navigateToPe(link.dataset.peId); return; }
-                
                 const cb = e.target.closest('.pe-bundle-checkbox');
-                if (cb) { 
-                    if (cb.checked) peBundle.add(cb.dataset.peId); 
-                    else peBundle.delete(cb.dataset.peId); 
-                    updateBundleControls(); 
-                    updateSelectAllCheckboxState(); 
-                    return; 
-                }
-                
+                if (cb) { if (cb.checked) peBundle.add(cb.dataset.peId); else peBundle.delete(cb.dataset.peId); updateBundleControls(); updateSelectAllCheckboxState(); return; }
                 handle3dLinkClick(e);
-                
                 const row = e.target.closest('.pe-main-row');
-                // Ensure we aren't clicking a button inside the row
                 if (row && !e.target.closest('.clickable-element-link, .view-related-3d-btn, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
                     const wasExp = row.classList.contains('expanded');
                     const detailsRow = row.nextElementSibling;
                     const peId = row.dataset.peId;
-
-                    // Close all other rows
+                    
+                    // Close other rows
                     peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible'));
                     
                     if (!wasExp) {
+                        // --- LAZY LOAD CONTENT ON CLICK ---
                         const detailsCell = detailsRow.querySelector('td');
-                        
-                        // --- FIX: Check if cell has children. If not, load content. ---
                         if (!detailsCell.hasChildNodes()) {
                             const pe = peMap.get(peId);
-                            if (pe) {
-                                detailsCell.innerHTML = createPeDetailsHtml(pe);
-                            }
+                            if (pe) detailsCell.innerHTML = createPeDetailsHtml(pe);
                         }
-
+                        
                         row.classList.add('expanded');
                         detailsRow.classList.add('is-visible');
-                        
-                        setTimeout(() => { 
-                            const cont = peExplorerView.querySelector('.table-container'); 
-                            const head = document.querySelector('#pe-explorer-table thead'); 
-                            if (cont && head) cont.scrollTo({ top: row.offsetTop - head.offsetHeight, behavior: 'smooth' }); 
-                        }, 50);
+                        setTimeout(() => { const cont = peExplorerView.querySelector('.table-container'); const head = document.querySelector('#pe-explorer-table thead'); if (cont && head) cont.scrollTo({ top: row.offsetTop - head.offsetHeight, behavior: 'smooth' }); }, 50);
                     }
                     updateUrlFromState();
                 }
             });
             bundleView.addEventListener('click', handle3dLinkClick);
             threedTableBody.addEventListener('click', e => { const item = e.target.closest('.item'); if(item) { const code = item.dataset.code; const el = specificElementMap.get(code); if(!el) return; document.getElementById('related-pe-modal-title').textContent = `PEs related to ${code}`; const ids = [...el.relatedPes].sort(); relatedPeList.innerHTML = ids.length ? ids.map(id => { const p = peMap.get(id); return `<li class="clickable-pe-link" data-pe-id="${id}" title="${p.description.replace(/"/g, '&quot;')}"><strong>${id}</strong>: ${p.description}</li>`; }).join('') : '<li>No PEs found.</li>'; relatedPeModal.classList.add('is-visible'); } });
-            relatedPeModal.addEventListener('click', e => { const li = e.target.closest('.clickable-pe-link'); if (li) { pushNavState(true); relatedPeModal.classList.remove('is-visible'); activePeFilter = li.dataset.peId; switchView('3d', null, true); } else if (e.target === relatedPeModal || e.target.closest('.modal-close-btn')) relatedPeModal.classList.remove('is-visible'); });
+            
+            // --- UPDATED RELATED PE MODAL NAVIGATION ---
+            relatedPeModal.addEventListener('click', e => { 
+                const li = e.target.closest('.clickable-pe-link'); 
+                if (li) { 
+                    relatedPeModal.classList.remove('is-visible'); 
+                    navigateToPe(li.dataset.peId); // This now handles Lazy Load + Scroll
+                } else if (e.target === relatedPeModal || e.target.closest('.modal-close-btn')) {
+                    relatedPeModal.classList.remove('is-visible'); 
+                }
+            });
+
             settingsBtn.addEventListener('click', () => settingsModal.classList.add('is-visible'));
             settingsModal.addEventListener('click', e => { if (e.target === settingsModal || e.target.closest('.modal-close-btn')) settingsModal.classList.remove('is-visible'); });
             saveSettingsBtn.addEventListener('click', () => { const key = apiKeyInput.value.trim(); if(key){ localStorage.setItem('geminiApiKey', key); initializeGenAI(); } else { localStorage.removeItem('geminiApiKey'); genAI = null; } selectedAiModel = aiModelSelect.value; localStorage.setItem('aiModel', selectedAiModel); alert('Settings saved.'); settingsModal.classList.remove('is-visible'); });
