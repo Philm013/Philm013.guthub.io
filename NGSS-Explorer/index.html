@@ -674,9 +674,7 @@
                     <td><span class="copyable">${pe.topicTitle}</span></td>
                 </tr>
                 <tr class="pe-details-row" data-pe-id="${pe.id}">
-                    <td colspan="5">
-                        <!-- CONTENT IS NOW LAZY LOADED -->
-                    </td>
+                    <td colspan="5"></td> 
                 </tr>`
             ).join('');
         };
@@ -1069,21 +1067,15 @@ The JSON object must contain:
                     peTableBody.querySelectorAll('.expanded, .is-visible').forEach(r => r.classList.remove('expanded', 'is-visible'));
                     
                     if (!wasExp) {
-                        // --- LAZY LOADING LOGIC START ---
                         const detailsCell = detailsRow.querySelector('td');
-                        if (!detailsCell.innerHTML.trim()) {
-                            // If the cell is empty, generate the HTML now (just for this one PE)
+                        
+                        // --- FIX: Check if cell has children. If not, load content. ---
+                        if (!detailsCell.hasChildNodes()) {
                             const pe = peMap.get(peId);
                             if (pe) {
                                 detailsCell.innerHTML = createPeDetailsHtml(pe);
-                                // Re-run the bundle check to analyze button visibility if needed
-                                if (currentView === 'bundle') {
-                                    // simpler render for bundle view usually handled elsewhere, 
-                                    // but this ensures consistency in main view
-                                }
                             }
                         }
-                        // --- LAZY LOADING LOGIC END ---
 
                         row.classList.add('expanded');
                         detailsRow.classList.add('is-visible');
