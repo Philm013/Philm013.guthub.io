@@ -43,15 +43,8 @@
         .chat-bubble { max-width: 75%; padding: 0.5rem 1rem; border-radius: 1rem; }
         .chat-bubble-self { background-color: var(--blue); border-bottom-right-radius: 0.25rem; }
         .chat-bubble-other { background-color: #374151; border-bottom-left-radius: 0.25rem; }
-        .map-container {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 1; /* <-- THIS IS THE FIX */
-}
-    .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        .map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -77,15 +70,25 @@
         <div id="modal-qr-scanner" class="modal-container"><div class="flex flex-col items-center justify-center"><p class="text-2xl font-bold mb-4">Scanning QR Code...</p><div class="w-64 h-64 border-4 border-white rounded-lg relative overflow-hidden"><div class="absolute top-0 w-full h-1 bg-green-400 animate-ping"></div></div><button id="btn-close-scanner" class="absolute top-6 left-6 text-white text-3xl bg-black/30 w-12 h-12 rounded-full"><i class="fa-solid fa-times"></i></button></div></div>
         <div id="modal-qr-share" class="modal-container"><div class="bg-white p-8 rounded-[32px] text-center" onclick="event.stopPropagation()"><div id="qrcode-display" class="flex justify-center p-2 mb-4"></div><p class="text-black font-bold text-lg">Scan to Join Hunt</p><p id="qr-code" class="text-gray-600 font-mono text-2xl tracking-widest my-2"></p></div><button id="btn-copy-link" class="mt-4 bg-white text-black px-6 py-3 rounded-full font-bold text-lg">Copy Invite Link</button></div>
         <div id="toast" class="fixed top-24 left-1/2 -translate-x-1/2 glass px-6 py-3 rounded-full text-sm font-bold opacity-0 transition-all pointer-events-none -translate-y-4 z-[200]"></div>
-        <div id="loader-overlay" class="modal-container"><div class="loader"></div></div>
+        <div id="loader-overlay" class="modal-container hidden"><div class="loader"></div></div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
     // ===================================================================
-    //  APPLICATION JAVASCRIPT - REFACTORED & STABLE
+    //  APPLICATION JAVASCRIPT - REFACTORED & STABLE (v4)
     // ===================================================================
     
+    // --- UTILITIES (DEFINED FIRST) ---
+    const Utils = { vibrate: (duration = 50) => { if (navigator.vibrate) navigator.vibrate(duration); } };
+    const SoundManager = { play: id => { Utils.vibrate(20); document.getElementById(id)?.play(); } };
+    class EventBus {
+        constructor() { this.events = {}; }
+        on(event, listener) { (this.events[event] = this.events[event] || []).push(listener); }
+        emit(event, data) { if (this.events[event]) this.events[event].forEach(l => l(data)); }
+    }
+
+    // --- MAIN APPLICATION CLASS ---
     class SnapHuntApp {
         constructor() {
             this.state = {
@@ -183,7 +186,6 @@
             setTimeout(() => el.classList.add('opacity-0', '-translate-y-4'), 3000);
         }
 
-        // *** FIX: Moved state-related methods here ***
         createEmptyHunt() {
             return { id: 'SNAP' + Math.random().toString(36).substr(2, 4).toUpperCase(), name: "My New Hunt", gameMode: 'linear', checkpoints: [], participants: {}, submissions: {} };
         }
@@ -193,6 +195,7 @@
         }
     }
 
+    // --- MANAGER CLASSES ---
     class ViewManager {
         constructor(app) {
             this.app = app;
@@ -227,8 +230,14 @@
             }
         }
 
-        showModal(modalId) { const el = document.getElementById(modalId); el.classList.add('visible'); SoundManager.play('sound-click'); if (modalId === 'modal-leaderboard') { this.renderLeaderboard(Object.values(this.app.state.huntData.participants)); } }
+        showModal(modalId) { const el = document.getElementById(modalId); el.classList.add('visible'); SoundManager.play('sound-click'); if (modalId === 'modal-leaderboard' && this.app.state.huntData) { this.renderLeaderboard(Object.values(this.app.state.huntData.participants)); } }
         hideModal(modalId) { document.getElementById(modalId).classList.remove('visible'); }
+        
+        // *** FIX: Re-implemented helper methods ***
+        updateText(elementId, text) { document.getElementById(elementId).innerText = text; }
+        showElement(elementId) { document.getElementById(elementId).classList.remove('hidden'); }
+        hideElement(elementId) { document.getElementById(elementId).classList.add('hidden'); }
+
         renderCheckpointList(checkpoints) { const listEl = document.getElementById('checkpoint-list'); document.getElementById('checkpoint-count').innerText = checkpoints.length; if (checkpoints.length === 0) { listEl.innerHTML = `<div class="text-center p-4 text-gray-400">Tap the map or search to add a checkpoint.</div>`; return; } listEl.innerHTML = checkpoints.map((cp, index) => `<div class="flex items-center p-3 bg-white/5 rounded-lg cursor-pointer" onclick="app.hostManager.editCheckpoint(${index})"><div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold mr-3">${index + 1}</div><div class="flex-1 text-sm truncate">${cp.clue || 'Untitled Checkpoint'}</div><i class="fa-solid fa-${cp.unlockMethod === 'geo' ? 'location-dot' : cp.unlockMethod === 'photo' ? 'camera' : 'qrcode'} text-gray-400"></i></div>`).join(''); }
         renderParticipantList(participants) { const listEl = document.getElementById('participant-list'); if (participants.length === 0) { listEl.innerHTML = `<div class="text-gray-400">You're the first one here!</div>`; return; } listEl.innerHTML = participants.map(p => `<div class="glass p-3 rounded-lg font-bold">${p.name}</div>`).join(''); }
         renderLeaderboard(participants) { const content = document.getElementById('leaderboard-content'); const sorted = participants.sort((a,b) => b.score - a.score); content.innerHTML = sorted.map((p, i) => `<div class="flex items-center p-2 bg-white/5 rounded-lg"><span class="font-bold w-8">${i+1}</span><span>${p.name}</span><span class="ml-auto font-bold">${p.score}</span></div>`).join(''); }
@@ -282,12 +291,6 @@
         usePowerup(power) { Utils.vibrate(); const playerState = this.app.state.playerState; playerState.powerups.splice(playerState.powerups.indexOf(power), 1); this.app.viewManager.renderPowerups(playerState.powerups); if(power==='hint') { this.app.toast(`Hint: The clue relates to "${this.app.state.huntData.checkpoints[playerState.activeCheckpointIndex].clue.split(' ')[2]}"`); } if(power==='compass') { this.app.mapManager.activateCompass(); } if(power==='bolt') { playerState.scoreMultiplier = 2; this.app.toast('Score Doubler Active!'); } }
         handleHuntEnd() { this.app.mapManager.stopGeo(); document.getElementById('participant-game').classList.add('hidden'); document.getElementById('participant-postgame').classList.remove('hidden'); }
         sendMessage() { const input = document.getElementById('chat-input'); const message = input.value.trim(); if (!message) return; const messagesEl = document.getElementById('chat-messages'); messagesEl.innerHTML += `<div class="flex justify-end"><div class="chat-bubble chat-bubble-self">${message}</div></div>`; input.value = ''; messagesEl.scrollTop = messagesEl.scrollHeight; SoundManager.play('sound-message'); this.app.eventBus.emit('CHAT_MESSAGE', { user: this.app.state.currentUser, message }); setTimeout(() => { messagesEl.innerHTML += `<div class="flex justify-start"><div class="chat-bubble chat-bubble-other">Got it! On my way.</div></div>`; messagesEl.scrollTop = messagesEl.scrollHeight; SoundManager.play('sound-message'); }, 2000); }
-    }
-
-    class EventBus {
-        constructor() { this.events = {}; }
-        on(event, listener) { (this.events[event] = this.events[event] || []).push(listener); }
-        emit(event, data) { if (this.events[event]) this.events[event].forEach(l => l(data)); }
     }
 
     const app = new SnapHuntApp();
