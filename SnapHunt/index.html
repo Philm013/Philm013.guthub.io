@@ -43,8 +43,15 @@
         .chat-bubble { max-width: 75%; padding: 0.5rem 1rem; border-radius: 1rem; }
         .chat-bubble-self { background-color: var(--blue); border-bottom-right-radius: 0.25rem; }
         .chat-bubble-other { background-color: #374151; border-bottom-left-radius: 0.25rem; }
-        .map-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
+        .map-container {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1; /* <-- THIS IS THE FIX */
+}
+    .loader { border: 4px solid #f3f3f3; border-top: 4px solid var(--blue); border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
