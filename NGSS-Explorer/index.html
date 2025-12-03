@@ -1075,6 +1075,7 @@
                 if (!cleanLine) return ''; 
                 
                 let processedLine = line;
+                let codeDisplay = ''; // New variable to hold the code HTML
                 
                 // 2. Attempt to link text to 3D element codes
                 const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
@@ -1083,15 +1084,11 @@
                     const el = specificElementMap.get(code); 
                     if (el) {
                         processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
+                        codeDisplay = `<strong style="font-family: monospace; color: #888; margin-right: 0.5em; font-size: 0.9em;">(${code})</strong> `;
                     }
                 } 
                 
                 // 3. Smart Bullet Detection
-                // - If it already has a bullet char, keep it.
-                // - If it matched a specific code (it's a 3D element), force a bullet.
-                // - If it's not the first line of a multi-line entry, force a bullet.
-                // - If it ends in a colon (:), it's likely a header, so NO bullet.
-                
                 const hasExistingBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
                 const isHeader = cleanLine.endsWith(':');
                 const isSpecificItem = !!code; // It matched a progression/element
@@ -1100,16 +1097,17 @@
                 let shouldBeBullet = hasExistingBullet || ((isSpecificItem || (lines.length > 1 && index > 0)) && !isHeader);
 
                 let className = 'pe-details-paragraph';
+                let finalHtml = `${codeDisplay}${processedLine}`;
                 
                 if (shouldBeBullet) {
                     className += ' is-bullet';
                     // If the bullet character is missing from the text (because of the JSON cleanup), add it visually here.
                     if (!hasExistingBullet) {
-                        processedLine = `• ${processedLine}`; 
+                        finalHtml = `• ${finalHtml}`; 
                     }
                 }
                 
-                return `<p class="${className}">${processedLine}</p>`; 
+                return `<p class="${className}">${finalHtml}</p>`; 
             }).join(''); 
         };
 		const createPeDetailsHtml = (pe, inBundle = false) => {
