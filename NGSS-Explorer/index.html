@@ -149,7 +149,7 @@
 
         /* Clarification & Boundary Boxes */
         .pe-details-info-box {
-            padding: 1rem 1.25rem;
+            padding: .25rem .55rem;
             margin-bottom: 1rem;
             border-radius: 6px;
             font-size: 0.95em;
@@ -160,6 +160,10 @@
             background-color: #fffbeb;
             border-left: 4px solid #f59e0b;
         }
+		.pe-details-info-box.clarification p, .pe-details-info-box.boundary p {
+		margin-bottom: .1rem;
+		}
+		
         /* Boundary: Soft Red/Gray Tone */
         .pe-details-info-box.boundary {
             background-color: #f3f4f6;
@@ -171,6 +175,7 @@
             font-size: 0.75em;
             letter-spacing: 0.05em;
             margin-bottom: 0.5rem;
+			margin-top: 0.1rem;
         }
 
         /* 3D Columns Container */
@@ -322,11 +327,7 @@
             border: 1px solid #ddd;
             color: #333;
         }
-        .view-related-3d-btn {
-            background-color: #004488;
-            color: #fff;
-            border: 1px solid #003366;
-        }
+
 
         /* Connections Section */
         .pe-details-connections {
@@ -891,7 +892,7 @@
             } 
             isNavigatingHistory = false; 
         };
-        const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
+        const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)/g, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
         const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => {
     let lineMatched = false;
 
@@ -1183,7 +1184,6 @@
                 </div>
                 <div class="pe-details-actions">
                     ${esBtn}
-                    <button class="filter-btn active view-related-3d-btn" data-pe-id="${pe.id}">Show All Related in 3D View</button>
                 </div>
                 ${createConns(pe.connections, pe)}
             </div>`;
@@ -1677,14 +1677,13 @@ The JSON object must contain:
 
             const handle3dLinkClick = (e) => {
                 const link = e.target.closest('.clickable-element-link');
-                const viewAllBtn = e.target.closest('.view-related-3d-btn');
                 const evidenceBtn = e.target.closest('.view-evidence-btn');
                 const analyzeBtn = e.target.closest('.analyze-pe-desc-btn');
                 const resetBtn = e.target.closest('.reset-analysis-btn');
                 if (evidenceBtn) { e.stopPropagation(); showEvidenceStatements(evidenceBtn.dataset.peId); return; }
                 if (analyzeBtn) { e.stopPropagation(); const peId = analyzeBtn.dataset.peId; const targetDiv = analyzeBtn.closest('.pe-details-wrapper').querySelector('.pe-description-text'); runAiAnalysis(peId, 'description', targetDiv); return; }
                 if (resetBtn) { e.stopPropagation(); const wrapper = resetBtn.closest('.pe-details-wrapper, .modal-footer'); const content = wrapper.parentElement.querySelector('.ai-editable-content'); if (content) { resetAnalysis(content.dataset.peId, content.dataset.part, content); } return; }
-                if (link || viewAllBtn) { const peId = e.target.closest('[data-pe-id]').dataset.peId; const compCode = link?.dataset.componentCode; const specCode = link?.dataset.specificCode; activePeFilter = link?.closest('.pe-details-connections') ? null : peId; switchView('3d', { component: compCode, specific: specCode }, true); }
+                if (link) { const peId = e.target.closest('[data-pe-id]').dataset.peId; const compCode = link?.dataset.componentCode; const specCode = link?.dataset.specificCode; activePeFilter = link?.closest('.pe-details-connections') ? null : peId; switchView('3d', { component: compCode, specific: specCode }, true); }
             };
             
             document.body.addEventListener('click', e => {
@@ -1723,7 +1722,7 @@ The JSON object must contain:
                 if (cb) { if (cb.checked) peBundle.add(cb.dataset.peId); else peBundle.delete(cb.dataset.peId); updateBundleControls(); updateSelectAllCheckboxState(); return; }
                 handle3dLinkClick(e);
                  const row = e.target.closest('.pe-main-row');
-                if (row && !e.target.closest('.clickable-element-link, .view-related-3d-btn, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
+                if (row && !e.target.closest('.clickable-element-link, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
                     const wasExp = row.classList.contains('expanded');
                     const detailsRow = row.nextElementSibling;
                     const peId = row.dataset.peId;
