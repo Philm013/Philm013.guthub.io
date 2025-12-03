@@ -1051,35 +1051,56 @@
             ).join(''); 
         };
         const processAndLinkPeText = (text, peId) => { 
-			const pe = peMap.get(peId); 
-			
-			// FIX: Normalize input. If it's an Array, use it. If String, split it.
-			if (!text) return '';
-			const lines = Array.isArray(text) ? text : text.split('\n');
+            const pe = peMap.get(peId); 
+            
+            // 1. Handle Array (new) vs String (old) input
+            if (!text) return '';
+            const lines = Array.isArray(text) ? text : text.split('\n');
 
-			if (!pe) return lines.join('<br>'); // Fallback
-			
-			return lines.map(line => { 
-				const cleanLine = line.trim();
-				if (!cleanLine) return ''; 
-				
-				let processedLine = line;
-				const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
-				
-				if (code) { 
-					const el = specificElementMap.get(code); 
-					if (el) {
-						processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
-					}
-				} 
-				
-				// DETECT BULLET POINTS
-				const isBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
-				const className = isBullet ? 'pe-details-paragraph is-bullet' : 'pe-details-paragraph';
-				
-				return `<p class="${className}">${processedLine}</p>`; 
-			}).join(''); 
-		};
+            if (!pe) return lines.join('<br>'); // Fallback
+            
+            return lines.map((line, index) => { 
+                const cleanLine = line.trim();
+                if (!cleanLine) return ''; 
+                
+                let processedLine = line;
+                
+                // 2. Attempt to link text to 3D element codes
+                const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
+                
+                if (code) { 
+                    const el = specificElementMap.get(code); 
+                    if (el) {
+                        processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
+                    }
+                } 
+                
+                // 3. Smart Bullet Detection
+                // - If it already has a bullet char, keep it.
+                // - If it matched a specific code (it's a 3D element), force a bullet.
+                // - If it's not the first line of a multi-line entry, force a bullet.
+                // - If it ends in a colon (:), it's likely a header, so NO bullet.
+                
+                const hasExistingBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
+                const isHeader = cleanLine.endsWith(':');
+                const isSpecificItem = !!code; // It matched a progression/element
+                
+                // Logic: It's a bullet if it already has one, OR if it's a specific element, OR if it's item 2+ in a list, UNLESS it looks like a header.
+                let shouldBeBullet = hasExistingBullet || ((isSpecificItem || (lines.length > 1 && index > 0)) && !isHeader);
+
+                let className = 'pe-details-paragraph';
+                
+                if (shouldBeBullet) {
+                    className += ' is-bullet';
+                    // If the bullet character is missing from the text (because of the JSON cleanup), add it visually here.
+                    if (!hasExistingBullet) {
+                        processedLine = `• ${processedLine}`; 
+                    }
+                }
+                
+                return `<p class="${className}">${processedLine}</p>`; 
+            }).join(''); 
+        };
 		const createPeDetailsHtml = (pe, inBundle = false) => {
             // Helper to link codes
             const linkPeCodes = (text, currentPe) => {
