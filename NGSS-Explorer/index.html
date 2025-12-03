@@ -892,7 +892,35 @@
             isNavigatingHistory = false; 
         };
         const escapeRegExp = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); const normalizeText = t => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(); const getGradeBandKey = l => { if (!l) return null; const lc = l.toLowerCase(); if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary'; if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary'; if (lc.includes('middle')) return 'middle'; if (lc.includes('high')) return 'high'; return null; }; const findBestMatchingSpecificElement = (text, grade) => { const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim(); if (clean.length < 15) return null; const cacheKey = `${grade}|${clean}`; if (fuzzyMatchCache.has(cacheKey)) return fuzzyMatchCache.get(cacheKey); const normText = normalizeText(clean); const words = normText.split(' ').filter(w => w.length > 1); if (words.length === 0) return null; const threshold = words.length < 10 ? 0.75 : 0.80; const gradeKey = getGradeBandKey(grade); let best = { code: null, score: 0, base: 0, len: Infinity }; for (const [offText, code] of textToSpecificCodeMap.entries()) { const normOffText = normalizeText(offText); const found = words.reduce((count, word) => { const rgx = new RegExp(`\\b${escapeRegExp(word)}\\b`); if (rgx.test(normOffText)) return count + 1; const singular = word.endsWith('s') ? word.slice(0, -1) : null; if (singular && singular.length > 2 && new RegExp(`\\b${escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1; const plural = !word.endsWith('s') ? word + 's' : null; if (plural && new RegExp(`\\b${escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1; return count; }, 0); const baseScore = found / words.length; let weightedScore = baseScore; const el = specificElementMap.get(code); if (gradeKey && el && el.gradeBandKey === gradeKey) weightedScore += 1.0; if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) { best = { code, score: weightedScore, base: baseScore, len: offText.length }; } } const result = best.base >= threshold ? best.code : null; fuzzyMatchCache.set(cacheKey, result); return result; };
-        const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => { let lineMatched = false; ref.text.split('\n').forEach(line => { if (!line.trim()) return; const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel); if (specCode) { specCodes.add(specCode); const el = specificElementMap.get(specCode); if (el) { el.relatedPes.add(pe.id); if (el.parentCode) compCodes.add(el.parentCode); } lineMatched = true; } }); if (!lineMatched) { const cleanId = ref.id.replace(' (secondary)', '').trim(); let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim()); if (cCode) compCodes.add(cCode); } })); peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
+        const processAllData = () => { window.allNgss3dElements.forEach(dim => (dim.elements || dim.core_ideas?.flatMap(c => c.components) || []).forEach(item => { const name = item.name.trim(); const parts = name.split(':'); const code = parts[0].trim(); if (!code) return; const nameOnly = parts.length > 1 ? parts.slice(1).join(':').trim() : name; if (!elementMap.has(code)) elementMap.set(code, { ...item, code, dimensionCode: dim.code, dimensionName: dim.dimension }); nameToCodeMap.set(name, code); nameToCodeMap.set(nameOnly, code); nameToCodeMap.set(code, code); Object.entries(item.progressions).forEach(([gradeKey, progs]) => (progs || []).forEach(prog => { if (!specificElementMap.has(prog.code)) specificElementMap.set(prog.code, { ...prog, parentCode: code, parentName: item.name, gradeBandKey: gradeKey, relatedPes: new Set() }); textToSpecificCodeMap.set(prog.text.trim(), prog.code); })); })); window.allNgssData.forEach(gradeData => gradeData.topics.forEach(topic => topic.performanceExpectations.forEach(pe => { const compCodes = new Set(); const specCodes = new Set(); ['sep', 'dci', 'ccc'].forEach(key => (pe.details[key] || []).forEach(ref => {
+    let lineMatched = false;
+
+    // FIX: Handle if 'text' is an Array (new JSON) or a String (old JSON)
+    const lines = Array.isArray(ref.text) 
+        ? ref.text 
+        : (typeof ref.text === 'string' ? ref.text.split('\n') : []);
+
+    lines.forEach(line => {
+        if (!line.trim()) return;
+        const specCode = findBestMatchingSpecificElement(line, gradeData.gradeLabel);
+        if (specCode) {
+            specCodes.add(specCode);
+            const el = specificElementMap.get(specCode);
+            if (el) {
+                el.relatedPes.add(pe.id);
+                if (el.parentCode) compCodes.add(el.parentCode);
+            }
+            lineMatched = true;
+        }
+    });
+
+    if (!lineMatched && ref.id) {
+        const cleanId = ref.id.replace(' (secondary)', '').trim();
+        let cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(cleanId.split(':').pop().trim());
+        if (cCode) compCodes.add(cCode);
+    }
+}));
+ peMap.set(pe.id, { ...pe, gradeLabel: gradeData.gradeLabel, topicTitle: topic.topicTitle, connections: topic.connections, associatedComponentCodes: compCodes, associatedSpecificCodes: specCodes }); }))); };
         
         const fetchRawData = async () => {
             try {
@@ -1250,8 +1278,63 @@ const populate3dTable = () => { threedTableBody.innerHTML = window.allNgss3dElem
             history.replaceState(null, '', window.location.pathname); 
             isNavigatingHistory = false; 
         };
-        const applySearchHighlight = (body, term) => { body.querySelectorAll('span.search-highlight').forEach(el => { el.parentNode.replaceChild(document.createTextNode(el.textContent), el); el.parentNode.normalize(); }); if (!term) return; const rgx = new RegExp(escapeRegExp(term), 'gi'); const sel = currentView === 'pe' ? 'tr:not([style*="display: none"]) td' : currentView === '3d' ? '.data-row:not([style*="display: none"]) td' : '#matrix-table tr:not([style*="display: none"]) td'; body.querySelectorAll(sel).forEach(cell => { const w = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT, null, false); let n; const nodes = []; while (n = w.nextNode()) if (n.textContent.match(rgx)) nodes.push(n); nodes.forEach(node => { const span = document.createElement('span'); span.innerHTML = node.textContent.replace(rgx, `<span class="search-highlight">$&</span>`); node.parentNode.replaceChild(span, node); }); }); };
-        const applyFilters = () => { if (currentView === 'pe') filterPeTable(); else if (currentView === '3d') update3dView(); else if (currentView === 'matrix') filterMatrixTable(); const body = document.querySelector('.explorer-view.is-visible table tbody'); if (body) applySearchHighlight(body, searchInput.value.trim()); };
+        const applySearchHighlight = (container, term) => {
+            // 1. Cleanup: Remove existing highlights before applying new ones
+            container.querySelectorAll('span.search-highlight').forEach(span => {
+                const parent = span.parentNode;
+                parent.replaceChild(document.createTextNode(span.textContent), span);
+                parent.normalize(); // Merge adjacent text nodes
+            });
+
+            if (!term) return;
+
+            // 2. Escape regex characters to prevent errors with terms like "E=mc^2"
+            const safeTerm = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${safeTerm})`, 'gi');
+            
+            // 3. Walk through all text nodes
+            const walker = document.createTreeWalker(
+                container, 
+                NodeFilter.SHOW_TEXT, 
+                {
+                    acceptNode: (node) => {
+                        // Skip empty text or text inside existing highlights
+                        if (!node.textContent.trim()) return NodeFilter.FILTER_REJECT;
+                        if (node.parentNode.classList.contains('search-highlight')) return NodeFilter.FILTER_REJECT;
+                        return NodeFilter.FILTER_ACCEPT;
+                    }
+                }, 
+                false
+            );
+
+            const nodesToHighlight = [];
+            while (walker.nextNode()) {
+                if (regex.test(walker.currentNode.textContent)) {
+                    nodesToHighlight.push(walker.currentNode);
+                }
+            }
+
+            // 4. Apply Highlight
+            nodesToHighlight.forEach(node => {
+                const fragment = document.createDocumentFragment();
+                // Split by the regex (capturing group keeps the separator/match)
+                const parts = node.textContent.split(regex);
+                
+                parts.forEach(part => {
+                    if (part.toLowerCase() === term.toLowerCase()) {
+                        const span = document.createElement('span');
+                        span.className = 'search-highlight';
+                        span.textContent = part;
+                        fragment.appendChild(span);
+                    } else {
+                        fragment.appendChild(document.createTextNode(part));
+                    }
+                });
+                
+                node.parentNode.replaceChild(fragment, node);
+            });
+        };
+		const applyFilters = () => { if (currentView === 'pe') filterPeTable(); else if (currentView === '3d') update3dView(); else if (currentView === 'matrix') filterMatrixTable(); const body = document.querySelector('.explorer-view.is-visible table tbody'); if (body) applySearchHighlight(body, searchInput.value.trim()); };
         const filterPeTable = () => { const term = searchInput.value.trim().toLowerCase(); const grade = gradeFilters.querySelector('.active')?.dataset.filter || 'all'; const topics = new Set([...document.querySelectorAll('#topic-filters .filter-btn.active')].map(b => b.dataset.filter)); const showAllTopics = topics.has('all') || topics.size === 0; const bundleIds = activeBundleFilter ? new Set(savedBundles[activeBundleFilter]) : null; let count = 0; peTableBody.querySelectorAll('.pe-main-row').forEach(row => { const pe = peMap.get(row.dataset.peId); const hasElems = activeElementFilters.size === 0 || [...activeElementFilters].every(code => pe.associatedComponentCodes.has(code)); const inBundle = !bundleIds || bundleIds.has(pe.id); const isVis = (!term || row.textContent.toLowerCase().includes(term)) && (grade === 'all' || row.dataset.grade === grade) && (showAllTopics || topics.has(pe.topicTitle)) && hasElems && inBundle; row.style.display = isVis ? '' : 'none'; const details = row.nextElementSibling; if (!isVis && details?.classList.contains('is-visible')) { details.classList.remove('is-visible'); row.classList.remove('expanded'); } if (isVis) count++; }); updateSelectAllCheckboxState(); resultsCountSpan.textContent = `${count} PEs found.`; };
         const clearPeFilter = () => { activePeFilter = null; activePeFilterTag.style.display = 'none'; applyFilters(); updateUrlFromState(); };
         const applyColumnIsolation = () => { const table = document.getElementById('threed-explorer-table'); table.className = ''; document.querySelectorAll('.col-toggle-btn.active').forEach(b => b.classList.remove('active')); if (isolatedColumn) { table.classList.add('col-isolated', `isolate-col-${isolatedColumn}`); table.querySelector(`.col-toggle-btn[data-col="${isolatedColumn}"]`)?.classList.add('active'); } };
@@ -1607,7 +1690,7 @@ The JSON object must contain:
                 const cb = e.target.closest('.pe-bundle-checkbox');
                 if (cb) { if (cb.checked) peBundle.add(cb.dataset.peId); else peBundle.delete(cb.dataset.peId); updateBundleControls(); updateSelectAllCheckboxState(); return; }
                 handle3dLinkClick(e);
-                const row = e.target.closest('.pe-main-row');
+                 const row = e.target.closest('.pe-main-row');
                 if (row && !e.target.closest('.clickable-element-link, .view-related-3d-btn, .view-evidence-btn, .analyze-pe-desc-btn, .reset-analysis-btn')) {
                     const wasExp = row.classList.contains('expanded');
                     const detailsRow = row.nextElementSibling;
@@ -1627,7 +1710,10 @@ The JSON object must contain:
                         row.classList.add('expanded');
                         detailsRow.classList.add('is-visible');
                         
-                        scrollToPeRow(row); // Standardized scroll
+                        // *** NEW LINE: Re-apply highlight to the newly opened details ***
+                        applySearchHighlight(detailsRow, searchInput.value.trim());
+
+                        scrollToPeRow(row); 
                     }
                     updateUrlFromState();
                 }
