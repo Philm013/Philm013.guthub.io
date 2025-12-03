@@ -1051,32 +1051,35 @@
             ).join(''); 
         };
         const processAndLinkPeText = (text, peId) => { 
-            const pe = peMap.get(peId); 
-            if (!pe) return text; 
-            
-            return text.split('\n').map(line => { 
-                const cleanLine = line.trim();
-                if (!cleanLine) return ''; // Skip empty lines
-                
-                let processedLine = line;
-                const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
-                
-                if (code) { 
-                    const el = specificElementMap.get(code); 
-                    if (el) {
-                        processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
-                    }
-                } 
-                
-                // DETECT BULLET POINTS
-                // If it starts with a bullet, add the 'is-bullet' class for hanging indent.
-                // Otherwise, use standard paragraph formatting.
-                const isBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
-                const className = isBullet ? 'pe-details-paragraph is-bullet' : 'pe-details-paragraph';
-                
-                return `<p class="${className}">${processedLine}</p>`; 
-            }).join(''); 
-        };
+			const pe = peMap.get(peId); 
+			
+			// FIX: Normalize input. If it's an Array, use it. If String, split it.
+			if (!text) return '';
+			const lines = Array.isArray(text) ? text : text.split('\n');
+
+			if (!pe) return lines.join('<br>'); // Fallback
+			
+			return lines.map(line => { 
+				const cleanLine = line.trim();
+				if (!cleanLine) return ''; 
+				
+				let processedLine = line;
+				const code = findBestMatchingSpecificElement(line, pe.gradeLabel); 
+				
+				if (code) { 
+					const el = specificElementMap.get(code); 
+					if (el) {
+						processedLine = `<span class="clickable-element-link" title="${el.text.replace(/"/g, '&quot;')}" data-pe-id="${peId}" data-component-code="${el.parentCode}" data-specific-code="${code}">${line}</span>`; 
+					}
+				} 
+				
+				// DETECT BULLET POINTS
+				const isBullet = cleanLine.startsWith('•') || cleanLine.startsWith('*') || cleanLine.startsWith('-');
+				const className = isBullet ? 'pe-details-paragraph is-bullet' : 'pe-details-paragraph';
+				
+				return `<p class="${className}">${processedLine}</p>`; 
+			}).join(''); 
+		};
 		const createPeDetailsHtml = (pe, inBundle = false) => {
             // Helper to link codes
             const linkPeCodes = (text, currentPe) => {
@@ -1348,7 +1351,11 @@ const populate3dTable = () => { threedTableBody.innerHTML = window.allNgss3dElem
         const syncCheckboxesWithBundle = () => { peTableBody.querySelectorAll('.pe-bundle-checkbox').forEach(cb => { cb.checked = peBundle.has(cb.dataset.peId); }); updateSelectAllCheckboxState(); };
         const renderBundleSummary = () => { const counts = {}; peBundle.forEach(id => { const pe = peMap.get(id); if (!pe) return; pe.associatedComponentCodes.forEach(code => { const el = elementMap.get(code); if (!el) return; const dim = el.dimensionCode; if (!counts[dim]) counts[dim] = new Map(); if (!counts[dim].has(code)) counts[dim].set(code, { name: el.name, count: 0 }); counts[dim].get(code).count++; }); }); const order = window.allNgss3dElements.map(d => d.code); const dims = Object.keys(counts).filter(d => counts[d].size > 0).sort((a, b) => order.indexOf(a) - order.indexOf(b)); const listHtml = map => `<ul>${[...map.entries()].sort((a, b) => b[1].count - a[1].count).map(([_, { name, count }]) => `<li class="copyable"><strong>(${count})</strong> ${name}</li>`).join('')}</ul>`; const colHtml = code => { const data = window.allNgss3dElements.find(d => d.code === code); return `<div class="bundle-summary-col"><h4>${data ? data.dimension : code}</h4>${listHtml(counts[code])}</div>`; }; const dciHtml = codes => { if (!codes.length) return ''; return `<div class="bundle-summary-col dci-group"><h4>Disciplinary Core Ideas</h4>${codes.map(code => { const data = window.allNgss3dElements.find(d => d.code === code); return `<div class="dci-sub-group"><h5 class="dci-sub-header">${data ? data.dimension.replace('Disciplinary Core Ideas - ', '') : code}</h5>${listHtml(counts[code])}</div>`; }).join('')}</div>`; }; const mainCodes = ['SEP', 'CCC']; const dciCodes = dims.filter(d => d.startsWith('DCI')); const connCodes = dims.filter(d => ['CNS', 'C-ETAS'].includes(d)); let mainGrid = dims.filter(d => mainCodes.includes(d)).map(colHtml).join(''); mainGrid += dciHtml(dciCodes); const connGrid = connCodes.map(colHtml).join(''); return `<div class="bundle-summary"><h3>Bundle 3D Element Summary</h3><div class="bundle-summary-grid">${mainGrid}</div>${connGrid ? `<div class="bundle-summary-connections-grid">${connGrid}</div>` : ''}</div>`; };
         const renderBundleView = () => { if (!peBundle.size) return; currentView = 'bundle'; peExplorerView.style.display = 'none'; threedExplorerView.style.display = 'none'; bundleView.style.display = 'flex'; let html = `<div class="bundle-header"><h2>Selected PEs (${peBundle.size})</h2><div class="bundle-header-actions"><button id="copy-bundle-btn" class="filter-btn">Copy</button><button id="print-bundle-btn" class="filter-btn">Print</button><button id="back-to-pe-list-btn" class="filter-btn">&larr; Back</button></div></div>`; html += renderBundleSummary(); peBundle.forEach(id => { const pe = peMap.get(id); if (pe) html += `<div class="pe-bundle-item"><h3>${pe.id}: ${pe.description}</h3><div>${createPeDetailsHtml(pe, true)}</div></div>`; }); bundleView.innerHTML = html; document.getElementById('back-to-pe-list-btn').addEventListener('click', () => { bundleView.style.display = 'none'; switchView('pe'); }); document.getElementById('print-bundle-btn').addEventListener('click', () => window.print()); document.getElementById('copy-bundle-btn').addEventListener('click', copyBundleToClipboard); updateUrlFromState(); };
-        const copyBundleToClipboard = () => { let text = `NGSS PE Bundle (${peBundle.size} PEs)\n==============================\n\n`; const summary = document.querySelector('.bundle-summary'); if (summary) text += summary.innerText + '\n\n------------------------------\n\n'; peBundle.forEach(id => { const pe = peMap.get(id); if (pe) { text += `${pe.id}: ${pe.description}\n`; ['sep', 'dci', 'ccc'].forEach(dim => { if (pe.details[dim]?.length) { text += `  ${dim.toUpperCase()}:\n`; pe.details[dim].forEach(item => { text += `    - ${item.id}: ${item.text.trim().replace(/\n/g, ' ')}\n`; }); } }); text += '\n'; } }); navigator.clipboard.writeText(text).then(() => alert('Bundle details copied!')); };
+        const copyBundleToClipboard = () => { let text = `NGSS PE Bundle (${peBundle.size} PEs)\n==============================\n\n`; const summary = document.querySelector('.bundle-summary'); if (summary) text += summary.innerText + '\n\n------------------------------\n\n'; peBundle.forEach(id => { const pe = peMap.get(id); if (pe) { text += `${pe.id}: ${pe.description}\n`; ['sep', 'dci', 'ccc'].forEach(dim => { if (pe.details[dim]?.length) { text += `  ${dim.toUpperCase()}:\n`; // FIX: Handle Array or String for Clipboard
+pe.details[dim].forEach(item => { 
+    const txt = Array.isArray(item.text) ? item.text.join(' ') : item.text.replace(/\n/g, ' ');
+    text += `    - ${item.id}: ${txt.trim()}\n`; 
+}); } }); text += '\n'; } }); navigator.clipboard.writeText(text).then(() => alert('Bundle details copied!')); };
         const renderActiveElementFilters = () => { activeElementFiltersDiv.innerHTML = [...activeElementFilters].map(code => { const el = elementMap.get(code); const name = el ? el.name.split(':')[1]?.trim() || el.name : code; return `<span class="element-filter-tag">${name} <button data-code="${code}" title="Remove filter">&times;</button></span>`; }).join(''); };
         const saveBundlesToStorage = () => localStorage.setItem('ngssSavedBundles', JSON.stringify(savedBundles));
         const loadBundlesFromStorage = () => savedBundles = JSON.parse(localStorage.getItem('ngssSavedBundles') || '{}');
@@ -1373,7 +1380,11 @@ const populate3dTable = () => { threedTableBody.innerHTML = window.allNgss3dElem
             ['sep', 'dci', 'ccc'].forEach(key => {
                 if (p.details[key] && p.details[key].length > 0) {
                     context += `### ${key.toUpperCase()}s\n`;
-                    p.details[key].forEach(item => context += `- **${item.id}:** ${item.text.replace(/\n/g, ' ')}\n`);
+                   // FIX: Handle Array or String for AI context
+					p.details[key].forEach(item => {
+						const txt = Array.isArray(item.text) ? item.text.join(' ') : item.text.replace(/\n/g, ' ');
+						context += `- **${item.id}:** ${txt}\n`;
+					});
                     context += '\n';
                 }
             });
