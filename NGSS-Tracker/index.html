@@ -2152,7 +2152,7 @@
         
         async function loadDataAndInit() {
             try {
-                const dataPath = '../JSON/';
+                const dataPath = 'https://philm013.github.io/JSON/';
                 const [ngss3d, k5, m68, h912] = await Promise.all([
                     fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${res.url}`); return res.json(); }),
                     fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${res.url}`); return res.json(); }),
