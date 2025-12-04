@@ -1,0 +1,2178 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>K-12 NGSS 3D Progression Planner</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        // Support for Tailwind's dark mode based on user's OS preference
+        tailwind.config = {
+          darkMode: 'media',
+        }
+    </script>
+    <style>
+        /* A few helper styles for sticky table headers and custom scrollbars */
+        #planner-table-container, .modal-content, #progression-table-view, #popover-content {
+            scrollbar-width: thin;
+            scrollbar-color: #a0aec0 #e2e8f0;
+        }
+        #planner-table-container::-webkit-scrollbar, .modal-content::-webkit-scrollbar, #progression-table-view::-webkit-scrollbar, #popover-content::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        #planner-table-container::-webkit-scrollbar-track, .modal-content::-webkit-scrollbar-track, #progression-table-view::-webkit-scrollbar-track, #popover-content::-webkit-scrollbar-track {
+            background: #e2e8f0;
+        }
+        #planner-table-container::-webkit-scrollbar-thumb, .modal-content::-webkit-scrollbar-thumb, #progression-table-view::-webkit-webkit-scrollbar-thumb, #popover-content::-webkit-scrollbar-thumb {
+            background-color: #a0aec0;
+            border-radius: 10px;
+            border: 2px solid #e2e8f0;
+        }
+		#pe-modal-list {
+		overflow-y: auto;
+		}
+		#planner-view, #main-content {
+		overflow: hidden
+		}
+        .dark #planner-table-container, .dark .modal-content, .dark #progression-table-view, .dark #popover-content {
+            scrollbar-color: #4a5568 #2d3748;
+        }
+        .dark #planner-table-container::-webkit-scrollbar-track, .dark .modal-content::-webkit-scrollbar-track, .dark #progression-table-view::-webkit-scrollbar-track, .dark #popover-content::-webkit-scrollbar-track {
+            background: #2d3748;
+        }
+        .dark #planner-table-container::-webkit-scrollbar-thumb, .dark .modal-content::-webkit-scrollbar-thumb, .dark #progression-table-view::-webkit-scrollbar-thumb, .dark #popover-content::-webkit-scrollbar-thumb {
+            background-color: #4a5568;
+            border-color: #2d3748;
+        }
+        
+        /* --- START: MOBILE & TABLE OVERHAUL --- */
+        
+        /* New rule for sticky table headers */
+        #planner-table-container thead th {
+            position: sticky;
+            top: 0;
+			z-index: 20;
+			text-wrap-mode: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			max-width: 100px;
+            
+        }
+
+
+        /* Sticky Column Styles (with updated z-index for proper layering) */
+        .sticky-col-1 { position: sticky; left: 0; z-index: 15; min-width: 94px;}
+        .sticky-col-2 { position: sticky; left: 93px; z-index: 14; }
+        .sticky-col-3 { 
+            position: sticky; 
+            left: 154px; 
+            z-index: 13; 
+            /* Shadow provides a visual cue for horizontal scrolling */
+            box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
+        }
+        .dark .sticky-col-3 {
+            box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25);
+        }
+		#planner-table-container thead th.sticky-col-1, #planner-table-container thead th.sticky-col-2, #planner-table-container thead th.sticky-col-3 {
+			z-index: 21;
+		}
+
+        /* Ensure sticky headers in the progression view also have a shadow */
+        #progression-table-view th.sticky {
+            box-shadow: 0 4px 5px -2px rgba(0,0,0,0.05);
+        }
+        .dark #progression-table-view th.sticky {
+             box-shadow: 0 4px 5px -2px rgba(0,0,0,0.25);
+        }
+
+        /* Mobile Sidebar Toggle Logic */
+        body.sidebar-open #sidebar {
+            transform: translateX(0);
+        }
+        body.sidebar-open #sidebar-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+		
+		#lesson-set-row, #lesson-row {
+		max-height: 40px;
+		}
+        
+        /* Hide menu toggle when modal is open */
+        body.modal-open #menu-toggle {
+            display: none;
+        }
+        /* --- END: MOBILE & TABLE OVERHAUL --- */
+        
+        /* Style for the new PE link indicator in the sub-element modal */
+        .pe-link-indicator {
+            display: inline-block;
+            font-size: 0.7em;
+            padding: 1px 5px;
+            background-color: #e6f4ff;
+            color: #005a9c;
+            border: 1px solid #b3d7ff;
+            border-radius: 4px;
+            font-weight: bold;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+        .dark .pe-link-indicator {
+            background-color: #1e3a8a;
+            color: #93c5fd;
+            border-color: #3b82f6;
+        }
+
+    </style>
+</head>
+<body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
+    <div id="loading-indicator" class="fixed inset-0 bg-gray-100 dark:bg-gray-900 flex items-center justify-center text-lg text-gray-500 dark:text-gray-400 z-[2000] transition-opacity duration-500">Loading NGSS Planner...</div>
+
+    <!-- This new wrapper is key to the robust responsive layout -->
+    <div class="relative flex h-screen overflow-hidden">
+        <aside id="sidebar" class="bg-gray-800 text-gray-100 flex flex-col w-80 flex-shrink-0 p-4 transform transition-transform duration-300 ease-in-out z-[1000] -translate-x-full md:relative md:translate-x-0 fixed top-0 left-0 h-full md:shadow-lg">
+            <h2 class="text-xl font-bold border-b border-gray-600 pb-3 mb-4">Planner Navigator</h2>
+            <div id="navigator-controls" class="grid grid-cols-2 gap-2 mb-4">
+                <button id="new-planner-btn" class="w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">+ New Planner</button>
+                <button id="view-progression-btn" class="w-full px-3 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors font-semibold text-sm">View Progression</button>
+            </div>
+            <ul id="navigator-list" class="overflow-y-auto space-y-1"></ul>
+        </aside>
+
+        <!-- The main wrapper now handles its own scrolling, isolating it from the body -->
+        <div id="main-wrapper" class="flex-1 flex flex-col overflow-x-hidden">
+            <button id="menu-toggle" class="md:hidden absolute top-4 left-4 z-[40] bg-gray-800/80 backdrop-blur-sm text-white p-2 rounded-md text-xl">☰</button>
+            <div id="sidebar-backdrop" class="md:hidden fixed inset-0 bg-black/40 z-[999] opacity-0 pointer-events-none transition-opacity duration-300"></div>
+
+            <main id="main-content" class="flex-1 flex flex-col p-3 md:p-5 min-h-0">
+                <div id="welcome-view" class="view active">
+                    <div class="text-center m-auto text-gray-500 dark:text-gray-400">
+                        <h2 class="text-2xl font-semibold mb-2">Welcome to the NGSS 3D Progression Planner</h2>
+                        <p>Select a planner from the navigator on the left to begin, or create a new one.</p>
+                    </div>
+                </div>
+
+                <div id="planner-view" class="view flex-1 flex flex-col">
+                    <h1 id="planner-title" class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100"></h1>
+                    <p id="planner-subtitle" class="text-base text-gray-500 dark:text-gray-400 mb-4 -mt-1"></p>
+                    
+                    <!-- Controls are now responsive: stack on mobile, row on desktop -->
+                    <div class="controls flex flex-col md:flex-row md:flex-wrap gap-2 md:gap-4 mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm md:items-center">
+                        <div class="controls-group flex gap-2 w-full md:w-auto">
+                            <button id="assign-pe-btn" class="w-full md:w-auto px-3 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 text-sm font-medium transition-colors">Manage PEs</button>
+                        </div>
+                        <div class="controls-group flex gap-2 w-full md:w-auto group-[.view-mode-active]:hidden">
+                            <button id="add-lesson-set-btn" class="md:w-auto px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Lesson Set</button>
+                            <button id="add-lesson-btn" class="md:w-auto px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Lesson</button>
+                        </div>
+                        <div class="controls-group flex gap-2 w-full md:w-auto">
+                            <button id="edit-planner-btn" class="md:w-auto px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors group-[.view-mode-active]:hidden">Settings</button>
+                            <button id="view-mode-toggle" class="md:w-auto px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors">Enter View Mode</button>
+                        </div>
+                         <div class="controls-group flex gap-2 w-full md:w-auto">
+                            <button id="undo-btn" class="md:w-auto px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Undo</button>
+                            <button id="redo-btn" class="md:w-auto px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>Redo</button>
+                        </div>
+                        <div class="controls-group flex gap-2 w-full md:w-auto">
+                            <button id="import-planner-btn" class="md:w-auto px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Import</button>
+                            <button id="export-planner-btn" class="md:w-auto px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Export</button>
+                        </div>
+                        <div class="flex items-center justify-center md:justify-end gap-x-4 gap-y-2 w-full md:w-auto md:ml-auto flex-wrap">
+                             <label class="flex items-center gap-2 text-sm cursor-pointer font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                <span>PE Bundled Only</span>
+                                <input type="checkbox" id="pe-bundle-toggle" class="sr-only peer">
+                                <div class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                            </label>
+                            <span id="save-status" class="text-sm italic text-gray-500 dark:text-gray-400"></span>
+                        </div>
+                    </div>
+
+                    <div id="tab-container" class="tabs flex border-b-2 border-gray-300 dark:border-gray-700 -mb-px"></div>
+                    <!-- This container allows the table to scroll horizontally without affecting the whole page -->
+                    <div id="planner-table-container" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-b-lg rounded-tr-lg bg-white dark:bg-gray-800/50"></div>
+                </div>
+                
+                <div id="progression-view" class="view flex-1 flex flex-col">
+                     <h1 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100">Progression Viewer</h1>
+                     <p id="progression-subtitle" class="subtitle text-base text-gray-500 dark:text-gray-400 mb-4"></p>
+                     <div id="progression-table-view" class="flex-grow overflow-auto border border-gray-300 dark:border-gray-700 rounded-lg"></div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <div id="planner-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b dark:border-gray-700">
+                 <h3 id="planner-modal-title" class="text-xl font-semibold text-gray-900 dark:text-gray-100">New Planner</h3>
+            </div>
+            <div class="modal-content p-6 space-y-4 overflow-y-auto">
+                <input type="hidden" id="planner-id-input">
+                <div>
+                    <label for="planner-title-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Planner Title</label>
+                    <input type="text" id="planner-title-input" placeholder="e.g., Grade 4 Energy Unit" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500">
+                </div>
+                <div>
+                    <label for="planner-course-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Course / Subject</label>
+                    <input type="text" id="planner-course-input" placeholder="e.g., 4th Grade Science" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500">
+                </div>
+                <div>
+                    <label for="planner-band-select" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Grade Band</label>
+                    <select id="planner-band-select" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-900 dark:text-gray-100">
+                        <option value="primary">Grades K-2</option>
+                        <option value="elementary">Grades 3-5</option>
+                        <option value="middle">Grades 6-8</option>
+                        <option value="high">Grades 9-12</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="planner-description-input" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description (Optional)</label>
+                    <textarea id="planner-description-input" rows="3" class="block w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder:text-gray-400 dark:placeholder:text-gray-500"></textarea>
+                </div>
+            </div>
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg flex justify-between items-center">
+                <button id="planner-modal-delete" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors font-semibold text-sm hidden">Delete</button>
+                <div class="flex-grow text-right space-x-2">
+                    <button id="planner-modal-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Cancel</button>
+                    <button id="planner-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">Save Planner</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="pe-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Assign Performance Expectations</h3>
+            <div class="modal-content p-6 overflow-y-auto" id="pe-modal-list"></div>
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg text-right space-x-2">
+                <button id="pe-modal-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Cancel</button>
+                <button id="pe-modal-save" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="element-detail-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <h3 id="element-modal-title" class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Element Details</h3>
+            <div class="modal-content p-6 space-y-4 overflow-y-auto">
+                <p id="element-modal-description" class="text-base"></p>
+                <div id="element-progression"></div>
+                <div id="element-linked-pes"></div>
+            </div>
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg text-right">
+                <button id="element-modal-close" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="export-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md max-h-[90vh] flex flex-col">
+             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Export Planner</h3>
+            <div class="modal-content p-6 overflow-y-auto" id="export-options-list">
+                <p class="text-gray-600 dark:text-gray-400 mb-4">Select a format to download your planner.</p>
+                <div class="space-y-3">
+                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="json">
+                        <strong class="text-blue-600 dark:text-blue-400">JSON File</strong>
+                        <small class="text-gray-500 dark:text-gray-400">Best for backing up and re-importing into this tool.</small>
+                    </button>
+                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="html">
+                        <strong class="text-blue-600 dark:text-blue-400">HTML File</strong>
+                        <small class="text-gray-500 dark:text-gray-400">A self-contained, viewable webpage of your planner.</small>
+                    </button>
+                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="xlsx">
+                        <strong class="text-blue-600 dark:text-blue-400">Excel (XLSX) File</strong>
+                        <small class="text-gray-500 dark:text-gray-400">For use in spreadsheets like Excel or Google Sheets.</small>
+                    </button>
+                    <button class="export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all" data-format="clipboard">
+                        <strong class="text-blue-600 dark:text-blue-400">Copy to Clipboard</strong>
+                        <small class="text-gray-500 dark:text-gray-400">Copies table data in a format ready to paste into spreadsheets.</small>
+                    </button>
+                </div>
+            </div>
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg text-right">
+                <button id="export-modal-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="import-options-modal-backdrop" class="modal-backdrop fixed inset-0 bg-black/60 z-[60] hidden items-center justify-center p-4">
+        <div class="modal bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-lg max-h-[90vh] flex flex-col">
+             <h3 class="p-6 text-xl font-semibold border-b dark:border-gray-700 text-gray-900 dark:text-gray-100">Import Options</h3>
+            <div class="modal-content p-6 overflow-y-auto space-y-4">
+                <p>You are importing planner: <strong id="import-planner-name" class="text-blue-600 dark:text-blue-400"></strong></p>
+                <p class="text-gray-600 dark:text-gray-400">How would you like to import it?</p>
+                <div class="space-y-3">
+                    <label class="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:dark:bg-blue-900/20 has-[:checked]:border-blue-500 has-[:checked]:dark:border-blue-700 cursor-pointer">
+                        <input type="radio" name="import-option" value="create" class="mr-2" checked>
+                        <strong>Create New Planner</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Adds the imported planner to your list. If an ID conflict exists, a new one will be created.</small>
+                    </label>
+                    <label id="import-merge-label" class="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:dark:bg-blue-900/20 has-[:checked]:border-blue-500 has-[:checked]:dark:border-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <input type="radio" name="import-option" value="merge" class="mr-2" disabled>
+                        <strong>Merge with Current Planner</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Combines PEs and rows with the currently open planner. This option is only available when a planner is open.</small>
+                    </label>
+                    <label id="import-replace-label" class="block p-4 border border-gray-200 dark:border-gray-700 rounded-lg has-[:checked]:bg-blue-50 has-[:checked]:dark:bg-blue-900/20 has-[:checked]:border-blue-500 has-[:checked]:dark:border-blue-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                        <input type="radio" name="import-option" value="replace" class="mr-2" disabled>
+                        <strong>Replace Current Planner</strong>
+                        <small class="block text-gray-500 dark:text-gray-400">Deletes the currently open planner and replaces it with the imported one. This cannot be undone.</small>
+                    </label>
+                </div>
+            </div>
+            <div class="modal-actions p-4 bg-gray-50 dark:bg-gray-800/50 border-t dark:border-gray-700 rounded-b-lg flex justify-end space-x-2">
+                <button id="import-options-cancel" class="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors font-semibold text-sm">Cancel</button>
+                <button id="import-options-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">Confirm Import</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NEW: Popover for element selection -->
+    <div id="element-popover" class="hidden absolute z-[1001] bg-white dark:bg-gray-800 rounded-lg shadow-2xl border border-gray-300 dark:border-gray-600 w-full max-w-md flex flex-col transition-opacity duration-150">
+        <div class="p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center bg-gray-50 dark:bg-gray-800/50 rounded-t-lg">
+            <h4 id="popover-title" class="font-semibold text-gray-800 dark:text-gray-200 text-sm"></h4>
+            <button id="popover-close" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 text-xl font-bold leading-none">&times;</button>
+        </div>
+        <div id="popover-content" class="overflow-y-auto max-h-[50vh]">
+            <!-- Dynamic content will be injected here -->
+        </div>
+    </div>
+
+    <div id="tooltip" class="fixed bg-gray-900 text-white px-3 py-1.5 rounded-md z-[1002] pointer-events-none opacity-0 transition-opacity text-sm max-w-md shadow-lg"></div>
+
+    <!-- Data source scripts removed; now loaded via fetch() in main script -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+
+    <script>
+	
+    document.addEventListener('DOMContentLoaded', () => {
+        
+        const App = {
+            state: {
+                programData: {},
+                currentPlannerId: null,
+                currentActiveTab: 'pe',
+                saveTimeout: null,
+                draggedGroup: null, 
+                isViewMode: false,
+                isPeBundleMode: false,
+                history: [],
+                historyIndex: -1,
+                pendingImportData: null,
+                allNgssData: [],
+                allNgss3dElements: [],
+            },
+			dataMaps: {
+                peMap: new Map(),
+                ngss3dMap: new Map(), // This will be the specific element map
+                peTo3dMap: new Map(), // This will store PE -> { componentCodes, secondaryComponentCodes, specificCodes }
+                parentToChildrenMap: new Map(),
+                major3DMap: new Map(),
+                nameToCodeMap: new Map(),
+                textToSpecificCodeMap: new Map(), // New map for text-based matching
+                fuzzyMatchCache: new Map(), // Cache for fuzzy matching
+                gradeBandMap: { 'K': 'primary', '1': 'primary', '2': 'primary', '3': 'elementary', '4': 'elementary', '5': 'elementary', 'MS': 'middle', 'HS': 'high' }
+            },
+            dom: {
+                sidebar: document.getElementById('sidebar'),
+                navigatorList: document.getElementById('navigator-list'),
+                mainContent: document.getElementById('main-content'),
+                plannerView: document.getElementById('planner-view'),
+                plannerTableContainer: document.getElementById('planner-table-container'),
+                tabContainer: document.getElementById('tab-container'),
+                saveStatus: document.getElementById('save-status'),
+                tooltip: document.getElementById('tooltip'),
+                loadingIndicator: document.getElementById('loading-indicator'),
+                body: document.getElementById('body-tag'),
+            },
+            constants: {
+                statusClasses: {
+                    I: 'bg-yellow-200/50 dark:bg-yellow-700/30 border-yellow-300',
+                    D: 'bg-green-200/50 dark:bg-green-700/30 border-green-300',
+                    A: 'bg-blue-200/50 dark:bg-blue-700/30 border-blue-300',
+                },
+                statusBadgeClasses: {
+                    I: 'bg-yellow-200 text-yellow-800 dark:bg-yellow-300 dark:text-yellow-900',
+                    D: 'bg-green-200 text-green-800 dark:bg-green-300 dark:text-green-900',
+                    A: 'bg-blue-200 text-blue-800 dark:bg-blue-300 dark:text-blue-900',
+                },
+                scopeClasses: {
+                    F: 'bg-indigo-200/60 dark:bg-indigo-700/40 border-indigo-300',
+                    S: 'bg-rose-200/60 dark:bg-rose-700/40 border-rose-300'
+                }
+            },
+
+            init() {
+                this.buildDataMaps();
+                this.persistence.loadProgramData();
+                this.history.recordState(); // Record initial state for undo
+                this.render.navigator();
+                this.attachEventListeners();
+                this.popover.init();
+                this.utils.showView('welcome-view');
+
+                this.dom.loadingIndicator.style.opacity = '0';
+                setTimeout(() => this.dom.loadingIndicator.style.display = 'none', 500);
+            },
+            
+            buildDataMaps() {
+                const { ngss3dMap, peMap, peTo3dMap, parentToChildrenMap, major3DMap, nameToCodeMap, textToSpecificCodeMap, fuzzyMatchCache } = this.dataMaps;
+                ngss3dMap.clear(); peMap.clear(); peTo3dMap.clear(); parentToChildrenMap.clear(); major3DMap.clear(); nameToCodeMap.clear(); textToSpecificCodeMap.clear(); fuzzyMatchCache.clear();
+                
+                const processElementForMaps = (element) => {
+                    if (!element.name) return;
+                    const firstColonIndex = element.name.indexOf(':');
+                    if (firstColonIndex > -1) {
+                        const code = element.name.substring(0, firstColonIndex).trim();
+                        const nameOnly = element.name.substring(firstColonIndex + 1).trim();
+                        major3DMap.set(code, nameOnly);
+                        nameToCodeMap.set(element.name, code); 
+                        nameToCodeMap.set(nameOnly, code);
+                    }
+                };
+                
+                this.state.allNgss3dElements.forEach(dim => {
+                    (dim.elements || dim.core_ideas).forEach(el => {
+                         const processProgressions = (item) => {
+                             if(item.progressions){
+                                 Object.values(item.progressions).forEach(pArr=>(pArr||[]).forEach(i=>{
+                                     i.parentName = item.name;
+                                     i.parentCode = item.name.split(':')[0].trim();
+                                     i.dimension = dim.short_name;
+                                     i.allProgressions = item.progressions;
+                                     i.relatedPes = new Set(); // Initialize related PEs set
+                                     ngss3dMap.set(i.code,i);
+                                     textToSpecificCodeMap.set(i.text.trim(), i.code);
+                                 }));
+                             }
+                         };
+                        processElementForMaps(el);
+                        processProgressions(el);
+                        if (el.components) {
+                            el.components.forEach(comp => {
+                                processElementForMaps(comp);
+                                processProgressions(comp);
+                            });
+                        }
+                    });
+                });
+                
+                this.state.allNgssData.forEach(gradeData => gradeData.topics.forEach(t => t.performanceExpectations.forEach(p => {
+                    peMap.set(p.id, p);
+                    if (!p.details) return;
+
+                    const componentCodes = new Set();
+                    const secondaryComponentCodes = new Set();
+                    const specificCodes = new Set();
+
+                    ['sep', 'dci', 'ccc'].forEach(key => (p.details[key] || []).forEach(ref => {
+                        let lineMatched = false;
+                        if(ref.text){
+                             ref.text.split('\n').forEach(line => {
+                                if (!line.trim()) return;
+                                const specCode = App.utils.findBestMatchingSpecificElement(line, gradeData.gradeLabel);
+                                if (specCode) {
+                                    specificCodes.add(specCode);
+                                    const el = ngss3dMap.get(specCode);
+                                    if (el) {
+                                        el.relatedPes.add(p.id);
+                                        if (el.parentCode) componentCodes.add(el.parentCode);
+                                    }
+                                    lineMatched = true;
+                                }
+                            });
+                        }
+                        
+                        if (!lineMatched) {
+                            const isSecondary = ref.id.includes('(secondary)');
+                            const cleanId = ref.id.replace(' (secondary)', '').trim();
+                            const nameOnly = cleanId.includes(':') ? cleanId.split(':').pop().trim() : cleanId;
+                            const cCode = nameToCodeMap.get(cleanId) || nameToCodeMap.get(nameOnly);
+                            if (cCode) {
+                                if(isSecondary) {
+                                    secondaryComponentCodes.add(cCode);
+                                } else {
+                                    componentCodes.add(cCode);
+                                }
+                            }
+                        }
+                    }));
+
+                    if (componentCodes.size > 0 || secondaryComponentCodes.size > 0 || specificCodes.size > 0) {
+                        peTo3dMap.set(p.id, { componentCodes, secondaryComponentCodes, specificCodes });
+                    }
+                })));
+                
+                // Build map of parent 3D elements to their children (progressions)
+                const processParent = (parent, dimShortName) => {
+                    if (!parent.progressions) return;
+                    const parentCode = parent.code || parent.name.split(':')[0].trim();
+                    const children = [];
+                    Object.values(parent.progressions).forEach(bandProg => { if(bandProg) children.push(...bandProg) });
+                    const uniqueChildren = Array.from(new Map(children.map(item => [item.code, item])).values());
+                    parentToChildrenMap.set(parentCode, {name: parent.name, children: uniqueChildren, dimension: dimShortName});
+                };
+                this.state.allNgss3dElements.forEach(dim => { (dim.elements || dim.core_ideas).forEach(el => { if (el.progressions) { processParent(el, dim.short_name); } else if (el.components) { el.components.forEach(comp => processParent(comp, dim.short_name)); } }); });
+                parentToChildrenMap.set('PE', {name: "Performance Expectations", children: [], dimension: 'PE'});
+            },
+
+            attachEventListeners() {
+                document.getElementById('new-planner-btn').addEventListener('click', () => this.utils.openPlannerModal());
+                document.getElementById('view-progression-btn').addEventListener('click', () => this.render.progressionViewer());
+                this.dom.navigatorList.addEventListener('click', e => { if (e.target.type === 'checkbox') return; const item = e.target.closest('.planner-item'); if (item) { this.render.plannerView(item.dataset.plannerId); if (window.innerWidth <= 768) this.dom.body.classList.remove('sidebar-open'); } });
+                document.getElementById('assign-pe-btn').addEventListener('click', () => this.utils.openPeAssignmentModal());
+                document.getElementById('add-lesson-set-btn').addEventListener('click', () => this.utils.addRow('lesson-set', 'New Lesson Set...'));
+                document.getElementById('add-lesson-btn').addEventListener('click', () => this.utils.addRow('lesson', 'New Lesson...'));
+                document.getElementById('edit-planner-btn').addEventListener('click', () => { const p = this.utils.findPlanner(this.state.currentPlannerId); if(p) this.utils.openPlannerModal(p); });
+                
+                document.getElementById('view-mode-toggle').addEventListener('click', () => this.utils.toggleViewMode());
+                document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
+                document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
+                document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
+                document.getElementById('export-options-list').addEventListener('click', e => {
+                    const btn = e.target.closest('.export-option-btn');
+                    if (btn) {
+                        const format = btn.dataset.format;
+                        const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                        if (!planner) return;
+
+                        switch (format) {
+                            case 'json': this.export.asJson(planner); break;
+                            case 'html': this.export.asHtml(planner); break;
+                            case 'xlsx': this.export.asXlsx(planner); break;
+                            case 'clipboard': this.export.asClipboard(planner); break;
+                        }
+                    }
+                });
+                document.getElementById('import-options-confirm').addEventListener('click', () => this.import.processImport());
+
+
+                this.dom.plannerTableContainer.addEventListener('click', e => this.handlers.mainTableClick(e));
+                this.dom.plannerTableContainer.addEventListener('blur', e => { if (e.target.matches('.editable')) this.handlers.titleEdit(e) }, true);
+                this.dom.tabContainer.addEventListener('click', e => { if (e.target.matches('.tab-button')) this.render.setActiveTab(e.target.dataset.tab); });
+                document.body.addEventListener('mouseover', e => this.handlers.tooltipShow(e));
+                document.body.addEventListener('mouseout', () => this.handlers.tooltipHide());
+
+                this.dom.plannerTableContainer.addEventListener('dragstart', e => this.handlers.dragStart(e));
+                this.dom.plannerTableContainer.addEventListener('dragover', e => this.handlers.dragOver(e));
+                this.dom.plannerTableContainer.addEventListener('dragleave', e => this.handlers.dragLeave(e));
+                this.dom.plannerTableContainer.addEventListener('drop', e => this.handlers.drop(e));
+
+                document.getElementById('planner-modal-save').addEventListener('click', () => this.utils.savePlanner());
+                document.getElementById('pe-modal-save').addEventListener('click', () => this.utils.savePeAssignments());
+                document.getElementById('planner-modal-delete').addEventListener('click', () => { if (confirm('Are you sure? This cannot be undone.')) { const id = document.getElementById('planner-id-input').value; this.state.programData.planners = this.state.programData.planners.filter(p => p.id !== id); this.persistence.saveProgramData(); this.history.recordState(); this.utils.closeAllModals(); this.utils.showView('welcome-view'); this.state.currentPlannerId = null; this.render.navigator(); } });
+                document.body.addEventListener('click', e => { if(e.target.matches('.modal-backdrop, [id$="-modal-cancel"], [id$="-modal-close"], #import-options-cancel')) this.utils.closeAllModals(); });
+
+                document.getElementById('menu-toggle').addEventListener('click', () => this.dom.body.classList.toggle('sidebar-open'));
+                document.getElementById('sidebar-backdrop').addEventListener('click', () => this.dom.body.classList.remove('sidebar-open'));
+                
+                document.getElementById('undo-btn').addEventListener('click', () => App.history.undo());
+                document.getElementById('redo-btn').addEventListener('click', () => App.history.redo());
+                document.addEventListener('keydown', e => {
+                    if (document.activeElement.isContentEditable) return;
+                    if (e.key === 'Escape') { App.popover.hide(); }
+                    if (e.ctrlKey || e.metaKey) {
+                        if (e.key === 'z') { e.preventDefault(); App.history.undo(); }
+                        if (e.key === 'y') { e.preventDefault(); App.history.redo(); }
+                    }
+                });
+            },
+        };
+
+        App.popover = {
+            dom: {},
+            state: {
+                isVisible: false,
+                activeCell: null,
+                activeRowId: null,
+            },
+            init() {
+                this.dom.container = document.getElementById('element-popover');
+                this.dom.title = document.getElementById('popover-title');
+                this.dom.content = document.getElementById('popover-content');
+                
+                document.getElementById('popover-close').addEventListener('click', () => this.hide());
+                
+                this.dom.content.addEventListener('change', (e) => {
+                    if (e.target.type === 'radio') {
+                        this.handleSelectionChange(e.target);
+                    }
+                });
+            },
+            
+            _handleOutsideClick(e) {
+                if (this.state.isVisible && !this.dom.container.contains(e.target) && !this.state.activeCell.contains(e.target)) {
+                    this.hide();
+                }
+            },
+
+            show(cell, parentCode, rowId) {
+                if (this.state.isVisible && this.state.activeCell === cell) {
+                    this.hide();
+                    return;
+                }
+                if (this.state.isVisible) {
+                    this.hide();
+                }
+
+                this.state.activeCell = cell;
+                this.state.activeRowId = rowId;
+                
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const rowData = App.utils.findRowData(planner, rowId);
+                if (!planner || !rowData) return;
+
+                const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCode);
+                this.dom.title.textContent = parentInfo ? parentInfo.name : 'Select Elements';
+                
+                this.dom.content.innerHTML = this.buildContentHTML(parentInfo, planner.gradeBand, rowData);
+                this.dom.container.classList.remove('hidden');
+                this.state.isVisible = true;
+
+                this.position(cell);
+                
+                // Use a timeout to add the listener, preventing the same click from immediately closing it
+                setTimeout(() => {
+                    document.addEventListener('click', this._handleOutsideClick.bind(this), { capture: true, once: true });
+                }, 0);
+            },
+            
+            hide() {
+                this.dom.container.classList.add('hidden');
+                this.state.isVisible = false;
+                this.state.activeCell = null;
+                this.state.activeRowId = null;
+                // The outside click listener is added with `once: true`, so it removes itself.
+            },
+            
+            position(targetCell) {
+                const rect = targetCell.getBoundingClientRect();
+                const popover = this.dom.container;
+                const popoverRect = popover.getBoundingClientRect();
+                const margin = 8;
+                
+                let top = rect.bottom + margin;
+                let left = rect.left;
+
+                // Check vertical position (if it overflows bottom, place it on top)
+                if (top + popoverRect.height > window.innerHeight) {
+                    top = rect.top - popoverRect.height - margin;
+                }
+                
+                // Check horizontal position (if it overflows right, align to the right)
+                if (left + popoverRect.width > window.innerWidth) {
+                    left = rect.right - popoverRect.width;
+                }
+                
+                // Ensure it doesn't go off the left edge
+                if (left < margin) {
+                    left = margin;
+                }
+
+                popover.style.top = `${top}px`;
+                popover.style.left = `${left}px`;
+            },
+
+            buildContentHTML(parentInfo, gradeBand, rowData) {
+                let children = [];
+                if (parentInfo) {
+                    const parentProgressions = parentInfo.children[0]?.allProgressions || {};
+                    const gradeBandProgressions = parentProgressions[gradeBand] || [];
+                    const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
+                    children = parentInfo.children.filter(child => validCodesForBand.has(child.code));
+                }
+
+                if (children.length === 0) {
+                    return '<p class="text-center text-gray-500 dark:text-gray-400 p-8">No elements available for this category in the selected grade band.</p>';
+                }
+                
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+
+                return children.map(child => {
+                    const elementData = App.dataMaps.ngss3dMap.get(child.code);
+                    let indicatorHTML = '';
+                    if (elementData) {
+                        const childsParentCode = elementData.parentCode;
+                        const linkedPesForElement = [...elementData.relatedPes];
+                        const assignedPlannerPes = planner.assignedPes || [];
+                        const relevantAssignedPes = assignedPlannerPes.filter(p => linkedPesForElement.includes(p.id));
+
+                        if (relevantAssignedPes.length > 0) {
+                            let tooltipParts = ["Linked to assigned PE(s):"];
+                            let hasSecondaryLink = false;
+                            for (const peObj of relevantAssignedPes) {
+                                const peLinks = App.dataMaps.peTo3dMap.get(peObj.id);
+                                if (peLinks && peLinks.secondaryComponentCodes.has(childsParentCode)) {
+                                    hasSecondaryLink = true;
+                                    tooltipParts.push(`- ${peObj.id} (Secondary Link)`);
+                                } else {
+                                    tooltipParts.push(`- ${peObj.id}`);
+                                }
+                            }
+                            const symbol = `PE${hasSecondaryLink ? '*' : ''}`;
+                            const title = tooltipParts.join(' ').replace(/"/g, '&quot;');
+                            indicatorHTML = `<span class="pe-link-indicator" title="${title}">${symbol}</span>`;
+                        }
+                    }
+
+                    const currentStatus = rowData.trackingData[child.code] || '';
+                    const u = `status-${child.code}`;
+                    return `<div class="sub-element-item p-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center hover:bg-gray-50 dark:hover:bg-gray-700/50">
+                                <div class="sub-element-info flex-grow pr-4">
+                                    <strong class="font-semibold text-gray-800 dark:text-gray-200">${child.code}</strong>${indicatorHTML}
+                                    <p class="text-sm text-gray-600 dark:text-gray-400">${child.text}</p>
+                                </div>
+                                <div class="status-selector flex gap-1.5 flex-shrink-0">
+                                    <input type="radio" id="${u}-none" name="${u}" value="" ${!currentStatus&&'checked'} class="hidden peer/none"><label for="${u}-none" title="None" class="w-7 h-7 flex items-center justify-center rounded-full cursor-pointer border border-gray-300 dark:border-gray-600 font-bold user-select-none text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 peer-checked/none:ring-2 ring-gray-400">-</label>
+                                    <input type="radio" id="${u}-i" name="${u}" value="I" ${currentStatus==='I'&&'checked'} class="hidden peer/i"><label for="${u}-i" title="Introduced" class="w-7 h-7 flex items-center justify-center rounded-full cursor-pointer border border-yellow-400 dark:border-yellow-600 font-bold user-select-none text-sm bg-yellow-200 text-yellow-800 dark:bg-yellow-800/50 dark:text-yellow-100 hover:bg-yellow-300 peer-checked/i:ring-2 ring-yellow-500">I</label>
+                                    <input type="radio" id="${u}-d" name="${u}" value="D" ${currentStatus==='D'&&'checked'} class="hidden peer/d"><label for="${u}-d" title="Developed" class="w-7 h-7 flex items-center justify-center rounded-full cursor-pointer border border-green-400 dark:border-green-600 font-bold user-select-none text-sm bg-green-200 text-green-800 dark:bg-green-800/50 dark:text-green-100 hover:bg-green-300 peer-checked/d:ring-2 ring-green-500">D</label>
+                                    <input type="radio" id="${u}-a" name="${u}" value="A" ${currentStatus==='A'&&'checked'} class="hidden peer/a"><label for="${u}-a" title="Assessed" class="w-7 h-7 flex items-center justify-center rounded-full cursor-pointer border border-blue-400 dark:border-blue-600 font-bold user-select-none text-sm bg-blue-200 text-blue-800 dark:bg-blue-800/50 dark:text-blue-100 hover:bg-blue-300 peer-checked/a:ring-2 ring-blue-500">A</label>
+                                </div>
+                            </div>`;
+                }).join('');
+            },
+
+            handleSelectionChange(radioInput) {
+                const rowId = this.state.activeRowId;
+                if (!rowId) return;
+
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const targetRowData = App.utils.findRowData(planner, rowId);
+                if (!targetRowData) return;
+
+                const code = radioInput.name.replace('status-', '');
+                if (radioInput.value) {
+                    targetRowData.trackingData[code] = radioInput.value;
+                } else {
+                    delete targetRowData.trackingData[code];
+                }
+
+                // Re-render only the affected cell for performance
+                App.render.updateCellContent(this.state.activeCell, targetRowData);
+
+                App.persistence.debouncedSave();
+            }
+        };
+
+        App.history = {
+            MAX_HISTORY: 20,
+            recordState() {
+                const snapshot = JSON.stringify(App.state.programData);
+                // Avoid recording identical subsequent states
+                if (App.state.historyIndex > -1 && App.state.history[App.state.historyIndex] === snapshot) {
+                    return;
+                }
+                
+                if (App.state.historyIndex < App.state.history.length - 1) {
+                    App.state.history = App.state.history.slice(0, App.state.historyIndex + 1);
+                }
+                App.state.history.push(snapshot);
+                if (App.state.history.length > this.MAX_HISTORY) {
+                    App.state.history.shift();
+                }
+                App.state.historyIndex = App.state.history.length - 1;
+                this.updateButtons();
+            },
+            undo() {
+                if (App.state.historyIndex > 0) {
+                    App.state.historyIndex--;
+                    this.applyState();
+                }
+            },
+            redo() {
+                if (App.state.historyIndex < App.state.history.length - 1) {
+                    App.state.historyIndex++;
+                    this.applyState();
+                }
+            },
+            applyState() {
+                App.state.programData = JSON.parse(App.state.history[App.state.historyIndex]);
+                App.persistence.saveProgramData(); // Save restored state to localStorage
+                App.dom.saveStatus.innerHTML = `Restored state`;
+
+                App.render.navigator();
+                if (App.state.currentPlannerId && App.utils.findPlanner(App.state.currentPlannerId)) {
+                    App.render.plannerView(App.state.currentPlannerId);
+                } else {
+                    App.state.currentPlannerId = null;
+                    App.utils.showView('welcome-view');
+                }
+                this.updateButtons();
+            },
+            updateButtons() {
+                document.getElementById('undo-btn').disabled = App.state.historyIndex <= 0;
+                document.getElementById('redo-btn').disabled = App.state.historyIndex >= App.state.history.length - 1;
+            }
+        };
+        
+        App.persistence = {
+            saveProgramData() { localStorage.setItem('ngssProgramPlannerData', JSON.stringify(App.state.programData)); },
+            loadProgramData() { const data = localStorage.getItem('ngssProgramPlannerData'); App.state.programData = data ? JSON.parse(data) : { programName: "My K-12 Science Program", planners: [] }; },
+            debouncedSave() { clearTimeout(App.state.saveTimeout); App.dom.saveStatus.textContent = 'Saving...'; App.state.saveTimeout = setTimeout(() => { const planner = App.utils.findPlanner(App.state.currentPlannerId); if (planner) { planner.activeTab = App.state.currentActiveTab; } App.history.recordState(); this.saveProgramData(); App.dom.saveStatus.innerHTML = `Saved ✓ <span class="font-normal">${new Date().toLocaleTimeString()}</span>`; }, 1000); },
+            updateStateFromTableOrder() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) return;
+
+                const tbody = App.dom.plannerTableContainer.querySelector('tbody');
+                if (!tbody) return;
+
+                const newRowsState = [];
+                const allRowsMap = new Map();
+                // First, flatten the existing state into a map for easy lookup
+                // and reset children arrays on lesson sets to prepare for rebuilding.
+                planner.rows.forEach(row => {
+                    allRowsMap.set(row.id, row.type === 'lesson-set' ? { ...row, children: [] } : { ...row });
+                    if (row.children) {
+                        row.children.forEach(child => allRowsMap.set(child.id, { ...child }));
+                    }
+                });
+
+                let currentLessonSet = null;
+                // Iterate through the DOM elements in their new visual order
+                Array.from(tbody.children).forEach(rowEl => {
+                    const id = rowEl.dataset.id;
+                    const rowData = allRowsMap.get(id);
+                    if (!rowData) return;
+
+                    if (rowData.type === 'lesson-set') {
+                        currentLessonSet = rowData; // This is the new current parent
+                        newRowsState.push(currentLessonSet);
+                    } else if (rowData.type === 'lesson') {
+                        if (currentLessonSet) {
+                            // This lesson is a child of the current lesson set
+                            currentLessonSet.children.push(rowData);
+                        } else {
+                            // This is a top-level lesson
+                            newRowsState.push(rowData);
+                        }
+                    }
+                });
+                planner.rows = newRowsState;
+            }
+        };
+
+        App.render = {
+             navigator() { App.dom.navigatorList.innerHTML = ''; App.state.programData.planners.forEach(planner => { const item = document.createElement('li'); item.className = `planner-item flex items-center gap-2 p-2 rounded-md cursor-pointer transition-colors user-select-none ${planner.id === App.state.currentPlannerId ? 'bg-blue-600 font-bold' : 'hover:bg-gray-700'}`; item.dataset.plannerId = planner.id; item.innerHTML = `<input type="checkbox" class="planner-checkbox" title="Select for progression view"><span class="planner-title flex-grow pointer-events-none">${planner.title}</span><span class="planner-band text-xs bg-gray-600 px-2 py-0.5 rounded-full text-white">${planner.gradeBand}</span>`; App.dom.navigatorList.appendChild(item); }); },
+            plannerView(plannerId) {
+                const planner = App.utils.findPlanner(plannerId); if (!planner) { App.utils.showView('welcome-view'); return; }
+                App.state.currentPlannerId = plannerId; document.getElementById('planner-title').textContent = planner.title; document.getElementById('planner-subtitle').textContent = `${planner.course} (${planner.gradeBand})`;
+                const allColumns = App.utils.gatherColumns(planner.gradeBand); this.table(allColumns); this.rowsFromState(planner.rows || []); this.tabs(allColumns); this.setActiveTab(planner.activeTab || 'pe'); App.utils.showView('planner-view'); this.navigator();
+            },
+            table(columnGroups) {
+                App.dom.plannerTableContainer.innerHTML = ''; const table = document.createElement('table'); table.className = 'table-view w-full border-collapse'; const thead = document.createElement('thead');
+                let headerRowHTML = `<tr>
+                    <th class="sticky-col-1 w-[50px] min-w-[50px] p-2 bg-gray-100 dark:bg-gray-900/50">Actions</th>
+                    <th class="sticky-col-2 w-[50px] min-w-[50px] text-center p-2 bg-gray-100 dark:bg-gray-900/50" data-tooltip="Assessment Scope (F=Formative, S=Summative)">Scope</th>
+                    <th class="sticky-col-3 min-w-[150px] md:min-w-[250px] p-2 bg-gray-100 dark:bg-gray-900/50">Instructional Sequence</th>`;
+                
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+
+                Object.keys(columnGroups).forEach(key => {
+                    if (key === 'pe') {
+                        (planner?.assignedPes || []).forEach(peObj => {
+                             const peCode = peObj.id;
+                             const peData = App.dataMaps.peMap.get(peCode);
+                             const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
+                             const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
+                             headerRowHTML += `<th class="p-2 border-b-2 border-gray-300 dark:border-gray-700 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}">${peCode}</th>`;
+                        });
+                        if (!planner?.assignedPes || planner.assignedPes.length === 0) {
+                            headerRowHTML += `<th class="p-2 text-gray-500 font-normal" data-tab-group="pe">Assign PEs to see columns here</th>`;
+                        }
+                    } else {
+                        columnGroups[key].cols.forEach(col => {
+                            headerRowHTML += `<th class="p-2 border-b-2 border-gray-300 dark:border-gray-700 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 transition-colors cursor-pointer" data-tab-group="${key}" data-code="${col.code}" data-tooltip="${col.title}">${col.title}</th>`;
+                        });
+                    }
+                });
+                headerRowHTML += '</tr>'; thead.innerHTML = headerRowHTML; table.appendChild(thead); table.appendChild(document.createElement('tbody')); App.dom.plannerTableContainer.appendChild(table);
+            },
+            rowsFromState(rowsData) {
+                const tbody = App.dom.plannerTableContainer.querySelector('tbody');
+                tbody.innerHTML = '';
+                if (!rowsData || rowsData.length === 0) return;
+                rowsData.forEach(rowData => {
+                    // Render the top-level item (could be a lesson-set or a standalone lesson)
+                    tbody.appendChild(this.createRowElement(rowData));
+                    // If it's a lesson-set, render its children
+                    if (rowData.type === 'lesson-set' && rowData.children) {
+                        rowData.children.forEach(childRowData => {
+                            const childRow = this.createRowElement(childRowData, rowData.id);
+                            if (rowData.isCollapsed) childRow.classList.add('hidden');
+                            tbody.appendChild(childRow);
+                        });
+                    }
+                });
+                this.updateTableHeaderHighlights();
+            },
+            createRowElement(rowData, parentId = null) {
+                const row = document.createElement('tr'); row.className = `${rowData.type}-row group/row`; row.dataset.rowType = rowData.type; row.dataset.id = rowData.id;
+                row.draggable = !App.state.isViewMode;
+
+                const planner = App.utils.findPlanner(App.state.currentPlannerId); const columnGroups = App.utils.gatherColumns(planner.gradeBand);
+                if (rowData.type === 'lesson-set') {
+                    const isCollapsedClass = rowData.isCollapsed ? 'is-collapsed' : '';
+                    const rotateClass = rowData.isCollapsed ? '-rotate-90' : '';
+                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    const colspan = 1 + Object.values(columnGroups).reduce((sum, group) => sum + (group.key === 'pe' ? (planner.assignedPes?.length || 1) : group.cols.length), 0);
+                    row.innerHTML = `<td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle"><span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span> <span class="delete-btn cursor-pointer text-gray-400 font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson Set">✖</span></td>
+                                     <td class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle"></td>
+                                     <td class="sticky-col-3 p-2 border border-gray-200 dark:border-gray-700 bg-blue-100 dark:bg-blue-900/50 text-blue-900 dark:text-blue-100 font-semibold cursor-pointer ${isCollapsedClass}" colspan="${colspan}"><span class="collapse-icon inline-block mr-1 transition-transform ${rotateClass}">▼</span> ${editableSpan}</td>`;
+                } else {
+                    if (parentId) row.dataset.parentId = parentId;
+                    const scope = rowData.scope || '';
+                    const scopeClass = App.constants.scopeClasses[scope] || '';
+                    const scopeCursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer';
+                    const editableSpan = `<span class="editable group-[.view-mode-active]:cursor-default group-[.view-mode-active]:bg-transparent group-[.view-mode-active]:outline-none hover:bg-white/70 dark:hover:bg-black/20 focus:bg-white/70 dark:focus:bg-black/20 outline-none focus:outline-blue-500 rounded px-1" contenteditable="${!App.state.isViewMode}">${rowData.title}</span>`;
+                    let cellsHTML = `
+                        <td class="sticky-col-1 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle">
+                            <div class="flex items-center gap-1.5 text-gray-400">
+                                <span class="drag-handle cursor-grab group-[.view-mode-active]:hidden">⠿</span>
+                                <span class="delete-btn cursor-pointer font-bold invisible group-hover/row:visible hover:text-red-500 transition-colors group-[.view-mode-active]:hidden" title="Delete Lesson">✖</span>
+								<span class="add-below-btn cursor-pointer invisible group-hover/row:visible hover:text-green-500 transition-colors group-[.view-mode-active]:hidden" title="Add Lesson Below">+</span>
+                                <span class="copy-row-btn cursor-pointer invisible group-hover/row:visible hover:text-blue-500 transition-colors group-[.view-mode-active]:hidden" title="Duplicate Lesson">❐</span>
+                            </div>
+                        </td>
+                        <td data-scope-cell="true" class="sticky-col-2 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 align-middle font-bold text-center ${scopeCursorClass} ${scopeClass}" data-tooltip="Click to cycle Assessment Scope">${scope}</td>
+                        <td class="sticky-col-3 p-2 border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 text-left ${parentId ? 'pl-10' : ''}">${editableSpan}</td>`;
+
+                    Object.keys(columnGroups).forEach(key => {
+                         if (key === 'pe') {
+                             (planner?.assignedPes || []).forEach(peObj => {
+                                 cellsHTML += this.createTrackingCellHTML({ code: peObj.id, type: 'pe' }, rowData);
+                             });
+                             if (!planner?.assignedPes || planner.assignedPes.length === 0) {
+                                cellsHTML += `<td data-tab-group="pe" class="p-2 border border-gray-200 dark:border-gray-700"></td>`;
+                             }
+                         } else {
+                            cellsHTML += columnGroups[key].cols.map(col => this.createTrackingCellHTML({ code: col.code, title: col.title, type: '3d', tabGroup: key }, rowData)).join('');
+                         }
+                    });
+                    row.innerHTML = cellsHTML;
+                } return row;
+            },
+            createTrackingCellHTML(column, rowData) {
+                const commonCellClasses = "p-2 border border-gray-200 dark:border-gray-700 align-top";
+
+                if (column.type === 'pe') {
+                    const status = rowData.trackingData?.[column.code] || '';
+                    const statusClass = App.constants.statusClasses[status] || '';
+                    const cursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer hover:bg-yellow-300/50 dark:hover:bg-yellow-500/50';
+                    return `<td class="${commonCellClasses} text-center font-bold ${cursorClass} ${statusClass}" data-tab-group="pe" data-pe-code="${column.code}" data-tooltip="Click to change status for ${column.code}">${status}</td>`;
+                }
+                
+                // This is for 3D elements (SEP, DCI, CCC)
+                const cellContent = this.generateCellContent(column.code, rowData);
+                const cellTooltip = `${column.title}. Click to edit elements.`;
+                const cursorClass = App.state.isViewMode ? 'cursor-default' : 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50';
+                
+                return `<td class="${commonCellClasses} ${cursorClass}" data-tab-group="${column.tabGroup}" data-parent-code="${column.code}" data-tooltip="${cellTooltip}">${cellContent}</td>`;
+            },
+            generateCellContent(parentCode, rowData) {
+                const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCode);
+                const childrenCodes = parentInfo ? parentInfo.children.map(c => c.code) : [];
+                const trackedChildren = childrenCodes.filter(code => rowData.trackingData?.[code]).map(code => ({ code, status: rowData.trackingData[code] }));
+                
+                const badgeHTML = trackedChildren.map(child => {
+                    const details = App.dataMaps.ngss3dMap.get(child.code) || {description: 'N/A', text: 'N/A'};
+                    const text = (details.text || details.description).replace(/"/g, '&quot;');
+                    const badgeTooltip = `<b>${child.code} (${child.status})</b>: ${text}`;
+                    const badgeColor = App.constants.statusBadgeClasses[child.status] || 'bg-gray-200 dark:bg-gray-600';
+                    return `<span class="px-2 py-0.5 rounded-full text-xs font-bold whitespace-nowrap ${badgeColor}" data-tooltip="${badgeTooltip}">${child.code}</span>`;
+                }).join('');
+                return `<div class="flex flex-wrap gap-1 items-center min-h-[24px]">${badgeHTML}</div>`;
+            },
+            updateCellContent(cell, rowData) {
+                const parentCode = cell.dataset.parentCode;
+                cell.innerHTML = this.generateCellContent(parentCode, rowData);
+            },
+            tabs(columnGroups) { App.dom.tabContainer.innerHTML = ''; Object.keys(columnGroups).forEach(key => { if(columnGroups[key].cols.length > 0 || key === 'pe') { const btn = document.createElement('button'); btn.className = 'tab-button px-4 py-2 cursor-pointer border border-transparent rounded-t-lg font-medium transition-colors text-sm'; btn.dataset.tab = key; btn.textContent = columnGroups[key].name; App.dom.tabContainer.appendChild(btn); } }); },
+            setActiveTab(tabKey) {
+                const table = App.dom.plannerTableContainer.querySelector('table');
+                if (!table || !App.dom.tabContainer.querySelector(`[data-tab="${tabKey}"]`)) {
+                    tabKey = 'pe';
+                }
+                App.state.currentActiveTab = tabKey;
+            
+                App.dom.tabContainer.querySelectorAll('.tab-button').forEach(b => {
+                    const isActive = b.dataset.tab === tabKey;
+                    b.classList.toggle('bg-white', isActive); b.classList.toggle('dark:bg-gray-800/50', isActive); b.classList.toggle('border-gray-300', isActive); b.classList.toggle('dark:border-gray-700', isActive); b.classList.toggle('border-b-white', isActive); b.classList.toggle('dark:border-b-gray-800/50', isActive); b.classList.toggle('text-blue-600', isActive); b.classList.toggle('dark:text-blue-400', isActive); b.classList.toggle('bg-gray-100', !isActive); b.classList.toggle('dark:bg-transparent', !isActive); b.classList.toggle('text-gray-500', !isActive); b.classList.toggle('dark:text-gray-400', !isActive); b.classList.toggle('hover:text-gray-700', !isActive); b.classList.toggle('dark:hover:text-gray-200', !isActive);
+                });
+            
+                if (table) {
+                    const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                    let bundledParentCodes = null;
+                    if (App.state.isPeBundleMode && planner) {
+                        bundledParentCodes = new Set();
+                        const assignedPes = (planner.assignedPes || []).map(p => p.id);
+                        assignedPes.forEach(peCode => {
+                            const links = App.dataMaps.peTo3dMap.get(peCode);
+                            if (links) {
+                                links.specificCodes.forEach(specificCode => {
+                                    const element = App.dataMaps.ngss3dMap.get(specificCode);
+                                    if (element && element.parentCode) {
+                                        bundledParentCodes.add(element.parentCode);
+                                    }
+                                });
+                            }
+                        });
+                    }
+
+                    table.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
+                        const isVisibleForTab = cell.dataset.tabGroup === tabKey;
+                        let isVisibleForBundle = true; 
+                        
+                        if (bundledParentCodes !== null && cell.dataset.tabGroup !== 'pe') {
+                            const code = cell.dataset.code || cell.dataset.parentCode;
+                            isVisibleForBundle = bundledParentCodes.has(code);
+                        }
+                        
+                        cell.style.display = (isVisibleForTab && isVisibleForBundle) ? '' : 'none';
+                    });
+                }
+                // No save on tab change
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (planner) {
+                    planner.activeTab = App.state.currentActiveTab;
+                    App.persistence.saveProgramData(); // Directly save, no history or debounce needed
+                }
+            },
+            updateTableHeaderHighlights() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId); if (!planner) return;
+                const assignedPes = planner.assignedPes || [];
+                const primaryLinks = new Set();
+                const secondaryLinks = new Set();
+
+                assignedPes.forEach(peObj => {
+                    const links = App.dataMaps.peTo3dMap.get(peObj.id);
+                    if (!links) return;
+                    
+                    const targetSet = peObj.isSecondary ? secondaryLinks : primaryLinks;
+                    links.componentCodes.forEach(code => targetSet.add(code));
+                    links.specificCodes.forEach(code => {
+                        const el = App.dataMaps.ngss3dMap.get(code);
+                        if(el && el.parentCode) targetSet.add(el.parentCode);
+                    });
+                    // Always add secondary DCI links to the secondary set
+                    links.secondaryComponentCodes.forEach(code => secondaryLinks.add(code));
+                });
+            
+                App.dom.plannerTableContainer.querySelectorAll('thead th[data-code]').forEach(th => {
+                    const code = th.dataset.code;
+                    th.classList.remove('bg-blue-200', 'dark:bg-blue-900/50', 'font-bold', 'bg-gray-300', 'dark:bg-gray-700', 'bg-gray-400/50', 'dark:bg-gray-600/50');
+                    th.classList.add('bg-gray-200', 'dark:bg-gray-800');
+
+                    const isPrimaryPe = assignedPes.some(p => p.id === code && !p.isSecondary);
+                    const isSecondaryPe = assignedPes.some(p => p.id === code && p.isSecondary);
+
+                    if (isPrimaryPe) { // Is an assigned Primary PE
+                        th.classList.add('bg-blue-200', 'dark:bg-blue-900/50', 'font-bold');
+                    } else if (isSecondaryPe) { // Is an assigned Secondary PE
+                        th.classList.add('bg-blue-100', 'dark:bg-blue-900/20');
+                    } else if (primaryLinks.has(code)) { // Is a 3D element linked to a Primary PE
+                        th.classList.add('bg-gray-300', 'dark:bg-gray-700');
+                    } else if (secondaryLinks.has(code)) { // Is a 3D element linked only to Secondary PEs or is a secondary DCI
+                        th.classList.add('bg-gray-400/50', 'dark:bg-gray-600/50');
+                    }
+                });
+            },
+            progressionViewer() { 
+                const selectedPlannerIds = Array.from(App.dom.navigatorList.querySelectorAll('.planner-checkbox:checked')).map(cb => cb.closest('.planner-item').dataset.plannerId); 
+                if (selectedPlannerIds.length === 0) { 
+                    alert('Please select at least one planner from the navigator to view its progression.'); 
+                    return; 
+                } 
+                const selectedPlanners = selectedPlannerIds.map(id => App.utils.findPlanner(id)); 
+                
+                const tableContainer = document.getElementById('progression-table-view');
+                tableContainer.innerHTML = '';
+                document.getElementById('progression-subtitle').textContent = `Comparing: ${selectedPlanners.map(p => p.title).join(', ')}`; 
+                
+                const allTrackedElements = new Map(); 
+                const allUnique3DElements = new Map();
+
+                selectedPlanners.forEach(planner => { 
+                    (planner.rows || []).forEach(row => { 
+                        const processLesson = (lesson, lessonSetTitle = null) => { 
+                            if (!lesson.trackingData) return;
+                            Object.entries(lesson.trackingData).forEach(([code, status]) => { 
+                                const elementData = App.dataMaps.ngss3dMap.get(code);
+                                if (elementData) {
+                                    if (!allTrackedElements.has(code)) { 
+                                        allTrackedElements.set(code, []);
+                                        allUnique3DElements.set(code, elementData);
+                                    } 
+                                    allTrackedElements.get(code).push({ 
+                                        plannerId: planner.id, 
+                                        lessonTitle: lesson.title, 
+                                        lessonSetTitle: lessonSetTitle, 
+                                        status: status 
+                                    });
+                                }
+                            }); 
+                        }; 
+                        if (row.type === 'lesson') processLesson(row); 
+                        else if (row.type === 'lesson-set' && row.children) row.children.forEach(lesson => processLesson(lesson, row.title)); 
+                    }); 
+                }); 
+
+                let tableHTML = `<table class="w-full border-collapse"><thead><tr class="bg-gray-200 dark:bg-gray-800"><th class="sticky p-2 border border-gray-300 dark:border-gray-700 text-left sticky top-0 bg-gray-200 dark:bg-gray-800">3D Element</th>`;
+                selectedPlanners.forEach(p => { tableHTML += `<th class="p-2 border border-gray-300 dark:border-gray-700 text-left sticky top-0 bg-gray-200 dark:bg-gray-800">${p.title}</th>`; });
+                tableHTML += `</tr></thead><tbody>`;
+
+                const sortedElements = Array.from(allUnique3DElements.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+                sortedElements.forEach(([code, elementData]) => {
+                    tableHTML += `<tr class="border-b dark:border-gray-700">
+                        <td class="p-2 border border-gray-300 dark:border-gray-700 align-top font-semibold sticky left-0 bg-gray-50 dark:bg-gray-800/50 shadow-[4px_0_5px_-2px_rgba(0,0,0,0.05)] dark:shadow-[4px_0_5px_-2px_rgba(0,0,0,0.2)]">
+                            <strong>${code}</strong><br><small class="font-normal text-gray-600 dark:text-gray-400">${elementData.text}</small>
+                        </td>`;
+                    selectedPlanners.forEach(planner => {
+                        const entriesForPlanner = (allTrackedElements.get(code) || []).filter(e => e.plannerId === planner.id);
+                        let cellContent = `<div class="flex flex-wrap gap-1.5">` + entriesForPlanner.map(e => {
+                           const tooltip = `${e.lessonSetTitle ? `${e.lessonSetTitle} &rarr; ` : ''}${e.lessonTitle}`;
+                           const badgeColor = App.constants.statusBadgeClasses[e.status] || 'bg-gray-200 dark:bg-gray-600';
+                           return `<span class="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-bold ${badgeColor}" data-tooltip="${tooltip.replace(/"/g, '&quot;')}">${e.status}</span>`;
+                        }).join(' ') + `</div>`;
+                        tableHTML += `<td class="p-2 border border-gray-300 dark:border-gray-700 align-top">${cellContent}</td>`;
+                    });
+                    tableHTML += `</tr>`;
+                });
+                tableHTML += `</tbody></table>`;
+                tableContainer.innerHTML = tableHTML;
+                App.utils.showView('progression-view'); 
+            },
+        };
+
+        App.handlers = {
+            mainTableClick(e) {
+                const target = e.target; const row = target.closest('tr'); if (!row || App.state.isViewMode) return;
+                
+                // Don't trigger other actions if a popover is open and the click is outside of it.
+                // The popover's own logic will handle closing it.
+                if (App.popover.state.isVisible && !App.popover.dom.container.contains(target)) {
+                    return;
+                }
+
+                if (target.classList.contains('delete-btn')) { if (confirm('Delete this row?')) { App.utils.deleteRow(row.dataset.id); } return; }
+                if (target.classList.contains('add-below-btn')) { App.utils.addRowAdjacent(row.dataset.id, 'below'); return; }
+                if (target.classList.contains('copy-row-btn')) { App.utils.copyRow(row.dataset.id); return; }
+
+                const peCell = target.closest('[data-pe-code]');
+                if (peCell) { App.utils.cyclePeStatus(row.dataset.id, peCell.dataset.peCode); return; }
+
+                const scopeCell = target.closest('[data-scope-cell]');
+                if(scopeCell) { App.utils.cycleScopeStatus(row.dataset.id); return; }
+
+                const trackingCell = target.closest('[data-parent-code]'); 
+                if (trackingCell) { App.popover.show(trackingCell, trackingCell.dataset.parentCode, row.dataset.id); return; }
+                
+                const headerCell = target.closest('th[data-code]'); if (headerCell) { App.utils.openElementDetailModal(headerCell.dataset.code); return; }
+                
+                const lessonSetRow = target.closest('.lesson-set-row');
+                if (lessonSetRow && !target.matches('.editable')) { 
+                    const planner = App.utils.findPlanner(App.state.currentPlannerId); 
+                    const rowData = App.utils.findRowData(planner, row.dataset.id); 
+                    if (rowData) { 
+                        rowData.isCollapsed = !rowData.isCollapsed; 
+                        App.render.rowsFromState(planner.rows); 
+                        App.render.setActiveTab(App.state.currentActiveTab); 
+                        App.persistence.debouncedSave(); 
+                    } 
+                }
+            },
+            titleEdit(e) {
+                const rowId = e.target.closest('tr').dataset.id;
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                const rowData = App.utils.findRowData(planner, rowId);
+                if (rowData && rowData.title !== e.target.textContent) {
+                    rowData.title = e.target.textContent;
+                    App.persistence.debouncedSave();
+                }
+            },
+            tooltipShow(e) { const target = e.target.closest('[data-tooltip]'); if (!target || !target.dataset.tooltip || App.popover.state.isVisible) return; App.dom.tooltip.innerHTML = target.dataset.tooltip; App.dom.tooltip.style.opacity = '1'; const targetRect = target.getBoundingClientRect(); App.dom.tooltip.style.left = `${e.clientX + 10}px`; App.dom.tooltip.style.top = `${e.clientY + 10}px`; },
+            tooltipHide() { App.dom.tooltip.style.opacity = '0'; },
+            
+            dragStart(e) {
+                if (!e.target.matches('tr') || App.state.isViewMode) return;
+                const draggedRow = e.target;
+                this.draggedGroup = [draggedRow];
+
+                if (draggedRow.dataset.rowType === 'lesson-set') {
+                    const setId = draggedRow.dataset.id;
+                    const childRows = App.dom.plannerTableContainer.querySelectorAll(`tr[data-parent-id="${setId}"]`);
+                    childRows.forEach(child => this.draggedGroup.push(child));
+                }
+                
+                e.dataTransfer.effectAllowed = 'move';
+                setTimeout(() => {
+                    this.draggedGroup.forEach(row => row.classList.add('opacity-50', 'bg-yellow-200'));
+                }, 0);
+            },
+            dragOver(e) {
+                e.preventDefault();
+                const targetRow = e.target.closest('tr');
+                if (targetRow && !this.draggedGroup.includes(targetRow)) {
+                    targetRow.classList.add('bg-blue-100');
+                }
+            },
+            dragLeave(e) {
+                e.preventDefault();
+                const targetRow = e.target.closest('tr');
+                if (targetRow) {
+                    targetRow.classList.remove('bg-blue-100');
+                }
+            },
+            drop(e) {
+                e.preventDefault();
+                const dropTarget = e.target.closest('tbody tr'); // Important: Only target rows in the tbody
+                if (dropTarget && this.draggedGroup && !this.draggedGroup.includes(dropTarget)) {
+                    const tbody = dropTarget.parentNode;
+                    const targetRect = dropTarget.getBoundingClientRect();
+                    const targetMidY = targetRect.top + targetRect.height / 2;
+                    
+                    // Insert before the target if dropping on the top half, otherwise after
+                    const referenceNode = (e.clientY < targetMidY) ? dropTarget : dropTarget.nextSibling;
+
+                    this.draggedGroup.forEach(draggedRow => {
+                        tbody.insertBefore(draggedRow, referenceNode);
+                    });
+                }
+                document.querySelectorAll('.bg-blue-100').forEach(el => el.classList.remove('bg-blue-100'));
+                if (this.draggedGroup) {
+                    this.draggedGroup.forEach(row => row.classList.remove('opacity-50', 'bg-yellow-200'));
+                }
+                this.draggedGroup = null;
+                App.persistence.updateStateFromTableOrder();
+                App.persistence.debouncedSave();
+            }
+        };
+
+        App.utils = {
+             findPlanner: (id) => App.state.programData.planners.find(p => p.id === id),
+             findRowData(planner, rowId) {
+                if (!planner || !planner.rows) return null;
+                for (const row of planner.rows) {
+                    if (row.id === rowId) return row;
+                    if (row.type === 'lesson-set' && row.children) {
+                        const foundInChildren = row.children.find(child => child.id === rowId);
+                        if (foundInChildren) return foundInChildren;
+                    }
+                }
+                return null;
+             },
+             findRowAndParent(planner, rowId) {
+                if (!planner || !planner.rows) return null;
+                // Check top-level rows
+                for (let i = 0; i < planner.rows.length; i++) {
+                    const row = planner.rows[i];
+                    if (row.id === rowId) {
+                        return { row: row, parentArray: planner.rows, index: i };
+                    }
+                    // Check children of lesson-sets
+                    if (row.type === 'lesson-set' && row.children) {
+                        for (let j = 0; j < row.children.length; j++) {
+                            const child = row.children[j];
+                            if (child.id === rowId) {
+                                return { row: child, parentArray: row.children, index: j };
+                            }
+                        }
+                    }
+                }
+                return null;
+             },
+             showView: (id) => { document.querySelectorAll('.view').forEach(v => v.classList.add('hidden')); document.getElementById(id).classList.remove('hidden'); document.getElementById(id).classList.add('flex', 'flex-col');},
+             openModal(modalId) {
+                document.getElementById(modalId).classList.replace('hidden', 'flex');
+                App.dom.body.classList.add('modal-open');
+             },
+             closeAllModals: () => { 
+                document.querySelectorAll('.modal-backdrop').forEach(m => m.classList.replace('flex', 'hidden') );
+                App.popover.hide();
+                App.dom.body.classList.remove('modal-open');
+             },
+             normalizeText: (t) => t.toLowerCase().replace(/[^\w\s]/g, '').replace(/\s+/g, ' ').trim(),
+             escapeRegExp: (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
+             getGradeBandKey: (l) => {
+                if (!l) return null;
+                const lc = l.toLowerCase();
+                if (['kindergarten', 'first', 'second', 'k-2'].some(k => lc.includes(k))) return 'primary';
+                if (['third', 'fourth', 'fifth', '3-5'].some(k => lc.includes(k))) return 'elementary';
+                if (lc.includes('middle')) return 'middle';
+                if (lc.includes('high')) return 'high';
+                return null;
+            },
+            findBestMatchingSpecificElement(text, grade) {
+                const clean = text.trim().replace(/^[\*•]\s*/, '').replace(/\s*\([^)]*\)\s*$/, '').trim();
+                if (clean.length < 15) return null;
+                
+                const cacheKey = `${grade}|${clean}`;
+                if (App.dataMaps.fuzzyMatchCache.has(cacheKey)) return App.dataMaps.fuzzyMatchCache.get(cacheKey);
+
+                const normText = this.normalizeText(clean);
+                const words = normText.split(' ').filter(w => w.length > 1);
+                if (words.length === 0) return null;
+
+                const threshold = words.length < 10 ? 0.75 : 0.80;
+                const gradeKey = this.getGradeBandKey(grade);
+                let best = { code: null, score: 0, base: 0, len: Infinity };
+
+                for (const [offText, code] of App.dataMaps.textToSpecificCodeMap.entries()) {
+                    const normOffText = this.normalizeText(offText);
+                    const found = words.reduce((count, word) => {
+                        const rgx = new RegExp(`\\b${this.escapeRegExp(word)}\\b`);
+                        if (rgx.test(normOffText)) return count + 1;
+                        const singular = word.endsWith('s') ? word.slice(0, -1) : null;
+                        if (singular && singular.length > 2 && new RegExp(`\\b${this.escapeRegExp(singular)}\\b`).test(normOffText)) return count + 1;
+                        const plural = !word.endsWith('s') ? word + 's' : null;
+                        if (plural && new RegExp(`\\b${this.escapeRegExp(plural)}\\b`).test(normOffText)) return count + 1;
+                        return count;
+                    }, 0);
+                    
+                    const baseScore = found / words.length;
+                    let weightedScore = baseScore;
+                    const el = App.dataMaps.ngss3dMap.get(code);
+                    
+                    if (gradeKey && el && el.allProgressions[gradeKey]) {
+                         weightedScore += 0.2; // Boost if element is in the correct grade band
+                    }
+
+                    if (weightedScore > best.score || (weightedScore === best.score && offText.length < best.len)) {
+                        best = { code, score: weightedScore, base: baseScore, len: offText.length };
+                    }
+                }
+                const result = best.base >= threshold ? best.code : null;
+                App.dataMaps.fuzzyMatchCache.set(cacheKey, result);
+                return result;
+            },
+             gatherColumns(gradeBand) {
+                const groups = { pe: { name: "PEs", key: 'pe', cols: [] }, dci: { name: "DCIs", key: 'dci', cols: [] }, sep: { name: "SEPs", key: 'sep', cols: [] }, ccc: { name: "CCCs", key: 'ccc', cols: [] } };
+                App.dataMaps.parentToChildrenMap.forEach((parentData, parentCode) => {
+                    if (parentCode === 'PE') return;
+                    const isRelevant = parentData.children.some(child => child.allProgressions[gradeBand]?.length > 0);
+                    if(isRelevant) { const groupKey = parentData.dimension.toLowerCase().split('-')[0]; if (groups[groupKey]) { groups[groupKey].cols.push({ code: parentCode, title: parentData.name }); } }
+                });
+                return groups;
+            },
+            cyclePeStatus(rowId, peCode) {
+                const planner = this.findPlanner(App.state.currentPlannerId);
+                const rowData = this.findRowData(planner, rowId);
+                if (!rowData) return;
+
+                const currentStatus = rowData.trackingData[peCode];
+                const cycle = { '': 'I', 'I': 'D', 'D': 'A', 'A': '' };
+                const newStatus = cycle[currentStatus || ''];
+
+                if (newStatus) { rowData.trackingData[peCode] = newStatus; } 
+                else { delete rowData.trackingData[peCode]; }
+                
+                App.render.rowsFromState(planner.rows);
+                App.render.setActiveTab(App.state.currentActiveTab);
+                App.persistence.debouncedSave();
+            },
+            cycleScopeStatus(rowId) {
+                const planner = this.findPlanner(App.state.currentPlannerId);
+                const rowData = this.findRowData(planner, rowId);
+                if (!rowData) return;
+
+                const currentScope = rowData.scope;
+                const cycle = { '': 'F', 'F': 'S', 'S': '' };
+                rowData.scope = cycle[currentScope || ''];
+
+                App.render.rowsFromState(planner.rows);
+                App.render.setActiveTab(App.state.currentActiveTab);
+                App.persistence.debouncedSave();
+            },
+            toggleViewMode() {
+                App.state.isViewMode = !App.state.isViewMode;
+                App.dom.body.classList.toggle('view-mode-active', App.state.isViewMode);
+                document.getElementById('view-mode-toggle').textContent = App.state.isViewMode ? 'Exit View Mode' : 'Enter View Mode';
+                if (App.state.currentPlannerId) App.render.plannerView(App.state.currentPlannerId);
+            },
+            addRow(type, text) {
+                const planner = this.findPlanner(App.state.currentPlannerId);
+                if (!planner) return;
+                const newRowData = { id: `row-${Date.now()}`, type, title: text };
+                if (type === 'lesson-set') {
+                    newRowData.children = [];
+                    newRowData.isCollapsed = false;
+                    planner.rows.push(newRowData);
+                } else { // type is 'lesson'
+                    newRowData.trackingData = {};
+                    newRowData.scope = '';
+                    const lastSet = planner.rows.filter(r => r.type === 'lesson-set').pop();
+                    // Add to last lesson-set if it exists and is not collapsed, otherwise add to the root
+                    if (lastSet && !lastSet.isCollapsed) {
+                        lastSet.children.push(newRowData);
+                    } else {
+                        planner.rows.push(newRowData);
+                    }
+                }
+                App.render.rowsFromState(planner.rows);
+                App.render.setActiveTab(App.state.currentActiveTab);
+                App.persistence.debouncedSave();
+            },
+            addRowAdjacent(referenceRowId, position = 'below') {
+                const planner = this.findPlanner(App.state.currentPlannerId);
+                if (!planner) return;
+                
+                const location = this.findRowAndParent(planner, referenceRowId);
+                if (!location) return;
+
+                const newLesson = {
+                    id: `row-${Date.now()}`,
+                    type: 'lesson',
+                    title: 'New Lesson...',
+                    trackingData: {},
+                    scope: ''
+                };
+
+                const insertIndex = position === 'below' ? location.index + 1 : location.index;
+                location.parentArray.splice(insertIndex, 0, newLesson);
+
+                App.render.rowsFromState(planner.rows);
+                App.render.setActiveTab(App.state.currentActiveTab);
+                App.persistence.debouncedSave();
+            },
+            copyRow(sourceRowId) {
+                const planner = this.findPlanner(App.state.currentPlannerId);
+                if (!planner) return;
+
+                const location = this.findRowAndParent(planner, sourceRowId);
+                if (!location) return;
+
+                const sourceRowData = location.row;
+                const newRowData = JSON.parse(JSON.stringify(sourceRowData)); // Deep copy
+                newRowData.id = `row-${Date.now()}`;
+                newRowData.title = `${sourceRowData.title} (Copy)`;
+
+                location.parentArray.splice(location.index + 1, 0, newRowData);
+
+                App.render.rowsFromState(planner.rows);
+                App.render.setActiveTab(App.state.currentActiveTab);
+                App.persistence.debouncedSave();
+            },
+            deleteRow(rowId) {
+                const planner = this.findPlanner(App.state.currentPlannerId); if (!planner) return;
+                let foundAndRemoved = false;
+                // Try to remove from the top-level rows
+                planner.rows = planner.rows.filter(row => {
+                    if (row.id === rowId) {
+                        foundAndRemoved = true;
+                        return false;
+                    }
+                    return true;
+                });
+                // If not found, search within the children of each lesson-set
+                if (!foundAndRemoved) {
+                    planner.rows.forEach(row => {
+                        if (row.type === 'lesson-set' && row.children) {
+                            row.children = row.children.filter(child => child.id !== rowId);
+                        }
+                    });
+                }
+                App.render.rowsFromState(planner.rows);
+                App.render.setActiveTab(App.state.currentActiveTab);
+                App.persistence.debouncedSave();
+            },
+            openPlannerModal(p=null){const t=document.getElementById('planner-modal-title');const d=document.getElementById('planner-modal-delete');document.getElementById('planner-id-input').value=p?p.id:'';document.getElementById('planner-title-input').value=p?p.title:'';document.getElementById('planner-course-input').value=p?p.course:'';document.getElementById('planner-band-select').value=p?p.gradeBand:'elementary';document.getElementById('planner-description-input').value=p?p.description:'';t.textContent=p?'Edit Planner':'New Planner';d.style.display=p?'inline-block':'none'; this.openModal('planner-modal-backdrop'); },
+            savePlanner() { 
+                const id = document.getElementById('planner-id-input').value;
+                const data = {
+                    title: document.getElementById('planner-title-input').value,
+                    course: document.getElementById('planner-course-input').value,
+                    gradeBand: document.getElementById('planner-band-select').value,
+                    description: document.getElementById('planner-description-input').value
+                };
+
+                if (!data.title) { alert('Planner Title is required.'); return; }
+
+                if (id) {
+                    Object.assign(App.utils.findPlanner(id), data);
+                } else {
+                    // Create New Planner
+                    data.id = `planner-${Date.now()}`;
+                    
+                    const genId = () => `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
+                    const makeLesson = (t) => ({ id: genId(), type: 'lesson', title: t, trackingData: {}, scope: '' });
+                    const makeSet = (t) => ({
+                        id: genId(),
+                        type: 'lesson-set',
+                        title: t,
+                        isCollapsed: false,
+                        children: [makeLesson('Lesson 1'), makeLesson('Lesson 2')]
+                    });
+
+                    data.rows = [
+                        makeSet("Anchor Lesson"),
+                        makeSet("Lesson Set 1"),
+                        makeSet("Lesson Set 2"),
+                        makeSet("Transfer Task")
+                    ];
+
+                    data.activeTab = 'pe';
+                    data.assignedPes = [];
+                    App.state.programData.planners.push(data);
+                }
+
+                App.persistence.saveProgramData();
+                App.history.recordState();
+                App.render.navigator();
+                
+                if (!id || id === App.state.currentPlannerId) {
+                    App.render.plannerView(id || data.id);
+                }
+                App.utils.closeAllModals();
+            },
+            openPeAssignmentModal() { 
+                const p=App.utils.findPlanner(App.state.currentPlannerId);if(!p)return;
+                const list=document.getElementById('pe-modal-list');list.innerHTML='';
+                const r=Object.keys(App.dataMaps.gradeBandMap).filter(g=>App.dataMaps.gradeBandMap[g]===p.gradeBand); 
+                list.className = 'grid grid-cols-1 md:grid-cols-2 gap-3'; 
+
+                App.state.allNgssData.forEach(g=>{
+                    if(r.includes(g.gradeId)){
+                        g.topics.forEach(t=>{
+                            t.performanceExpectations.forEach(pe=>{
+                                const assignedPeObj = p.assignedPes?.find(p_obj => p_obj.id === pe.id);
+                                const isChecked = !!assignedPeObj;
+                                const isSecondaryChecked = assignedPeObj?.isSecondary || false;
+
+                                const d=document.createElement('div');
+                                d.className='pe-modal-item';
+                                const links = App.dataMaps.peTo3dMap.get(pe.id) || { componentCodes: new Set(), secondaryComponentCodes: new Set() };
+                                const linksByDim = { SEP: [], DCI: [], CCC: [] };
+
+                                [...links.componentCodes, ...links.secondaryComponentCodes].forEach(code => {
+                                    const parentInfo = App.dataMaps.parentToChildrenMap.get(code);
+                                    if(parentInfo) {
+                                        const isSec = links.secondaryComponentCodes.has(code) ? ' (secondary)' : '';
+                                        if (parentInfo.dimension.startsWith('SEP')) linksByDim.SEP.push(code + isSec);
+                                        else if (parentInfo.dimension.startsWith('DCI')) linksByDim.DCI.push(code + isSec);
+                                        else if (parentInfo.dimension.startsWith('CCC')) linksByDim.CCC.push(code + isSec);
+                                    }
+                                });
+
+                                const createLinkText = (dim) => {
+                                    if (linksByDim[dim].length === 0) return 'N/A';
+                                    return linksByDim[dim].map(codeWithSec => {
+                                        const isSec = codeWithSec.includes('(secondary)');
+                                        const code = codeWithSec.replace(' (secondary)', '');
+                                        const name = App.dataMaps.major3DMap.get(code) || code;
+                                        return `<span class="whitespace-nowrap ${isSec ? 'italic' : ''}">(${code}) ${name}</span>`;
+                                    }).join('<br>');
+                                };
+                                
+                                d.innerHTML=`<label class="flex items-start p-3 rounded-md cursor-pointer border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"><input type="checkbox" value="${pe.id}" ${isChecked?'checked':''} class="mr-3 mt-1 h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-100 dark:bg-gray-900"><div class="text-gray-800 dark:text-gray-200"><strong class="font-semibold">${pe.id}:</strong> ${pe.description}<div class="flex items-center mt-2"><input type="checkbox" id="secondary-toggle-${pe.id}" class="secondary-pe-toggle h-4 w-4 rounded border-gray-300 text-purple-600 focus:ring-purple-500" ${isSecondaryChecked ? 'checked' : ''}><label for="secondary-toggle-${pe.id}" class="ml-2 text-sm text-gray-600 dark:text-gray-400">Mark as a supporting PE</label></div><div class="text-xs text-gray-500 dark:text-gray-400 mt-2 pl-6"><strong>SEP:</strong> ${createLinkText('SEP')}<br><strong>DCI:</strong> ${createLinkText('DCI')}<br><strong>CCC:</strong> ${createLinkText('CCC')}</div></div></label>`;
+                                list.appendChild(d);
+                            })
+                        })
+                    }
+                }); 
+                this.openModal('pe-modal-backdrop');
+            },
+            savePeAssignments() { 
+                const p = App.utils.findPlanner(App.state.currentPlannerId); if (!p) return; 
+                p.assignedPes = Array.from(document.querySelectorAll('#pe-modal-list input[type="checkbox"][value]:checked')).map(i => {
+                    const container = i.closest('label');
+                    const isSecondary = container.querySelector('.secondary-pe-toggle').checked;
+                    return { id: i.value, isSecondary: isSecondary };
+                });
+                App.persistence.debouncedSave(); 
+                App.render.plannerView(p.id); 
+                this.closeAllModals(); 
+            },
+            openElementDetailModal(code) { 
+                const isParent = App.dataMaps.parentToChildrenMap.has(code); if (isParent) return; 
+                const el=App.dataMaps.ngss3dMap.get(code)||App.dataMaps.peMap.get(code);if(!el)return;
+                const planner=App.utils.findPlanner(App.state.currentPlannerId);
+                const modalTitle=el.parentName?`${el.parentName} (${el.code})`:`${el.id}`;
+                const modalDesc=el.text||el.description;
+                document.getElementById('element-modal-title').textContent=modalTitle;
+                document.getElementById('element-modal-description').textContent=modalDesc;
+                
+                const progEl=document.getElementById('element-progression');
+                progEl.innerHTML='';
+                if(el.allProgressions){
+                    progEl.innerHTML='<h4 class="text-lg font-semibold mb-2">K-12 Progression</h4>';
+                    Object.entries(el.allProgressions).forEach(([band,progs])=>{
+                        if(progs?.length>0){
+                            const d=document.createElement('div');
+                            const isCurrentBand = band === planner?.gradeBand; 
+                            d.className = `p-3 rounded-md mb-2 ${isCurrentBand ? 'bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-500' : 'dark:bg-gray-700/50'}`;
+                            d.innerHTML=`<h4 class="font-bold text-md">${band.charAt(0).toUpperCase()+band.slice(1)} Band</h4><div class="space-y-2 mt-1">${progs.map(pr=>`<p class="text-sm"><strong class="font-semibold">${pr.code}:</strong> ${pr.text}</p>`).join('')}</div>`;
+                            progEl.appendChild(d)
+                        }
+                    })
+                }
+                
+                const lCont=document.getElementById('element-linked-pes');
+                lCont.innerHTML = ''; // Clear previous content
+
+                if(App.dataMaps.peMap.has(code)){
+                    // Case 1: Displaying 3D links for a PE
+                    const links = App.dataMaps.peTo3dMap.get(code) || { componentCodes: new Set(), secondaryComponentCodes: new Set() };
+                    let h = '<h4 class="text-lg font-semibold mb-2">Linked 3D Elements</h4><div class="space-y-2">';
+                    
+                    const linksByDim = { SEP: [], DCI: [], CCC: [] };
+                    [...links.componentCodes, ...links.secondaryComponentCodes].forEach(cCode => {
+                        const parentInfo = App.dataMaps.parentToChildrenMap.get(cCode);
+                        if(parentInfo) {
+                            const isSec = links.secondaryComponentCodes.has(cCode) ? ' (secondary)' : '';
+                            const dimKey = parentInfo.dimension.split('-')[0];
+                            if(linksByDim[dimKey]) linksByDim[dimKey].push({code: cCode, isSec: isSec});
+                        }
+                    });
+
+                    Object.entries(linksByDim).forEach(([dim, codes]) => {
+                        h += `<div><strong>${dim}:</strong> `;
+                        if(codes.length > 0) {
+                            h += codes.map(c => `${App.dataMaps.major3DMap.get(c.code) || c.code}${c.isSec}`).join(', ');
+                        } else {
+                            h += 'N/A';
+                        }
+                        h += '</div>';
+                    });
+
+                    h+='</div>';
+                    lCont.innerHTML=h;
+
+                }else{
+                    // Case 2: Displaying PEs that link to a 3D element
+                    const pes=(()=>{
+                        const r=[];
+                        App.dataMaps.peTo3dMap.forEach((d,id)=>{
+                            if(d.specificCodes && d.specificCodes.has(code)){ 
+                                const pe=App.dataMaps.peMap.get(id);
+                                if(pe)r.push(pe)
+                            }
+                        });
+                        return r
+                    })();
+                    lCont.innerHTML=pes.length>0?`<h4 class="text-lg font-semibold mb-2">Linked Performance Expectations</h4><ul class="list-disc list-inside space-y-1">${pes.map(pe=>`<li><strong>${pe.id}:</strong> ${pe.description}</li>`).join('')}</ul>`:'<p class="text-gray-500 dark:text-gray-400">No Performance Expectations directly link to this 3D element.</p>'}
+                
+                this.openModal('element-detail-modal-backdrop')
+            },
+        };
+
+        App.export = {
+            showExportOptions() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) { alert('Please select a planner to export.'); return; }
+                App.utils.openModal('export-modal-backdrop');
+            },
+            
+            downloadFile(filename, content, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            },
+
+            asJson(planner) {
+                const jsonString = JSON.stringify(planner, null, 2);
+                this.downloadFile(`${planner.title}.json`, jsonString, 'application/json');
+            },
+
+            asHtml(planner) {
+                const tableContainer = document.getElementById('planner-table-container').cloneNode(true);
+                tableContainer.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
+                tableContainer.querySelectorAll('.drag-handle, .delete-btn').forEach(el => el.remove());
+
+                const htmlContent = `
+                    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${planner.title}</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        body { overflow: auto; height: auto; display: block; }
+                        th[data-tab-group], td[data-tab-group] { display: none; }
+                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; }
+                        .sticky-col-2 { position: sticky; left: 50px; z-index: 4; }
+                        .sticky-col-3 { position: sticky; left: 100px; z-index: 3; }
+                    <\/style>
+                    </head><body class="bg-gray-100 p-8"><main>
+                    <h1 class="text-3xl font-bold">${planner.title}</h1><p class="text-gray-600">${planner.course} (${planner.gradeBand})</p>
+                    <div id="tab-container" class="mt-4 flex border-b-2 border-gray-300 -mb-px">${document.getElementById('tab-container').innerHTML}</div>
+                    <div id="planner-table-container" class="overflow-auto border border-gray-300 rounded-b-lg rounded-tr-lg">${tableContainer.innerHTML}</div>
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const firstTab = document.querySelector('.tab-button');
+                            if (firstTab) { 
+                                activateTab(firstTab);
+                            }
+                            document.getElementById('tab-container').addEventListener('click', e => {
+                                if (e.target.matches('.tab-button')) {
+                                   activateTab(e.target);
+                                }
+                            });
+                            function activateTab(tabButton) {
+                                document.querySelectorAll('.tab-button').forEach(btn => {
+                                    btn.classList.remove('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
+                                });
+                                tabButton.classList.add('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
+                                const tabKey = tabButton.dataset.tab;
+                                document.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
+                                    cell.style.display = cell.dataset.tabGroup === tabKey ? 'table-cell' : 'none';
+                                });
+                            }
+                        });
+                    <\/script>
+                    </main></body></html>`;
+                this.downloadFile(`${planner.title}.html`, htmlContent, 'text/html');
+            },
+            
+            _generateCombinedSheetData(planner) {
+                // This is now a private helper returning raw data arrays
+                const headers = ['Lesson', 'Primary PE', 'Secondary PE', 'Primary DCI Element', 'DCI: I/D/A', 'DCI: Full or Partial?', 'SEP Element', 'SEP: I/D/A', 'SEP: Full or Partial?', 'CCC Element', 'CCC: I/D/A', 'CCC: Full or Partial?', 'NOS Connection', 'ETAS Connection'];
+                const sheetData = [headers];
+                const merges = [];
+                const rowInfo = {};
+
+                const statusMap = { I: 'Introduced', D: 'Developed', A: 'Assessed' };
+                const assignedPeMap = new Map((planner.assignedPes || []).map(p => [p.id, p]));
+
+                const processRow = (plannerRow) => {
+                    if (plannerRow.type === 'lesson-set') {
+                        const rowIndex = sheetData.length;
+                        sheetData.push([plannerRow.title]);
+                        rowInfo[rowIndex] = { type: 'unit' };
+                        merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: headers.length - 1 } });
+                        (plannerRow.children || []).forEach(child => processRow(child));
+                    } else if (plannerRow.type === 'lesson') {
+                        const lessonTitleRowIndex = sheetData.length;
+                        sheetData.push([plannerRow.title]);
+                        rowInfo[lessonTitleRowIndex] = { type: 'lessonTitle' };
+                        merges.push({ s: { r: lessonTitleRowIndex, c: 0 }, e: { r: lessonTitleRowIndex, c: headers.length - 1 } });
+
+                        const nonAssessed = { primaryPEs: [], secondaryPEs: [], dcis: [], seps: [], cccs: [] };
+                        const assessed = { primaryPEs: [], secondaryPEs: [], dcis: [], seps: [], cccs: [] };
+
+                        Object.entries(plannerRow.trackingData || {}).forEach(([code, status]) => {
+                            const element = { code, status };
+                            const targetGroup = (status === 'A') ? assessed : nonAssessed;
+
+                            if (assignedPeMap.has(code)) {
+                                if (assignedPeMap.get(code).isSecondary) targetGroup.secondaryPEs.push(element);
+                                else targetGroup.primaryPEs.push(element);
+                            } else {
+                                const elData = App.dataMaps.ngss3dMap.get(code);
+                                if (elData?.dimension.startsWith('DCI')) targetGroup.dcis.push(element);
+                                else if (elData?.dimension.startsWith('SEP')) targetGroup.seps.push(element);
+                                else if (elData?.dimension.startsWith('CCC')) targetGroup.cccs.push(element);
+                            }
+                        });
+
+                        const nonAssessedRow = new Array(headers.length).fill([]);
+                        nonAssessedRow[0] = 'Non-Assessed Elements';
+                        nonAssessedRow[1] = nonAssessed.primaryPEs.map(e => e.code);
+                        nonAssessedRow[2] = nonAssessed.secondaryPEs.map(e => e.code);
+                        nonAssessedRow[3] = nonAssessed.dcis.map(e => e.code);
+                        nonAssessedRow[4] = nonAssessed.dcis.map(e => statusMap[e.status]);
+                        nonAssessedRow[6] = nonAssessed.seps.map(e => e.code);
+                        nonAssessedRow[7] = nonAssessed.seps.map(e => statusMap[e.status]);
+                        nonAssessedRow[9] = nonAssessed.cccs.map(e => e.code);
+                        nonAssessedRow[10] = nonAssessed.cccs.map(e => statusMap[e.status]);
+                        sheetData.push(nonAssessedRow);
+                        rowInfo[sheetData.length - 1] = { type: 'dataRow' };
+
+                        const assessedRow = new Array(headers.length).fill([]);
+                        assessedRow[0] = 'Formative Assessment';
+                        assessedRow[1] = assessed.primaryPEs.map(e => e.code);
+                        assessedRow[2] = assessed.secondaryPEs.map(e => e.code);
+                        assessedRow[3] = assessed.dcis.map(e => e.code);
+                        assessedRow[4] = assessed.dcis.map(e => statusMap[e.status]);
+                        assessedRow[6] = assessed.seps.map(e => e.code);
+                        assessedRow[7] = assessed.seps.map(e => statusMap[e.status]);
+                        assessedRow[9] = assessed.cccs.map(e => e.code);
+                        assessedRow[10] = assessed.cccs.map(e => statusMap[e.status]);
+                        sheetData.push(assessedRow);
+                        rowInfo[sheetData.length - 1] = { type: 'dataRow' };
+                    }
+                };
+                
+                (planner.rows || []).forEach(row => processRow(row));
+                return { sheetData, merges, rowInfo };
+            },
+
+           asClipboard(planner) {
+				const { sheetData } = this._generateCombinedSheetData(planner);
+
+				const formatCellForTsv = (cellValue) => {
+                    // Log the initial input to see what the function starts with
+                    console.log("--- formatCellForTsv called with:", cellValue);
+
+					// Handle null or undefined immediately to prevent errors.
+					if (cellValue === null || cellValue === undefined) {
+                        console.log("  -> Branch: Input is null/undefined. Returning empty string.");
+						return '';
+					}
+
+					let lines = [];
+
+					// --- Step 1: NORMALIZE the input into an array of lines ---
+					if (Array.isArray(cellValue)) {
+                        console.log("  -> Branch: Input is an array. Normalizing items to strings.");
+						// If it's an array, we already have our lines.
+						// Just ensure every item is a string.
+						lines = cellValue.map(item => String(item ?? ''));
+					} else {
+                        console.log("  -> Branch: Input is not an array. Treating as a string.");
+						// If it's not an array, convert it to a string.
+						let rawString = String(cellValue);
+
+						// Handle strings that might have been pre-quoted by another process.
+						if (rawString.startsWith('"') && rawString.endsWith('"')) {
+                            console.log("    -> Sub-branch: Detected pre-quoted string. Un-quoting and un-escaping.");
+							rawString = rawString.substring(1, rawString.length - 1).replace(/""/g, '"');
+						}
+
+						// **SEPARATE:** Split the string by the newline character.
+						lines = rawString.split('\n');
+					}
+
+					// --- Step 2: STRIP and clean up the lines ---
+					const cleanedLines = lines
+						.map(line => line.trim())      // Remove leading/trailing whitespace from each line.
+						.filter(line => line.length > 0); // Remove any empty lines that might result from splitting.
+                    
+                    // --- Step 3: RECOMBINE the clean lines ---
+					const finalContent = cleanedLines.join('\n');
+                    // Use JSON.stringify to make newlines (\n) visible in the console
+                    console.log("  -> After cleanup (Step 3), finalContent is:", JSON.stringify(finalContent));
+
+
+					// --- Step 4: Apply standard TSV quoting rules to the final, clean content ---
+					const needsQuoting = finalContent.includes('\n') || finalContent.includes('\t') || finalContent.includes('"');
+
+					if (needsQuoting) {
+                        console.log("  -> Branch: Quoting needed for TSV.");
+						const escapedContent = finalContent.replace(/"/g, '""');
+                        console.log("    -> Escaped content:", JSON.stringify(escapedContent));
+                        const finalValue = `"${escapedContent}"`;
+                        console.log("    -> Returning quoted value:", JSON.stringify(finalValue));
+						return finalValue;
+					}
+					
+                    console.log("  -> Branch: No quoting needed. Returning as-is.");
+					return finalContent;
+				};
+
+				const tsvString = sheetData.slice(1) // Exclude header row
+					.map(row => row.map(formatCellForTsv).join('\t'))
+					.join('\n');
+				
+				navigator.clipboard.writeText(tsvString).then(() => {
+					alert('Planner data copied to clipboard!');
+					App.utils.closeAllModals();
+				}).catch(err => {
+					console.error('Failed to copy to clipboard:', err);
+					alert('Could not copy to clipboard. See console for details.');
+				});
+			},
+
+
+            createCombinedSheet(planner) {
+                let { sheetData, merges, rowInfo } = this._generateCombinedSheetData(planner);
+
+                // Convert arrays in sheetData to newline-separated strings for XLSX
+                sheetData = sheetData.map(row => row.map(cell => {
+                    if (Array.isArray(cell)) {
+                        return cell.join('\n');
+                    }
+                    return cell;
+                }));
+
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { horizontal: "center", vertical: "center", wrapText: true } };
+                const unitStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FF4338CA" } }, color: { rgb: "FFFFFFFF" }, border: thinBorder };
+                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FF60A5FA" } }, border: thinBorder };
+                const subTitleStyle = { font: { bold: false }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
+                const dataCellStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+
+                const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                worksheet['!merges'] = merges;
+                worksheet['!cols'] = sheetData[0].map(h => ({ wch: h.toLowerCase().includes('element') ? 20 : 18 }));
+                worksheet['!cols'][0].wch = 35;
+
+                Object.keys(worksheet).forEach(cellAddress => {
+                    if (cellAddress.startsWith('!')) return;
+                    const cell = worksheet[cellAddress];
+                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
+                    
+                    if (r === 0) {
+                        cell.s = headerStyle;
+                        return;
+                    }
+                    
+                    const styleInfo = rowInfo[r];
+                    if (styleInfo) {
+                        if (styleInfo.type === 'unit' || styleInfo.type === 'lessonTitle') {
+                            cell.s = styleInfo.style;
+                        } else if (styleInfo.type === 'dataRow') {
+                            cell.s = (c === 0) ? subTitleStyle : dataCellStyle;
+                        }
+                    }
+                });
+                
+                return worksheet;
+            },
+
+            asXlsx(planner) {
+                const workbook = XLSX.utils.book_new();
+                
+                try {
+                    const combinedWorksheet = this.createCombinedSheet(planner);
+                    XLSX.utils.book_append_sheet(workbook, combinedWorksheet, 'Combined View');
+                } catch (e) {
+                    console.error("Failed to create Combined View sheet:", e);
+                    alert("An error occurred while creating the Combined View export. See console for details.");
+                }
+
+                const columnGroups = App.utils.gatherColumns(planner.gradeBand);
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true } };
+                const secondaryHeaderStyle = { font: { bold: true, italic: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true } };
+                const lessonSetStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FFB4C6E7" } }, border: thinBorder };
+                const baseCellStyle = { border: thinBorder, alignment: { wrapText: true, vertical: "top" } };
+                const indentedCellStyle = { ...baseCellStyle, alignment: { ...baseCellStyle.alignment, indent: 1 } };
+                const statusStyles = {
+                    I: { fill: { fgColor: { rgb: "FFFFFF00" } } }, // Yellow
+                    D: { fill: { fgColor: { rgb: "FFC6E0B4" } } }, // Green
+                    A: { fill: { fgColor: { rgb: "FFB4C6E7" } } }, // Blue
+                };
+
+                Object.keys(columnGroups).forEach(groupKey => {
+                    const group = columnGroups[groupKey];
+                    let columns = [];
+                    if (groupKey === 'pe') {
+                        columns = (planner.assignedPes || []).map(peObj => ({ code: peObj.id, title: peObj.id, isSecondary: peObj.isSecondary }));
+                    } else {
+                        columns = group.cols.map(c => ({ code: c.code, title: c.title, isSecondary: false }));
+                    }
+
+                    if (columns.length === 0) return;
+
+                    const sheetData = [];
+                    const headerRow = ['Instructional Sequence', ...columns.map(c => c.title)];
+                    sheetData.push(headerRow);
+
+                    const lessonSetRowIndexes = [];
+                    const indentedLessonRowIndexes = [];
+                    const rowIndexToLesson = new Map();
+
+                    (planner.rows || []).forEach(row => {
+                        const processLessonRow = (lesson, isChild) => {
+                            const lessonDataRow = [lesson.title];
+                            columns.forEach(col => {
+                                let cellValue = '';
+                                if (groupKey === 'pe') {
+                                    cellValue = lesson.trackingData?.[col.code] || '';
+                                } else {
+                                    const parentInfo = App.dataMaps.parentToChildrenMap.get(col.code);
+                                    if (parentInfo) {
+                                        cellValue = parentInfo.children
+                                            .filter(child => lesson.trackingData?.[child.code])
+                                            .map(child => `${child.code} (${lesson.trackingData[child.code]})`)
+                                            .join('\n');
+                                    }
+                                }
+                                lessonDataRow.push(cellValue);
+                            });
+                            sheetData.push(lessonDataRow);
+                            if (isChild) {
+                                indentedLessonRowIndexes.push(sheetData.length - 1);
+                            }
+                            rowIndexToLesson.set(sheetData.length - 1, lesson);
+                        };
+
+                        if (row.type === 'lesson-set') {
+                            const lessonSetRow = [row.title, ...Array(columns.length).fill('')];
+                            sheetData.push(lessonSetRow);
+                            lessonSetRowIndexes.push(sheetData.length - 1);
+                            (row.children || []).forEach(child => processLessonRow(child, true));
+                        } else if (row.type === 'lesson') {
+                            processLessonRow(row, false);
+                        }
+                    });
+
+                    if (sheetData.length > 1) {
+                        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                        worksheet['!cols'] = [{ wch: 45 }, ...columns.map(() => ({ wch: 20 }))];
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        
+                        for (let R = range.s.r; R <= range.e.r; ++R) {
+                            for (let C = range.s.c; C <= range.e.c; ++C) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                                if (!worksheet[cellAddress]) continue;
+
+                                if (R === 0) {
+                                    worksheet[cellAddress].s = (columns[C - 1]?.isSecondary) ? secondaryHeaderStyle : headerStyle;
+                                } else if (lessonSetRowIndexes.includes(R)) {
+                                    worksheet[cellAddress].s = lessonSetStyle;
+                                } else {
+                                    let style = (C === 0 && indentedLessonRowIndexes.includes(R)) ? indentedCellStyle : baseCellStyle;
+                                    const lesson = rowIndexToLesson.get(R);
+                                    if (lesson && C > 0) {
+                                        let dominantStatus = '';
+                                        if (groupKey === 'pe') {
+                                            dominantStatus = worksheet[cellAddress].v;
+                                        } else {
+                                            const parentInfo = App.dataMaps.parentToChildrenMap.get(columns[C - 1].code);
+                                            if (parentInfo) {
+                                                const statuses = parentInfo.children
+                                                    .map(child => lesson.trackingData?.[child.code])
+                                                    .filter(Boolean);
+                                                if (statuses.includes('A')) dominantStatus = 'A';
+                                                else if (statuses.includes('D')) dominantStatus = 'D';
+                                                else if (statuses.includes('I')) dominantStatus = 'I';
+                                            }
+                                        }
+                                        if (statusStyles[dominantStatus]) {
+                                            style = { ...style, ...statusStyles[dominantStatus] };
+                                        }
+                                    }
+                                    worksheet[cellAddress].s = style;
+                                }
+                            }
+                        }
+                        worksheet['!merges'] = lessonSetRowIndexes.map(r => ({ s: { r, c: 0 }, e: { r, c: columns.length } }));
+                        XLSX.utils.book_append_sheet(workbook, worksheet, group.name);
+                    }
+                });
+
+                if (workbook.SheetNames.length > 0) {
+                    XLSX.writeFile(workbook, `${planner.title}.xlsx`);
+                } else {
+                    alert("No data available to export.");
+                }
+            }
+        };
+
+        App.import = {
+            handleImport() {
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json,application/json';
+                input.onchange = e => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = e => {
+                        try {
+                            const importedPlanner = JSON.parse(e.target.result);
+                            if (!importedPlanner.id || !importedPlanner.title) {
+                                throw new Error('Invalid planner file format.');
+                            }
+                            App.state.pendingImportData = importedPlanner;
+                            this.showImportOptions();
+                        } catch (error) {
+                            alert(`Error importing file: ${error.message}`);
+                        }
+                    };
+                    reader.readAsText(file); // <-- CORRECTED LINE
+                };
+                input.click();
+            },
+            showImportOptions() {
+                const modal = document.getElementById('import-options-modal-backdrop');
+                document.getElementById('import-planner-name').textContent = App.state.pendingImportData.title;
+
+                const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
+                const mergeLabel = document.getElementById('import-merge-label');
+                const replaceLabel = document.getElementById('import-replace-label');
+                const mergeInput = mergeLabel.querySelector('input');
+                const replaceInput = replaceLabel.querySelector('input');
+
+                if (currentPlanner) {
+                    mergeLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                    replaceLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                    mergeInput.disabled = false;
+                    replaceInput.disabled = false;
+                } else {
+                    mergeLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                    replaceLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
+                    mergeInput.disabled = true;
+                    replaceInput.disabled = true;
+                    document.querySelector('input[name="import-option"][value="create"]').checked = true;
+                }
+                App.utils.openModal('import-options-modal-backdrop');
+            },
+            processImport() {
+                const importedPlanner = App.state.pendingImportData;
+                if (!importedPlanner) return;
+
+                const option = document.querySelector('input[name="import-option"]:checked').value;
+                const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
+
+                switch (option) {
+                    case 'create':
+                        if (App.utils.findPlanner(importedPlanner.id)) {
+                            importedPlanner.id = `planner-${Date.now()}`;
+                            importedPlanner.title = `${importedPlanner.title} (Imported Copy)`;
+                        }
+                        App.state.programData.planners.push(importedPlanner);
+                        alert(`Planner "${importedPlanner.title}" imported successfully!`);
+                        break;
+                    case 'merge':
+                        if (!currentPlanner) { alert("No planner open to merge with."); return; }
+                        const currentPes = new Map((currentPlanner.assignedPes || []).map(p => [p.id, p]));
+                        (importedPlanner.assignedPes || []).forEach(p => {
+                            if (!currentPes.has(p.id)) {
+                                currentPes.set(p.id, p);
+                            }
+                        });
+                        currentPlanner.assignedPes = Array.from(currentPes.values());
+                        currentPlanner.rows.push(...(importedPlanner.rows || []));
+                        alert(`Merged "${importedPlanner.title}" into "${currentPlanner.title}".`);
+                        break;
+                    case 'replace':
+                        if (!currentPlanner) { alert("No planner open to replace."); return; }
+                        const index = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
+                        if (index > -1) {
+                            importedPlanner.id = currentPlanner.id; 
+                            App.state.programData.planners[index] = importedPlanner;
+                        }
+                        alert(`Replaced "${currentPlanner.title}" with "${importedPlanner.title}".`);
+                        break;
+                }
+                
+                App.persistence.saveProgramData();
+                App.history.recordState();
+                App.render.navigator();
+                if (option !== 'create') {
+                    App.render.plannerView(App.state.currentPlannerId);
+                }
+                App.utils.closeAllModals();
+                App.state.pendingImportData = null;
+            }
+        };
+        
+        async function loadDataAndInit() {
+            try {
+                const dataPath = '../JSON/';
+                const [ngss3d, k5, m68, h912] = await Promise.all([
+                    fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${res.url}`); return res.json(); }),
+                    fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${res.url}`); return res.json(); }),
+                    fetch(`${dataPath}ngss68.json`).then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${res.url}`); return res.json(); }),
+                    fetch(`${dataPath}ngss912.json`).then(res => { if (!res.ok) throw new Error(`HTTP error! status: ${res.status} for ${res.url}`); return res.json(); })
+                ]);
+
+                App.state.allNgss3dElements = ngss3d;
+                App.state.allNgssData = [...k5, ...m68, ...h912];
+
+                App.init();
+
+            } catch (error) {
+                console.error("Failed to load NGSS data:", error);
+                document.getElementById('loading-indicator').textContent = 'Error loading data. Please check the console and refresh. Make sure you are running this from a web server and the ../JSON/ folder is accessible.';
+            }
+        }
+        
+        loadDataAndInit();
+    });
+    </script>
+</body>
+</html>
