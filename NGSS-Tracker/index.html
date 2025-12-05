@@ -2249,6 +2249,272 @@
             },
         };
 
+		App.export = {
+            showExportOptions() {
+                const planner = App.utils.findPlanner(App.state.currentPlannerId);
+                if (!planner) { alert('Please select a planner to export.'); return; }
+                App.utils.openModal('export-modal-backdrop');
+            },
+            
+            downloadFile(filename, content, mimeType) {
+                const blob = new Blob([content], { type: mimeType });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            },
+
+            asJson(planner) {
+                const jsonString = JSON.stringify(planner, null, 2);
+                this.downloadFile(`${planner.title}.json`, jsonString, 'application/json');
+            },
+
+            asHtml(planner) {
+                // Clone the table to clean it up for export
+                const tableContainer = document.getElementById('planner-table-container').cloneNode(true);
+                
+                // Remove interactive elements
+                tableContainer.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
+                tableContainer.querySelectorAll('.drag-handle, .delete-btn, .add-below-btn, .copy-row-btn, .notes-btn').forEach(el => el.remove());
+
+                // Create the HTML string with updated CSS to match the new Vertical Header layout
+                const htmlContent = `
+                    <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${planner.title}</title>
+                    <script src="https://cdn.tailwindcss.com"><\/script>
+                    <style>
+                        body { overflow: auto; height: auto; display: block; font-family: sans-serif; }
+                        
+                        /* Table Layout Logic */
+                        table { table-layout: fixed; border-collapse: collapse; min-width: 100%; }
+                        th, td { border: 1px solid #e5e7eb; }
+                        
+                        /* Tab Visibility Logic */
+                        th[data-tab-group], td[data-tab-group] { display: none; }
+                        
+                        /* Vertical Headers */
+                        thead th { height: 160px; vertical-align: bottom; padding: 4px; }
+                        .vertical-header-text { 
+                            writing-mode: vertical-rl; 
+                            transform: rotate(180deg); 
+                            white-space: nowrap; 
+                            text-align: left; 
+                            max-height: 140px; 
+                            width: 100%; 
+                            display: flex; 
+                            align-items: center; 
+                        }
+
+                        /* Sticky Column Widths & positioning (Matches main app) */
+                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; width: 60px; background-color: #f3f4f6; }
+                        .sticky-col-2 { position: sticky; left: 60px; z-index: 4; width: 60px; background-color: #f3f4f6; }
+                        .sticky-col-3 { position: sticky; left: 120px; z-index: 3; width: 350px; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); }
+                        
+                        /* Reset height for the sticky title headers */
+                        thead th.sticky-col-1, thead th.sticky-col-2, thead th.sticky-col-3 { 
+                            height: auto; 
+                            vertical-align: middle; 
+                            z-index: 10; 
+                            padding: 10px;
+                        }
+                    <\/style>
+                    </head><body class="bg-gray-50 p-8"><main>
+                    <div class="mb-6">
+                        <h1 class="text-3xl font-bold text-gray-800">${planner.title}</h1>
+                        <p class="text-gray-600">${planner.course} (${planner.gradeBand})</p>
+                        <div class="mt-2 text-sm text-blue-800 bg-blue-50 p-3 rounded border border-blue-200">
+                            <p><strong>Phenomenon:</strong> ${planner.phenomenon || 'N/A'}</p>
+                            <p><strong>Driving Question:</strong> ${planner.question || 'N/A'}</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Tab Navigation for the Export -->
+                    <div id="tab-container" class="mt-4 flex border-b-2 border-gray-300 -mb-px">
+                        ${document.getElementById('tab-container').innerHTML}
+                    </div>
+                    
+                    <div id="planner-table-container" class="overflow-auto border border-gray-300 rounded-b-lg rounded-tr-lg bg-white shadow-sm">
+                        ${tableContainer.innerHTML}
+                    </div>
+
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            // Simple tab switching logic for the exported file
+                            const firstTab = document.querySelector('.tab-button');
+                            if (firstTab) { activateTab(firstTab); }
+                            
+                            document.getElementById('tab-container').addEventListener('click', e => {
+                                if (e.target.matches('.tab-button')) { activateTab(e.target); }
+                            });
+
+                            function activateTab(tabButton) {
+                                document.querySelectorAll('.tab-button').forEach(btn => {
+                                    btn.classList.remove('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
+                                    btn.classList.add('bg-gray-100', 'text-gray-500');
+                                });
+                                tabButton.classList.remove('bg-gray-100', 'text-gray-500');
+                                tabButton.classList.add('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
+                                
+                                const tabKey = tabButton.dataset.tab;
+                                document.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
+                                    cell.style.display = cell.dataset.tabGroup === tabKey ? 'table-cell' : 'none';
+                                });
+                            }
+                        });
+                    <\/script>
+                    </main></body></html>`;
+                this.downloadFile(`${planner.title}.html`, htmlContent, 'text/html');
+            },
+
+            asXlsx(planner) {
+                const workbook = XLSX.utils.book_new();
+                const columnGroups = App.utils.gatherColumns(planner.gradeBand);
+
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true, vertical: "center", textRotation: 90 } }; // Rotated text for Excel too
+                const lessonSetStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FFB4C6E7" } }, border: thinBorder };
+                const baseCellStyle = { border: thinBorder, alignment: { wrapText: true, vertical: "top" } };
+                const indentedCellStyle = { ...baseCellStyle, alignment: { ...baseCellStyle.alignment, indent: 1 } };
+                const statusStyles = {
+                    I: { fill: { fgColor: { rgb: "FFFFFF00" } } }, // Yellow
+                    D: { fill: { fgColor: { rgb: "FFC6E0B4" } } }, // Green
+                    A: { fill: { fgColor: { rgb: "FFB4C6E7" } } }, // Blue
+                };
+
+                Object.keys(columnGroups).forEach(groupKey => {
+                    const group = columnGroups[groupKey];
+                    let columns = [];
+                    if (groupKey === 'pe') {
+                        columns = (planner.assignedPes || []).map(code => ({ code, title: code }));
+                    } else {
+                        columns = group.cols.map(c => ({ code: c.code, title: c.title }));
+                    }
+
+                    if (columns.length === 0) return;
+
+                    const sheetData = [];
+                    // Header Row
+                    const headerRow = ['Instructional Sequence', ...columns.map(c => c.title)];
+                    sheetData.push(headerRow);
+
+                    const lessonSetRowIndexes = [];
+                    const indentedLessonRowIndexes = [];
+                    const rowIndexToLesson = new Map();
+
+                    (planner.rows || []).forEach(row => {
+                        if (row.type === 'lesson-set') {
+                            const lessonSetRow = [row.title, ...columns.map(() => '')];
+                            sheetData.push(lessonSetRow);
+                            lessonSetRowIndexes.push(sheetData.length - 1);
+
+                            (row.children || []).forEach(lesson => {
+                                const lessonDataRow = [lesson.title];
+                                columns.forEach(col => {
+                                    let cellValue = '';
+                                    if (groupKey === 'pe') {
+                                        cellValue = lesson.trackingData?.[col.code] || '';
+                                    } else {
+                                        const parentInfo = App.dataMaps.parentToChildrenMap.get(col.code);
+                                        if (parentInfo) {
+                                            cellValue = parentInfo.children
+                                                .filter(child => lesson.trackingData?.[child.code])
+                                                .map(child => `${child.code} (${lesson.trackingData[child.code]})`)
+                                                .join('\n');
+                                        }
+                                    }
+                                    lessonDataRow.push(cellValue);
+                                });
+                                sheetData.push(lessonDataRow);
+                                indentedLessonRowIndexes.push(sheetData.length - 1);
+                                rowIndexToLesson.set(sheetData.length - 1, lesson);
+                            });
+                        } else if (row.type === 'lesson') {
+                            const lessonDataRow = [row.title];
+                            columns.forEach(col => {
+                                let cellValue = '';
+                                if (groupKey === 'pe') {
+                                    cellValue = row.trackingData?.[col.code] || '';
+                                } else {
+                                    const parentInfo = App.dataMaps.parentToChildrenMap.get(col.code);
+                                    if (parentInfo) {
+                                        cellValue = parentInfo.children
+                                            .filter(child => row.trackingData?.[child.code])
+                                            .map(child => `${child.code} (${row.trackingData[child.code]})`)
+                                            .join('\n');
+                                    }
+                                }
+                                lessonDataRow.push(cellValue);
+                            });
+                            sheetData.push(lessonDataRow);
+                            rowIndexToLesson.set(sheetData.length - 1, row);
+                        }
+                    });
+
+                    if (sheetData.length > 1) {
+                        const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                        
+                        // Set column widths (narrow for data, wide for title)
+                        const colWidths = [{ wch: 45 }, ...columns.map(() => ({ wch: 5 }))];
+                        worksheet['!cols'] = colWidths;
+
+                        const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        for (let R = range.s.r; R <= range.e.r; ++R) {
+                            for (let C = range.s.c; C <= range.e.c; ++C) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
+                                if (!worksheet[cellAddress]) continue;
+
+                                if (R === 0) {
+                                    worksheet[cellAddress].s = headerStyle;
+                                } else if (lessonSetRowIndexes.includes(R)) {
+                                    worksheet[cellAddress].s = lessonSetStyle;
+                                } else {
+                                    const cellValue = worksheet[cellAddress].v;
+                                    let style = C === 0 && indentedLessonRowIndexes.includes(R) ? indentedCellStyle : baseCellStyle;
+                                    
+                                    if (groupKey === 'pe' && C > 0) {
+                                        if (statusStyles[cellValue]) {
+                                            style = { ...style, ...statusStyles[cellValue], alignment: { horizontal: "center" } };
+                                        }
+                                    } else if (groupKey !== 'pe' && C > 0) {
+                                        // Auto-color 3D element cells based on dominant status
+                                        const lesson = rowIndexToLesson.get(R);
+                                        if (lesson) {
+                                            const colIndex = C - 1;
+                                            const column = columns[colIndex];
+                                            const parentInfo = App.dataMaps.parentToChildrenMap.get(column.code);
+
+                                            if (parentInfo) {
+                                                const statuses = parentInfo.children
+                                                    .map(child => lesson.trackingData?.[child.code])
+                                                    .filter(Boolean);
+                                                let dominantStatus = '';
+                                                if (statuses.includes('A')) dominantStatus = 'A';
+                                                else if (statuses.includes('D')) dominantStatus = 'D';
+                                                else if (statuses.includes('I')) dominantStatus = 'I';
+                                                if (dominantStatus) {
+                                                    style = { ...style, ...statusStyles[dominantStatus] };
+                                                }
+                                            }
+                                        }
+                                    }
+                                    worksheet[cellAddress].s = style;
+                                }
+                            }
+                        }
+                        worksheet['!merges'] = lessonSetRowIndexes.map(r => ({ s: { r, c: 0 }, e: { r, c: columns.length } }));
+                        XLSX.utils.book_append_sheet(workbook, worksheet, group.name);
+                    }
+                });
+
+                if (workbook.SheetNames.length > 0) {
+                    XLSX.writeFile(workbook, `${planner.title}.xlsx`);
+                } else {
+                    alert("No data available to export.");
+                }
+            }
+        };
+		
         App.import = {
             handleImport() {
                 const input = document.createElement('input');
