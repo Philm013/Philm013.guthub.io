@@ -46,13 +46,13 @@
             border-color: #2d3748;
         }
         
-        /* --- FIXED LAYOUT STYLES --- */
+        /* --- STRICT FIXED LAYOUT --- */
         
         table.fixed-layout {
             table-layout: fixed;
             width: max-content; 
             min-width: 100%;
-            border-collapse: separate; /* Required for sticky to work perfectly with borders in some browsers */
+            border-collapse: separate; 
             border-spacing: 0;
         }
 
@@ -79,21 +79,24 @@
             width: 100%;
             display: flex;
             align-items: center;
-            justify-content: flex-start; /* Ensures text starts at bottom */
+            justify-content: flex-start;
         }
 
         /* --- STICKY COLUMN DEFINITIONS --- */
-        
+        /* Using strict min/max widths to prevent expansion */
+
         /* 1. Actions Column (120px) */
         .sticky-col-1 { 
             position: sticky; left: 0; z-index: 25; 
             width: 120px; min-width: 120px; max-width: 120px;
+            overflow: hidden;
         }
         
         /* 2. Scope Column (80px) */
         .sticky-col-2 { 
             position: sticky; left: 120px; z-index: 24; 
             width: 80px; min-width: 80px; max-width: 80px;
+            overflow: hidden;
         }
         
         /* 3. Sequence Column (400px) */
@@ -103,6 +106,8 @@
             z-index: 23; 
             width: 400px; min-width: 400px; max-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
+            overflow: hidden; /* Crucial: cuts off content that forces width changes */
+            text-overflow: ellipsis;
         }
         .dark .sticky-col-3 {
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25);
@@ -685,21 +690,23 @@
                 document.getElementById('pe-bundle-toggle').addEventListener('change', e => { App.state.isPeBundleMode = e.target.checked; App.render.setActiveTab(App.state.currentActiveTab); });
                 document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
                 document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
-                document.getElementById('export-options-list').addEventListener('click', e => {
-                    const btn = e.target.closest('.export-option-btn');
-                    if (btn) {
-                        const format = btn.dataset.format;
-                        const planner = App.utils.findPlanner(App.state.currentPlannerId);
-                        if (!planner) return;
-
-                        switch (format) {
-                            case 'json': this.export.asJson(planner); break;
-                            case 'html': this.export.asHtml(planner); break;
-                            case 'xlsx': this.export.asXlsx(planner); break;
-                        }
-                        this.utils.closeAllModals();
-                    }
-                });
+                // In App.init() or App.attachEventListeners():
+				document.getElementById('export-options-list').addEventListener('click', e => {
+				    const btn = e.target.closest('.export-option-btn');
+				    if (btn) {
+				        const format = btn.dataset.format;
+				        const planner = App.utils.findPlanner(App.state.currentPlannerId);
+				        if (!planner) return;
+				        
+				        // Use the handler we added to App.export
+				        App.export.handleExportClick(format, planner);
+				        
+				        // Only close modal if it's not clipboard (clipboard shows an alert then closes itself)
+				        if (format !== 'clipboard') {
+				            App.utils.closeAllModals();
+				        }
+				    }
+				});
                 document.getElementById('import-options-confirm').addEventListener('click', () => this.import.processImport());
 
                 this.dom.plannerTableContainer.addEventListener('click', e => this.handlers.mainTableClick(e));
@@ -2253,9 +2260,41 @@
             showExportOptions() {
                 const planner = App.utils.findPlanner(App.state.currentPlannerId);
                 if (!planner) { alert('Please select a planner to export.'); return; }
+                
+                // Dynamically add the "Copy to Clipboard" button if it doesn't exist in the modal
+                const modalContent = document.getElementById('export-options-list');
+                if (modalContent && !modalContent.querySelector('[data-format="clipboard"]')) {
+                    const btnContainer = modalContent.querySelector('.space-y-3');
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = "export-option-btn w-full text-left p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700/50 hover:shadow-sm transition-all";
+                    copyBtn.dataset.format = "clipboard";
+                    copyBtn.innerHTML = `
+                        <strong class="text-blue-600 dark:text-blue-400">Copy to Clipboard (TSV)</strong>
+                        <small class="text-gray-500 dark:text-gray-400 block">Copy combined data to paste into Excel or Google Sheets.</small>
+                    `;
+                    btnContainer.appendChild(copyBtn);
+                    
+                    // Re-attach event listener for the new button specifically (or rely on existing delegation if set up)
+                    // Since the main listener is on the container, we just need to handle the format in the switch statement.
+                }
+
+                // Update the main event listener to handle 'clipboard'
+                // Note: In App.init(), you likely have a listener for 'export-options-list'. 
+                // Ensure that listener calls App.export.asClipboard(planner) when format is 'clipboard'.
+                
                 App.utils.openModal('export-modal-backdrop');
             },
             
+            // Helper to handle the "Copy" button click from the existing event listener in App.init
+            handleExportClick(format, planner) {
+                switch (format) {
+                    case 'json': this.asJson(planner); break;
+                    case 'html': this.asHtml(planner); break;
+                    case 'xlsx': this.asXlsx(planner); break;
+                    case 'clipboard': this.asClipboard(planner); break;
+                }
+            },
+
             downloadFile(filename, content, mimeType) {
                 const blob = new Blob([content], { type: mimeType });
                 const a = document.createElement('a');
@@ -2272,82 +2311,48 @@
             },
 
             asHtml(planner) {
-                // Clone the table to clean it up for export
                 const tableContainer = document.getElementById('planner-table-container').cloneNode(true);
-                
-                // Remove interactive elements
                 tableContainer.querySelectorAll('[contenteditable]').forEach(el => el.setAttribute('contenteditable', 'false'));
                 tableContainer.querySelectorAll('.drag-handle, .delete-btn, .add-below-btn, .copy-row-btn, .notes-btn').forEach(el => el.remove());
 
-                // Create the HTML string with updated CSS to match the new Vertical Header layout
                 const htmlContent = `
                     <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>${planner.title}</title>
                     <script src="https://cdn.tailwindcss.com"><\/script>
                     <style>
                         body { overflow: auto; height: auto; display: block; font-family: sans-serif; }
-                        
-                        /* Table Layout Logic */
-                        table { table-layout: fixed; border-collapse: collapse; min-width: 100%; }
+                        table { table-layout: fixed; border-collapse: collapse; min-width: 100%; border-spacing: 0; }
                         th, td { border: 1px solid #e5e7eb; }
-                        
-                        /* Tab Visibility Logic */
                         th[data-tab-group], td[data-tab-group] { display: none; }
                         
-                        /* Vertical Headers */
                         thead th { height: 160px; vertical-align: bottom; padding: 4px; }
-                        .vertical-header-text { 
-                            writing-mode: vertical-rl; 
-                            transform: rotate(180deg); 
-                            white-space: nowrap; 
-                            text-align: left; 
-                            max-height: 140px; 
-                            width: 100%; 
-                            display: flex; 
-                            align-items: center; 
-                        }
+                        .vertical-header-text { writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; text-align: left; max-height: 140px; width: 100%; display: flex; align-items: center; justify-content: flex-start; }
 
-                        /* Sticky Column Widths & positioning (Matches main app) */
-                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; width: 60px; background-color: #f3f4f6; }
-                        .sticky-col-2 { position: sticky; left: 60px; z-index: 4; width: 60px; background-color: #f3f4f6; }
-                        .sticky-col-3 { position: sticky; left: 120px; z-index: 3; width: 350px; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); }
+                        /* Strict Sticky Column Logic for Export */
+                        /* 1. Actions (120px) */
+                        .sticky-col-1 { position: sticky; left: 0; z-index: 5; width: 120px; min-width: 120px; background-color: #f3f4f6; overflow: hidden; }
                         
-                        /* Reset height for the sticky title headers */
-                        thead th.sticky-col-1, thead th.sticky-col-2, thead th.sticky-col-3 { 
-                            height: auto; 
-                            vertical-align: middle; 
-                            z-index: 10; 
-                            padding: 10px;
-                        }
+                        /* 2. Scope (80px), Left = 120px */
+                        .sticky-col-2 { position: sticky; left: 120px; z-index: 4; width: 80px; min-width: 80px; background-color: #f3f4f6; overflow: hidden; }
+                        
+                        /* 3. Sequence (400px), Left = 200px */
+                        .sticky-col-3 { position: sticky; left: 200px; z-index: 3; width: 400px; min-width: 400px; background-color: #f3f4f6; box-shadow: 4px 0 5px -2px rgba(0,0,0,0.1); overflow: hidden; }
+                        
+                        thead th.sticky-col-1, thead th.sticky-col-2, thead th.sticky-col-3 { height: auto; vertical-align: middle; z-index: 10; padding: 10px; }
                     <\/style>
                     </head><body class="bg-gray-50 p-8"><main>
                     <div class="mb-6">
                         <h1 class="text-3xl font-bold text-gray-800">${planner.title}</h1>
                         <p class="text-gray-600">${planner.course} (${planner.gradeBand})</p>
-                        <div class="mt-2 text-sm text-blue-800 bg-blue-50 p-3 rounded border border-blue-200">
-                            <p><strong>Phenomenon:</strong> ${planner.phenomenon || 'N/A'}</p>
-                            <p><strong>Driving Question:</strong> ${planner.question || 'N/A'}</p>
-                        </div>
                     </div>
-                    
-                    <!-- Tab Navigation for the Export -->
-                    <div id="tab-container" class="mt-4 flex border-b-2 border-gray-300 -mb-px">
-                        ${document.getElementById('tab-container').innerHTML}
-                    </div>
-                    
-                    <div id="planner-table-container" class="overflow-auto border border-gray-300 rounded-b-lg rounded-tr-lg bg-white shadow-sm">
-                        ${tableContainer.innerHTML}
-                    </div>
-
+                    <div id="tab-container" class="mt-4 flex border-b-2 border-gray-300 -mb-px">${document.getElementById('tab-container').innerHTML}</div>
+                    <div id="planner-table-container" class="overflow-auto border border-gray-300 rounded-b-lg rounded-tr-lg bg-white shadow-sm">${tableContainer.innerHTML}</div>
                     <script>
                         document.addEventListener('DOMContentLoaded', () => {
-                            // Simple tab switching logic for the exported file
                             const firstTab = document.querySelector('.tab-button');
                             if (firstTab) { activateTab(firstTab); }
-                            
                             document.getElementById('tab-container').addEventListener('click', e => {
                                 if (e.target.matches('.tab-button')) { activateTab(e.target); }
                             });
-
                             function activateTab(tabButton) {
                                 document.querySelectorAll('.tab-button').forEach(btn => {
                                     btn.classList.remove('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
@@ -2355,7 +2360,6 @@
                                 });
                                 tabButton.classList.remove('bg-gray-100', 'text-gray-500');
                                 tabButton.classList.add('bg-white', 'border-gray-300', 'border-b-white', 'text-blue-600');
-                                
                                 const tabKey = tabButton.dataset.tab;
                                 document.querySelectorAll('th[data-tab-group], td[data-tab-group]').forEach(cell => {
                                     cell.style.display = cell.dataset.tabGroup === tabKey ? 'table-cell' : 'none';
@@ -2366,35 +2370,200 @@
                     </main></body></html>`;
                 this.downloadFile(`${planner.title}.html`, htmlContent, 'text/html');
             },
+            
+            _generateCombinedSheetData(planner) {
+                const headers = ['Lesson', 'Primary PE', 'Secondary PE', 'Primary DCI Element', 'DCI: I/D/A', 'DCI: Full or Partial?', 'SEP Element', 'SEP: I/D/A', 'SEP: Full or Partial?', 'CCC Element', 'CCC: I/D/A', 'CCC: Full or Partial?', 'NOS Connection', 'ETAS Connection'];
+                const sheetData = [headers];
+                const merges = [];
+                const rowInfo = {};
+
+                const statusMap = { I: 'Introduced', D: 'Developed', A: 'Assessed' };
+                const assignedPeMap = new Map((planner.assignedPes || []).map(p => [p.id, p]));
+
+                const processRow = (plannerRow) => {
+                    if (plannerRow.type === 'lesson-set') {
+                        const rowIndex = sheetData.length;
+                        sheetData.push([plannerRow.title]);
+                        rowInfo[rowIndex] = { type: 'unit' };
+                        merges.push({ s: { r: rowIndex, c: 0 }, e: { r: rowIndex, c: headers.length - 1 } });
+                        (plannerRow.children || []).forEach(child => processRow(child));
+                    } else if (plannerRow.type === 'lesson') {
+                        const lessonTitleRowIndex = sheetData.length;
+                        sheetData.push([plannerRow.title]);
+                        rowInfo[lessonTitleRowIndex] = { type: 'lessonTitle' };
+                        merges.push({ s: { r: lessonTitleRowIndex, c: 0 }, e: { r: lessonTitleRowIndex, c: headers.length - 1 } });
+
+                        const nonAssessed = { primaryPEs: [], secondaryPEs: [], dcis: [], seps: [], cccs: [] };
+                        const assessed = { primaryPEs: [], secondaryPEs: [], dcis: [], seps: [], cccs: [] };
+
+                        Object.entries(plannerRow.trackingData || {}).forEach(([code, status]) => {
+                            const element = { code, status };
+                            const targetGroup = (status === 'A') ? assessed : nonAssessed;
+
+                            if (assignedPeMap.has(code)) {
+                                if (assignedPeMap.get(code).isSecondary) targetGroup.secondaryPEs.push(element);
+                                else targetGroup.primaryPEs.push(element);
+                            } else {
+                                const elData = App.dataMaps.ngss3dMap.get(code);
+                                if (elData?.dimension.startsWith('DCI')) targetGroup.dcis.push(element);
+                                else if (elData?.dimension.startsWith('SEP')) targetGroup.seps.push(element);
+                                else if (elData?.dimension.startsWith('CCC')) targetGroup.cccs.push(element);
+                            }
+                        });
+
+                        const nonAssessedRow = new Array(headers.length).fill([]);
+                        nonAssessedRow[0] = 'Non-Assessed Elements';
+                        nonAssessedRow[1] = nonAssessed.primaryPEs.map(e => e.code);
+                        nonAssessedRow[2] = nonAssessed.secondaryPEs.map(e => e.code);
+                        nonAssessedRow[3] = nonAssessed.dcis.map(e => e.code);
+                        nonAssessedRow[4] = nonAssessed.dcis.map(e => statusMap[e.status]);
+                        nonAssessedRow[6] = nonAssessed.seps.map(e => e.code);
+                        nonAssessedRow[7] = nonAssessed.seps.map(e => statusMap[e.status]);
+                        nonAssessedRow[9] = nonAssessed.cccs.map(e => e.code);
+                        nonAssessedRow[10] = nonAssessed.cccs.map(e => statusMap[e.status]);
+                        sheetData.push(nonAssessedRow);
+                        rowInfo[sheetData.length - 1] = { type: 'dataRow' };
+
+                        const assessedRow = new Array(headers.length).fill([]);
+                        assessedRow[0] = 'Formative Assessment';
+                        assessedRow[1] = assessed.primaryPEs.map(e => e.code);
+                        assessedRow[2] = assessed.secondaryPEs.map(e => e.code);
+                        assessedRow[3] = assessed.dcis.map(e => e.code);
+                        assessedRow[4] = assessed.dcis.map(e => statusMap[e.status]);
+                        assessedRow[6] = assessed.seps.map(e => e.code);
+                        assessedRow[7] = assessed.seps.map(e => statusMap[e.status]);
+                        assessedRow[9] = assessed.cccs.map(e => e.code);
+                        assessedRow[10] = assessed.cccs.map(e => statusMap[e.status]);
+                        sheetData.push(assessedRow);
+                        rowInfo[sheetData.length - 1] = { type: 'dataRow' };
+                    }
+                };
+                
+                (planner.rows || []).forEach(row => processRow(row));
+                return { sheetData, merges, rowInfo };
+            },
+
+           asClipboard(planner) {
+				const { sheetData } = this._generateCombinedSheetData(planner);
+
+				const formatCellForTsv = (cellValue) => {
+					if (cellValue === null || cellValue === undefined) return '';
+					let lines = [];
+					if (Array.isArray(cellValue)) {
+						lines = cellValue.map(item => String(item ?? ''));
+					} else {
+						let rawString = String(cellValue);
+						if (rawString.startsWith('"') && rawString.endsWith('"')) {
+							rawString = rawString.substring(1, rawString.length - 1).replace(/""/g, '"');
+						}
+						lines = rawString.split('\n');
+					}
+
+					const finalContent = lines.map(line => line.trim()).filter(line => line.length > 0).join('\n');
+					const needsQuoting = finalContent.includes('\n') || finalContent.includes('\t') || finalContent.includes('"');
+
+					if (needsQuoting) {
+						const escapedContent = finalContent.replace(/"/g, '""');
+                        return `"${escapedContent}"`;
+					}
+					return finalContent;
+				};
+
+				const tsvString = sheetData.slice(1) // Exclude header row
+					.map(row => row.map(formatCellForTsv).join('\t'))
+					.join('\n');
+				
+				navigator.clipboard.writeText(tsvString).then(() => {
+					alert('Planner data copied to clipboard!');
+					App.utils.closeAllModals();
+				}).catch(err => {
+					console.error('Failed to copy to clipboard:', err);
+					alert('Could not copy to clipboard. See console for details.');
+				});
+			},
+
+            createCombinedSheet(planner) {
+                let { sheetData, merges, rowInfo } = this._generateCombinedSheetData(planner);
+
+                sheetData = sheetData.map(row => row.map(cell => {
+                    if (Array.isArray(cell)) {
+                        return cell.join('\n');
+                    }
+                    return cell;
+                }));
+
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { horizontal: "center", vertical: "center", wrapText: true } };
+                const unitStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FF4338CA" } }, color: { rgb: "FFFFFFFF" }, border: thinBorder };
+                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FF60A5FA" } }, border: thinBorder };
+                const subTitleStyle = { font: { bold: false }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
+                const dataCellStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+
+                const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                worksheet['!merges'] = merges;
+                worksheet['!cols'] = sheetData[0].map(h => ({ wch: h.toLowerCase().includes('element') ? 20 : 18 }));
+                worksheet['!cols'][0].wch = 35;
+
+                Object.keys(worksheet).forEach(cellAddress => {
+                    if (cellAddress.startsWith('!')) return;
+                    const cell = worksheet[cellAddress];
+                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
+                    
+                    if (r === 0) {
+                        cell.s = headerStyle;
+                        return;
+                    }
+                    
+                    const styleInfo = rowInfo[r];
+                    if (styleInfo) {
+                        if (styleInfo.type === 'unit' || styleInfo.type === 'lessonTitle') {
+                            cell.s = styleInfo.style;
+                        } else if (styleInfo.type === 'dataRow') {
+                            cell.s = (c === 0) ? subTitleStyle : dataCellStyle;
+                        }
+                    }
+                });
+                
+                return worksheet;
+            },
 
             asXlsx(planner) {
                 const workbook = XLSX.utils.book_new();
-                const columnGroups = App.utils.gatherColumns(planner.gradeBand);
+                
+                // Add Combined View
+                try {
+                    const combinedWorksheet = this.createCombinedSheet(planner);
+                    XLSX.utils.book_append_sheet(workbook, combinedWorksheet, 'Combined View');
+                } catch (e) {
+                    console.error("Failed to create Combined View sheet:", e);
+                }
 
+                // Add Standard View
+                const columnGroups = App.utils.gatherColumns(planner.gradeBand);
                 const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
-                const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true, vertical: "center", textRotation: 90 } }; // Rotated text for Excel too
+                const headerStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true, vertical: "center", textRotation: 90 } };
+                const secondaryHeaderStyle = { font: { bold: true, italic: true }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { horizontal: "center", wrapText: true, vertical: "center", textRotation: 90 } };
                 const lessonSetStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FFB4C6E7" } }, border: thinBorder };
                 const baseCellStyle = { border: thinBorder, alignment: { wrapText: true, vertical: "top" } };
                 const indentedCellStyle = { ...baseCellStyle, alignment: { ...baseCellStyle.alignment, indent: 1 } };
                 const statusStyles = {
-                    I: { fill: { fgColor: { rgb: "FFFFFF00" } } }, // Yellow
-                    D: { fill: { fgColor: { rgb: "FFC6E0B4" } } }, // Green
-                    A: { fill: { fgColor: { rgb: "FFB4C6E7" } } }, // Blue
+                    I: { fill: { fgColor: { rgb: "FFFFFF00" } } },
+                    D: { fill: { fgColor: { rgb: "FFC6E0B4" } } },
+                    A: { fill: { fgColor: { rgb: "FFB4C6E7" } } },
                 };
 
                 Object.keys(columnGroups).forEach(groupKey => {
                     const group = columnGroups[groupKey];
                     let columns = [];
                     if (groupKey === 'pe') {
-                        columns = (planner.assignedPes || []).map(code => ({ code, title: code }));
+                        columns = (planner.assignedPes || []).map(peObj => ({ code: peObj.id, title: peObj.id, isSecondary: peObj.isSecondary }));
                     } else {
-                        columns = group.cols.map(c => ({ code: c.code, title: c.title }));
+                        columns = group.cols.map(c => ({ code: c.code, title: c.title, isSecondary: false }));
                     }
 
                     if (columns.length === 0) return;
 
                     const sheetData = [];
-                    // Header Row
                     const headerRow = ['Instructional Sequence', ...columns.map(c => c.title)];
                     sheetData.push(headerRow);
 
@@ -2403,99 +2572,74 @@
                     const rowIndexToLesson = new Map();
 
                     (planner.rows || []).forEach(row => {
-                        if (row.type === 'lesson-set') {
-                            const lessonSetRow = [row.title, ...columns.map(() => '')];
-                            sheetData.push(lessonSetRow);
-                            lessonSetRowIndexes.push(sheetData.length - 1);
-
-                            (row.children || []).forEach(lesson => {
-                                const lessonDataRow = [lesson.title];
-                                columns.forEach(col => {
-                                    let cellValue = '';
-                                    if (groupKey === 'pe') {
-                                        cellValue = lesson.trackingData?.[col.code] || '';
-                                    } else {
-                                        const parentInfo = App.dataMaps.parentToChildrenMap.get(col.code);
-                                        if (parentInfo) {
-                                            cellValue = parentInfo.children
-                                                .filter(child => lesson.trackingData?.[child.code])
-                                                .map(child => `${child.code} (${lesson.trackingData[child.code]})`)
-                                                .join('\n');
-                                        }
-                                    }
-                                    lessonDataRow.push(cellValue);
-                                });
-                                sheetData.push(lessonDataRow);
-                                indentedLessonRowIndexes.push(sheetData.length - 1);
-                                rowIndexToLesson.set(sheetData.length - 1, lesson);
-                            });
-                        } else if (row.type === 'lesson') {
-                            const lessonDataRow = [row.title];
+                        const processLessonRow = (lesson, isChild) => {
+                            const lessonDataRow = [lesson.title];
                             columns.forEach(col => {
                                 let cellValue = '';
                                 if (groupKey === 'pe') {
-                                    cellValue = row.trackingData?.[col.code] || '';
+                                    cellValue = lesson.trackingData?.[col.code] || '';
                                 } else {
                                     const parentInfo = App.dataMaps.parentToChildrenMap.get(col.code);
                                     if (parentInfo) {
                                         cellValue = parentInfo.children
-                                            .filter(child => row.trackingData?.[child.code])
-                                            .map(child => `${child.code} (${row.trackingData[child.code]})`)
+                                            .filter(child => lesson.trackingData?.[child.code])
+                                            .map(child => `${child.code} (${lesson.trackingData[child.code]})`)
                                             .join('\n');
                                     }
                                 }
                                 lessonDataRow.push(cellValue);
                             });
                             sheetData.push(lessonDataRow);
-                            rowIndexToLesson.set(sheetData.length - 1, row);
+                            if (isChild) {
+                                indentedLessonRowIndexes.push(sheetData.length - 1);
+                            }
+                            rowIndexToLesson.set(sheetData.length - 1, lesson);
+                        };
+
+                        if (row.type === 'lesson-set') {
+                            const lessonSetRow = [row.title, ...Array(columns.length).fill('')];
+                            sheetData.push(lessonSetRow);
+                            lessonSetRowIndexes.push(sheetData.length - 1);
+                            (row.children || []).forEach(child => processLessonRow(child, true));
+                        } else if (row.type === 'lesson') {
+                            processLessonRow(row, false);
                         }
                     });
 
                     if (sheetData.length > 1) {
                         const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-                        
-                        // Set column widths (narrow for data, wide for title)
-                        const colWidths = [{ wch: 45 }, ...columns.map(() => ({ wch: 5 }))];
-                        worksheet['!cols'] = colWidths;
-
+                        worksheet['!cols'] = [{ wch: 45 }, ...columns.map(() => ({ wch: 5 }))];
                         const range = XLSX.utils.decode_range(worksheet['!ref']);
+                        
                         for (let R = range.s.r; R <= range.e.r; ++R) {
                             for (let C = range.s.c; C <= range.e.c; ++C) {
                                 const cellAddress = XLSX.utils.encode_cell({ r: R, c: C });
                                 if (!worksheet[cellAddress]) continue;
 
                                 if (R === 0) {
-                                    worksheet[cellAddress].s = headerStyle;
+                                    worksheet[cellAddress].s = (columns[C - 1]?.isSecondary) ? secondaryHeaderStyle : headerStyle;
                                 } else if (lessonSetRowIndexes.includes(R)) {
                                     worksheet[cellAddress].s = lessonSetStyle;
                                 } else {
-                                    const cellValue = worksheet[cellAddress].v;
-                                    let style = C === 0 && indentedLessonRowIndexes.includes(R) ? indentedCellStyle : baseCellStyle;
-                                    
-                                    if (groupKey === 'pe' && C > 0) {
-                                        if (statusStyles[cellValue]) {
-                                            style = { ...style, ...statusStyles[cellValue], alignment: { horizontal: "center" } };
-                                        }
-                                    } else if (groupKey !== 'pe' && C > 0) {
-                                        // Auto-color 3D element cells based on dominant status
-                                        const lesson = rowIndexToLesson.get(R);
-                                        if (lesson) {
-                                            const colIndex = C - 1;
-                                            const column = columns[colIndex];
-                                            const parentInfo = App.dataMaps.parentToChildrenMap.get(column.code);
-
+                                    let style = (C === 0 && indentedLessonRowIndexes.includes(R)) ? indentedCellStyle : baseCellStyle;
+                                    const lesson = rowIndexToLesson.get(R);
+                                    if (lesson && C > 0) {
+                                        let dominantStatus = '';
+                                        if (groupKey === 'pe') {
+                                            dominantStatus = worksheet[cellAddress].v;
+                                        } else {
+                                            const parentInfo = App.dataMaps.parentToChildrenMap.get(columns[C - 1].code);
                                             if (parentInfo) {
                                                 const statuses = parentInfo.children
                                                     .map(child => lesson.trackingData?.[child.code])
                                                     .filter(Boolean);
-                                                let dominantStatus = '';
                                                 if (statuses.includes('A')) dominantStatus = 'A';
                                                 else if (statuses.includes('D')) dominantStatus = 'D';
                                                 else if (statuses.includes('I')) dominantStatus = 'I';
-                                                if (dominantStatus) {
-                                                    style = { ...style, ...statusStyles[dominantStatus] };
-                                                }
                                             }
+                                        }
+                                        if (statusStyles[dominantStatus]) {
+                                            style = { ...style, ...statusStyles[dominantStatus], alignment: { horizontal: "center" } };
                                         }
                                     }
                                     worksheet[cellAddress].s = style;
