@@ -418,10 +418,10 @@
                 textToSpecificCodeMap: new Map(),
                 fuzzyMatchCache: new Map(),
                 gradeBandMap: { 
-                    'K': 'primary', '1': 'primary', '2': 'primary', 'K-2': 'primary',
-                    '3': 'elementary', '4': 'elementary', '5': 'elementary', '3-5': 'elementary',
-                    'MS': 'middle', '6-8': 'middle',
-                    'HS': 'high', '9-12': 'high'
+                    'K': 'primary', '1': 'primary', '2': 'primary', 'K-2': 'primary', 'Kindergarten': 'primary',
+                    '3': 'elementary', '4': 'elementary', '5': 'elementary', '3-5': 'elementary', 'Elementary': 'elementary', 'Elementary School': 'elementary',
+                    'MS': 'middle', '6-8': 'middle', 'Middle School': 'middle',
+                    'HS': 'high', '9-12': 'high', 'High School': 'high'
                 }
             },
             dom: {
@@ -509,17 +509,27 @@
                                              i.parentCode = item.name.split(':')[0].trim();
                                              i.dimension = dim.short_name;
                                              
-                                             // --- FIX STARTS HERE ---
-                                             // We create a new object for allProgressions and normalize the keys
-                                             // (e.g., maps "3-5" to "elementary") based on gradeBandMap
+                                             // --- FIX: Enhanced Key Normalization ---
                                              i.allProgressions = {};
                                              if (item.progressions) {
                                                 Object.keys(item.progressions).forEach(k => {
-                                                    const normalizedKey = gradeBandMap[k] || k;
+                                                    let cleanK = k.trim();
+                                                    // Robust matching for keys like "Grades 3-5", "3-5 ", or "Middle School"
+                                                    let normalizedKey = gradeBandMap[cleanK] || 
+                                                                        gradeBandMap[cleanK.replace(/\s+/g, '')] ||
+                                                                        gradeBandMap[cleanK.toLowerCase()] ||
+                                                                        k;
+
+                                                    // Specific fixes for common NGSS data variations
+                                                    if (cleanK.includes('K-2')) normalizedKey = 'primary';
+                                                    if (cleanK.includes('3-5')) normalizedKey = 'elementary';
+                                                    if (cleanK.includes('6-8')) normalizedKey = 'middle';
+                                                    if (cleanK.includes('9-12')) normalizedKey = 'high';
+
                                                     i.allProgressions[normalizedKey] = item.progressions[k];
                                                 });
                                              }
-                                             // --- FIX ENDS HERE ---
+                                             // --- END FIX ---
 
                                              i.relatedPes = new Set();
                                              ngss3dMap.set(i.code,i);
@@ -799,7 +809,26 @@
                 let children = [];
                 if (parentInfo) {
                     const parentProgressions = parentInfo.children[0]?.allProgressions || {};
-                    const gradeBandProgressions = parentProgressions[gradeBand] || [];
+                    // --- FIX: Fallback Logic ---
+                    // If the specific grade band doesn't exist, try related raw keys
+                    let gradeBandProgressions = parentProgressions[gradeBand] || [];
+                    if (gradeBandProgressions.length === 0) {
+                        const bandMapReverse = {
+                            'primary': ['K-2', 'K', '1', '2'],
+                            'elementary': ['3-5', '3', '4', '5'],
+                            'middle': ['6-8', 'MS', 'Middle School'],
+                            'high': ['9-12', 'HS', 'High School']
+                        };
+                        const fallbacks = bandMapReverse[gradeBand] || [];
+                        for (const fb of fallbacks) {
+                            if (parentProgressions[fb] && parentProgressions[fb].length > 0) {
+                                gradeBandProgressions = parentProgressions[fb];
+                                break;
+                            }
+                        }
+                    }
+                    // --- END FIX ---
+
                     const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
                     children = parentInfo.children.filter(child => validCodesForBand.has(child.code));
                 }
@@ -1838,7 +1867,21 @@
                         // Check if any children are relevant either by band OR by coverage
                         const childrenForReport = parentInfo.children.filter(child => {
                             // Is it in one of the selected grade bands?
-                            const inSelectedBands = Array.from(relevantBands).some(band => child.allProgressions[band]?.length > 0);
+                            // --- FIX: Robust check for band relevance ---
+                            const bandMapReverse = {
+                                'primary': ['K-2', 'K', '1', '2'],
+                                'elementary': ['3-5', '3', '4', '5'],
+                                'middle': ['6-8', 'MS', 'Middle School'],
+                                'high': ['9-12', 'HS', 'High School']
+                            };
+
+                            let inSelectedBands = Array.from(relevantBands).some(band => {
+                                if (child.allProgressions[band]?.length > 0) return true;
+                                const fallbacks = bandMapReverse[band] || [];
+                                return fallbacks.some(fb => child.allProgressions[fb]?.length > 0);
+                            });
+                            // --- END FIX ---
+
                             // Is it tracked in the aggregated data?
                             const isTracked = coverageMap.has(child.code);
                             return inSelectedBands || isTracked;
@@ -2118,11 +2161,30 @@
 
                 const nosForSep = new Set(['VOM', 'BEE', 'OTR', 'ENP']);
                 const nosForCcc = new Set(['WOK', 'AOC', 'HE', 'AQAW']);
+                
+                // --- FIX: Reverse Map for Fallback Checking ---
+                const bandMapReverse = {
+                    'primary': ['K-2', 'K', '1', '2'],
+                    'elementary': ['3-5', '3', '4', '5'],
+                    'middle': ['6-8', 'MS', 'Middle School'],
+                    'high': ['9-12', 'HS', 'High School']
+                };
+                // --- END FIX ---
 
                 App.dataMaps.parentToChildrenMap.forEach((parentData, parentCode) => {
                     if (parentCode === 'PE') return;
 
-                    const isRelevant = parentData.children.some(child => child.allProgressions[gradeBand]?.length > 0);
+                    // --- FIX: Robust Checking Logic ---
+                    const isRelevant = parentData.children.some(child => {
+                        // Check if direct key exists
+                        if (child.allProgressions[gradeBand]?.length > 0) return true;
+                        
+                        // Check fallback keys
+                        const fallbacks = bandMapReverse[gradeBand] || [];
+                        return fallbacks.some(fb => child.allProgressions[fb]?.length > 0);
+                    });
+                    // --- END FIX ---
+
                     if (isRelevant) {
                         const columnInfo = { code: parentCode, title: parentData.name };
                         const dimension = parentData.dimension;
@@ -3292,7 +3354,7 @@
 				    
 				    App.state.allNgss3dElements = ngss3d;
 				
-				    // --- FIX START ---
+				    // --- FIX: Normalize NGSS Data Array ---
 				    // Helper to ensure data is in a consistent array format [ {gradeId: ...}, {gradeId: ...} ]
 				    const normalize = (data) => {
 				        if (Array.isArray(data)) return data; 
@@ -3303,7 +3365,7 @@
 				    // Flatten all grade levels into one master array.
 				    // This assumes k5, m68, and h912 are arrays of grade objects (as per your attached json).
 				    App.state.allNgssData = [...normalize(k5), ...normalize(m68), ...normalize(h912)];
-				    // --- FIX END ---
+				    // --- END FIX ---
 				    
 				    App.buildDataMaps();
                     
