@@ -2716,6 +2716,69 @@
                 }
             }
         };
+		 App.tour = {
+            instance: null,
+            init() {
+                this.instance = new Shepherd.Tour({
+                    useModalOverlay: true,
+                    defaultStepOptions: {
+                        classes: 'shadow-md bg-gray-100 dark:bg-gray-700',
+                        scrollTo: true
+                    }
+                });
+
+                this.instance.addStep({
+                    id: 'step1', text: 'Welcome! This is the Navigator. All your planners are listed here. Let\'s create a new one.',
+                    attachTo: { element: '#new-planner-btn', on: 'bottom' }, buttons: [{ action() { this.next(); }, text: 'Next' }]
+                });
+                this.instance.addStep({
+                    id: 'step2', text: 'After creating a planner, assign the Performance Expectations (PEs) you\'ll be targeting.',
+                    attachTo: { element: '#assign-pe-btn', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
+                });
+                this.instance.addStep({
+                    id: 'step3', text: 'Your instructional sequence appears here. You can edit titles, add lessons, and drag-and-drop to reorder.',
+                    attachTo: { element: '#planner-table-container', on: 'top' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
+                });
+                 this.instance.addStep({
+                    id: 'step4', text: 'Use these tabs to switch between tracking PEs and the three dimensions (DCIs, SEPs, CCCs).',
+                    attachTo: { element: '#tab-container', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
+                });
+                 this.instance.addStep({
+                    id: 'step5', text: 'Click inside a cell to open a popover and track an element\'s status (Introduced, Developed, or Assessed) for that lesson.',
+                    attachTo: { element: '#planner-table-container tbody tr:first-child td:last-child', on: 'left' }, isRequired: ['#planner-table-container tbody tr'], buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
+                });
+                this.instance.addStep({
+                    id: 'step6', text: 'You can check planner analytics in the Summary view, or compare multiple planners using the Progression view.',
+                    attachTo: { element: '#view-summary-btn', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.complete(); }, text: 'Finish' }]
+                });
+
+                this.instance.on('complete', () => {
+                    localStorage.setItem('ngssPlannerTourCompleted', 'true');
+                });
+            },
+            start() {
+                if (App.state.currentPlannerId === null && App.state.programData.planners.length > 0) {
+                    App.render.plannerView(App.state.programData.planners[0].id);
+                } else if (App.state.programData.planners.length === 0) {
+                    // Create a default planner for the tour if none exist
+                    const newPlanner = {
+                        id: `planner-${Date.now()}`, title: 'Sample 4th Grade Unit', course: '4th Grade Science', gradeBand: 'elementary', standardSet: 'NGSS',
+                        phenomenon: 'A wrecking ball can knock down a wall.', question: 'How does energy change and move?', description: 'A sample unit.',
+                        assignedPes: [{id: "4-PS3-1", isSecondary: false}, {id:"4-PS3-2", isSecondary: false}, {id:"4-PS3-4", isSecondary: false}],
+                        rows: [
+                            { id: `row-${Date.now()}-1`, type: 'lesson-set', title: 'Lesson Set 1', isCollapsed: false, children: [
+                                { id: `row-${Date.now()}-2`, type: 'lesson', title: 'Lesson 1', trackingData: {'4-PS3-1':'I'}, scope:'F', details:{notes:'', links:[]} }
+                            ]}
+                        ]
+                    };
+                    App.state.programData.planners.push(newPlanner);
+                    App.persistence.saveProgramData();
+                    App.render.navigator();
+                    App.render.plannerView(newPlanner.id);
+                }
+                setTimeout(() => this.instance.start(), 200);
+            }
+        };
         
         async function loadDataAndInit() {
             try {
