@@ -3281,24 +3281,31 @@
                     App.state.allNgssData = await App.db.get('raw_ngss_data');
                     if (!App.state.allNgssData) throw new Error("Raw data missing from cache.");
                 } else {
-                    console.log("Data not found in cache. Fetching from server and processing...");
-                    const dataPath = 'https://philm013.github.io/JSON/';
-                    const [ngss3d, k5, m68, h912] = await Promise.all([
-                        fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss3DElements.json`); return res.json(); }),
-                        fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngssK5.json`); return res.json(); }),
-                        fetch(`${dataPath}ngss68.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss68.json`); return res.json(); }),
-                        fetch(`${dataPath}ngss912.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss912.json`); return res.json(); })
-                    ]);
-                    
-                    App.state.allNgss3dElements = ngss3d;
-					const msTopics = Array.isArray(m68) ? m68 : m68.topics || [];
-					const hsTopics = Array.isArray(h912) ? h912 : h912.topics || [];
-					
-					const msData = { gradeId: 'MS', gradeLabel: 'Middle School', topics: msTopics };
-					const hsData = { gradeId: 'HS', gradeLabel: 'High School', topics: hsTopics };
-                    App.state.allNgssData = [...k5, msData, hsData];
-                    
-                    App.buildDataMaps();
+				    console.log("Data not found in cache. Fetching from server and processing...");
+				    const dataPath = 'https://philm013.github.io/JSON/';
+				    const [ngss3d, k5, m68, h912] = await Promise.all([
+				        fetch(`${dataPath}ngss3DElements.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss3DElements.json`); return res.json(); }),
+				        fetch(`${dataPath}ngssK5.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngssK5.json`); return res.json(); }),
+				        fetch(`${dataPath}ngss68.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss68.json`); return res.json(); }),
+				        fetch(`${dataPath}ngss912.json`).then(res => { if (!res.ok) throw new Error(`Fetch failed for ngss912.json`); return res.json(); })
+				    ]);
+				    
+				    App.state.allNgss3dElements = ngss3d;
+				
+				    // --- FIX START ---
+				    // Helper to ensure data is in a consistent array format [ {gradeId: ...}, {gradeId: ...} ]
+				    const normalize = (data) => {
+				        if (Array.isArray(data)) return data; 
+				        if (data && data.topics) return [data]; // Handle case where file is just a single object
+				        return [];
+				    };
+				
+				    // Flatten all grade levels into one master array.
+				    // This assumes k5, m68, and h912 are arrays of grade objects (as per your attached json).
+				    App.state.allNgssData = [...normalize(k5), ...normalize(m68), ...normalize(h912)];
+				    // --- FIX END ---
+				    
+				    App.buildDataMaps();
                     
                     const serializableMaps = {
                         peMap: [...App.dataMaps.peMap],
