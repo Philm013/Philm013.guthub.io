@@ -110,6 +110,10 @@
         .dark .shepherd-text, .dark .shepherd-header, .dark .shepherd-content { background-color: #374151; color: #e5e7eb; }
         .dark .shepherd-arrow::before { background-color: #374151; }
         #pe-modal-list { overflow-y: auto; }
+        details > summary { list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::before { content: '►'; display: inline-block; margin-right: 0.5rem; transition: transform 0.2s; }
+        details[open] > summary::before { transform: rotate(90deg); }
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased group">
@@ -146,53 +150,69 @@
                     </div>
                 </div>
 
-                <div id="planner-view" class="view flex-1 flex flex-col">
-                    <!-- Compact Header -->
-                    <div class="flex flex-wrap justify-between items-start gap-4 mb-4">
-                        <div>
-                            <h1 id="planner-title" class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-gray-100"></h1>
-                            <p id="planner-subtitle" class="text-base text-gray-500 dark:text-gray-400 -mt-1"></p>
-                        </div>
-                        <div class="flex items-center justify-end gap-x-4 gap-y-2 flex-wrap">
-                             <label class="flex items-center gap-2 text-sm cursor-pointer font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                                <span>PE Bundled Only</span>
-                                <input type="checkbox" id="pe-bundle-toggle" class="sr-only peer">
-                                <div class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
-                            </label>
-                            <span id="save-status" class="text-sm italic text-gray-500 dark:text-gray-400"></span>
-                        </div>
-                    </div>
+                <div id="planner-view" class="view flex-1 flex flex-col h-full">
+                    <!-- Streamlined Header & Toolbar -->
+                    <div class="flex flex-col gap-2 mb-2 border-b border-gray-200 dark:border-gray-700 pb-2">
+                        <div class="flex flex-wrap justify-between items-end gap-x-4 gap-y-2">
+                            <!-- Title Section -->
+                            <div class="min-w-[200px]">
+                                <h1 id="planner-title" class="text-2xl font-bold text-gray-800 dark:text-gray-100 leading-tight"></h1>
+                                <p id="planner-subtitle" class="text-sm text-gray-500 dark:text-gray-400"></p>
+                            </div>
 
-                    <div class="mb-4 p-3 border border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                        <p class="font-bold text-sm text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
-                        <p id="planner-phenomenon" class="text-sm text-blue-700 dark:text-blue-300 italic">Not specified.</p>
-                        <p class="font-bold text-sm text-blue-800 dark:text-blue-200 mt-2">Unit Driving Question:</p>
-                        <p id="planner-question" class="text-sm text-blue-700 dark:text-blue-300 italic">Not specified.</p>
-                    </div>
-                    
-                    <div class="controls flex flex-row flex-wrap gap-2 md:gap-4 mb-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm md:items-center">
-                         <div class="relative flex-shrink-0">
-                            <input type="search" id="search-input" placeholder="Search lessons..." class="w-full md:w-48 pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
-                            <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">⚲</div>
+                            <!-- Toolbar Section -->
+                            <div class="flex flex-wrap items-center gap-2 justify-end flex-1">
+                                <!-- Search -->
+                                <div class="relative">
+                                    <input type="search" id="search-input" placeholder="Search..." class="w-32 focus:w-48 transition-all pl-7 pr-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500">
+                                    <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400 text-xs">🔍</div>
+                                </div>
+
+                                <!-- Action Buttons -->
+                                <div class="flex gap-1">
+                                    <button id="assign-pe-btn" class="px-2 py-1 bg-cyan-600 text-white rounded hover:bg-cyan-700 text-xs font-medium">PEs</button>
+                                    <button id="add-lesson-set-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium group-[.view-mode-active]:hidden">+ Set</button>
+                                    <button id="add-lesson-btn" class="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium group-[.view-mode-active]:hidden">+ Lesson</button>
+                                </div>
+
+                                <!-- Undo/Redo -->
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
+                                    <button id="undo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 text-xs">↶</button>
+                                    <button id="redo-btn" disabled class="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded hover:bg-gray-300 disabled:opacity-30 text-xs">↷</button>
+                                </div>
+
+                                <!-- Settings/View/Export -->
+                                <div class="flex gap-1 border-l border-gray-300 dark:border-gray-600 pl-2">
+                                    <button id="edit-planner-btn" class="px-2 py-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 text-xs group-[.view-mode-active]:hidden">⚙️</button>
+                                    <button id="view-mode-toggle" class="px-2 py-1 bg-gray-500 text-white rounded hover:bg-gray-600 text-xs">View</button>
+                                    <button id="export-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Export</button>
+                                    <button id="import-planner-btn" class="px-2 py-1 bg-purple-600 text-white rounded hover:bg-purple-700 text-xs">Import</button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="controls-group flex gap-2">
-                            <button id="assign-pe-btn" class="px-3 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 text-sm font-medium transition-colors">Manage PEs</button>
-                        </div>
-                        <div class="controls-group flex gap-2 group-[.view-mode-active]:hidden">
-                            <button id="add-lesson-set-btn" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Set</button>
-                            <button id="add-lesson-btn" class="px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium transition-colors">Add Lesson</button>
-                        </div>
-                         <div class="controls-group flex gap-2">
-                            <button id="undo-btn" disabled title="Undo (Ctrl+Z)" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Undo</button>
-                            <button id="redo-btn" disabled title="Redo (Ctrl+Y)" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed">Redo</button>
-                        </div>
-                        <div class="controls-group flex gap-2">
-                            <button id="edit-planner-btn" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors group-[.view-mode-active]:hidden">Settings</button>
-                            <button id="view-mode-toggle" class="px-3 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 text-sm font-medium transition-colors">View Mode</button>
-                        </div>
-                        <div class="controls-group flex gap-2">
-                            <button id="import-planner-btn" class="px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Import</button>
-                            <button id="export-planner-btn" class="px-3 py-2 bg-purple-500 text-white rounded-md hover:bg-purple-600 text-sm font-medium transition-colors">Export</button>
+
+                        <!-- Row 2: Toggles & Status (Compact) -->
+                        <div class="flex justify-between items-center text-xs">
+                             <!-- Collapsible Phenomenon Toggle -->
+                            <details class="group relative">
+                                <summary class="list-none cursor-pointer text-blue-600 dark:text-blue-400 font-medium hover:underline flex items-center gap-1">
+                                    <span class="group-open:rotate-90 transition-transform">▶</span> Show Phenomenon & Driving Question
+                                </summary>
+                                <div class="absolute top-full left-0 mt-1 z-50 w-96 p-4 bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-900 rounded-lg shadow-xl text-sm">
+                                    <p class="font-bold text-blue-800 dark:text-blue-200">Anchoring Phenomenon:</p>
+                                    <p id="planner-phenomenon" class="mb-2 text-gray-700 dark:text-gray-300 italic"></p>
+                                    <p class="font-bold text-blue-800 dark:text-blue-200">Driving Question:</p>
+                                    <p id="planner-question" class="text-gray-700 dark:text-gray-300 italic"></p>
+                                </div>
+                            </details>
+
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer text-gray-600 dark:text-gray-400">
+                                    <span>Bundled PEs Only</span>
+                                    <input type="checkbox" id="pe-bundle-toggle" class="accent-blue-600">
+                                </label>
+                                <span id="save-status" class="italic text-gray-400"></span>
+                            </div>
                         </div>
                     </div>
 
@@ -1988,7 +2008,7 @@
             toggleViewMode() {
                 App.state.isViewMode = !App.state.isViewMode;
                 App.dom.body.classList.toggle('view-mode-active', App.state.isViewMode);
-                document.getElementById('view-mode-toggle').textContent = App.state.isViewMode ? 'Exit View Mode' : 'Enter View Mode';
+                document.getElementById('view-mode-toggle').textContent = App.state.isViewMode ? 'Exit View' : 'View';
                 if (App.state.currentPlannerId) App.render.plannerView(App.state.currentPlannerId);
             },
             addRow(type, text) {
@@ -2571,9 +2591,9 @@
 
                 const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
                 const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { horizontal: "center", vertical: "center", wrapText: true } };
-                const unitStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FF4338CA" } }, color: { rgb: "FFFFFFFF" }, border: thinBorder };
-                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FF60A5FA" } }, border: thinBorder };
-                const subTitleStyle = { font: { bold: false }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
+                const unitStyle = { font: { bold: true, sz: 14, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4338CA" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const lessonTitleStyle = { font: { bold: true }, fill: { fgColor: { rgb: "FFDBEAFE" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const subTitleStyle = { font: { italic: true }, border: thinBorder, alignment: { indent: 1, vertical: "top" } };
                 const dataCellStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
 
                 const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
@@ -2593,8 +2613,10 @@
                     
                     const styleInfo = rowInfo[r];
                     if (styleInfo) {
-                        if (styleInfo.type === 'unit' || styleInfo.type === 'lessonTitle') {
-                            cell.s = styleInfo.style;
+                        if (styleInfo.type === 'unit') {
+                            cell.s = unitStyle;
+                        } else if (styleInfo.type === 'lessonTitle') {
+                            cell.s = lessonTitleStyle;
                         } else if (styleInfo.type === 'dataRow') {
                             cell.s = (c === 0) ? subTitleStyle : dataCellStyle;
                         }
@@ -2749,6 +2771,15 @@
             },
 
             _exportProgressionByElement(selectedPlanners) {
+                const workbook = XLSX.utils.book_new();
+                const sheetData = [];
+                const merges = [];
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const groupHeaderStyle = { font: { bold: true, sz: 14 }, fill: { fgColor: { rgb: "FFD9E1F2" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const elementCodeStyle = { font: { bold: true }, border: thinBorder, alignment: { vertical: "top" } };
+                const defaultStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+
                 const allTrackedElements = new Map();
                 const allUnique3DElements = new Map();
 
@@ -2771,29 +2802,30 @@
                         else if (row.type === 'lesson-set' && row.children) row.children.forEach(lesson => processLesson(lesson, row.title));
                     });
                 });
-
-                const sheetData = [];
-                const header = ['Element Code', 'Description', 'Dimension', ...selectedPlanners.map(p => p.title)];
+                
+                const header = ['Element', ...selectedPlanners.map(p => p.title)];
                 sheetData.push(header);
 
-                const groupedElements = { PE: [], SEP: [], DCI: [], CCC: [] };
+                const groupedElements = { PE: [], DCI: [], SEP: [], CCC: [] };
+                const groupNames = { PE: "Performance Expectations", DCI: "Disciplinary Core Ideas", SEP: "Science and Engineering Practices", CCC: "Crosscutting Concepts & Connections" };
                 allUnique3DElements.forEach((elementData, code) => {
                     const dim = elementData.dimension || '';
                     if (App.dataMaps.peMap.has(code)) groupedElements.PE.push([code, elementData]);
-                    else if (dim.startsWith('SEP')) groupedElements.SEP.push([code, elementData]);
                     else if (dim.startsWith('DCI')) groupedElements.DCI.push([code, elementData]);
+                    else if (dim.startsWith('SEP')) groupedElements.SEP.push([code, elementData]);
                     else groupedElements.CCC.push([code, elementData]);
                 });
                 for (const key in groupedElements) { groupedElements[key].sort((a, b) => a[0].localeCompare(b[0])); }
 
                 Object.entries(groupedElements).forEach(([groupKey, elements]) => {
                     if (elements.length > 0) {
-                        sheetData.push([groupKey.toUpperCase()]);
+                        const groupHeaderRow = [groupNames[groupKey]];
+                        merges.push({ s: { r: sheetData.length, c: 0 }, e: { r: sheetData.length, c: header.length - 1 } });
+                        sheetData.push(groupHeaderRow);
+
                         elements.forEach(([code, elementData]) => {
                             const row = [
-                                code,
-                                elementData.text || elementData.description || '',
-                                elementData.dimension || (App.dataMaps.peMap.has(code) ? 'PE' : '')
+                                `${code}\n${elementData.text || elementData.description || ''}`
                             ];
                             selectedPlanners.forEach(planner => {
                                 const entries = (allTrackedElements.get(code) || []).filter(e => e.plannerId === planner.id);
@@ -2805,26 +2837,44 @@
                     }
                 });
 
-                const workbook = XLSX.utils.book_new();
                 const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-                worksheet['!cols'] = [{ wch: 15 }, { wch: 60 }, { wch: 10 }, ...selectedPlanners.map(() => ({ wch: 40 }))];
+                worksheet['!merges'] = merges;
+                worksheet['!cols'] = [{ wch: 60 }, ...selectedPlanners.map(() => ({ wch: 40 }))];
+                
+                Object.keys(worksheet).forEach(cellAddress => {
+                    if (cellAddress.startsWith('!')) return;
+                    const cell = worksheet[cellAddress];
+                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
+                    if (r === 0) cell.s = headerStyle;
+                    else if (merges.some(m => m.s.r === r)) cell.s = groupHeaderStyle;
+                    else if (c === 0) cell.s = elementCodeStyle;
+                    else cell.s = defaultStyle;
+                });
+
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Progression by Element');
                 XLSX.writeFile(workbook, 'NGSS_Progression_by_Element.xlsx');
             },
 
             _exportProgressionByLesson(selectedPlanners) {
+                const workbook = XLSX.utils.book_new();
                 const sheetData = [];
+                const merges = [];
+                const thinBorder = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
+                const headerStyle = { font: { bold: true, color: { rgb: "FFFFFFFF" } }, fill: { fgColor: { rgb: "FF4B5563" } }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const plannerStyle = { font: { bold: true, sz: 12 }, border: thinBorder, alignment: { vertical: "center", horizontal: "center" } };
+                const defaultStyle = { border: thinBorder, alignment: { vertical: "top", wrapText: true } };
+
                 const header = ['Planner', 'Lesson Set', 'Lesson', 'PEs', 'DCIs', 'SEPs', 'CCCs'];
                 sheetData.push(header);
 
                 selectedPlanners.forEach(planner => {
+                    const plannerStartRow = sheetData.length;
                     (planner.rows || []).forEach(row => {
                         const processLesson = (lesson, lessonSetTitle = '') => {
                             const groupedCodes = { PE: [], DCI: [], SEP: [], CCC: [] };
                             Object.keys(lesson.trackingData || {}).forEach(code => {
-                                if (App.dataMaps.peMap.has(code)) {
-                                    groupedCodes.PE.push(code);
-                                } else {
+                                if (App.dataMaps.peMap.has(code)) groupedCodes.PE.push(code);
+                                else {
                                     const elData = App.dataMaps.ngss3dMap.get(code);
                                     if (elData) {
                                         if (elData.dimension.startsWith('DCI')) groupedCodes.DCI.push(code);
@@ -2845,11 +2895,25 @@
                             processLesson(row);
                         }
                     });
+                    const plannerEndRow = sheetData.length - 1;
+                    if (plannerStartRow <= plannerEndRow) {
+                        merges.push({ s: { r: plannerStartRow, c: 0 }, e: { r: plannerEndRow, c: 0 } });
+                    }
                 });
 
-                const workbook = XLSX.utils.book_new();
                 const worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+                worksheet['!merges'] = merges;
                 worksheet['!cols'] = [{ wch: 30 }, { wch: 30 }, { wch: 40 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 20 }];
+
+                Object.keys(worksheet).forEach(cellAddress => {
+                    if (cellAddress.startsWith('!')) return;
+                    const cell = worksheet[cellAddress];
+                    const { r, c } = XLSX.utils.decode_cell(cellAddress);
+                    if (r === 0) cell.s = headerStyle;
+                    else if (c === 0) cell.s = plannerStyle;
+                    else cell.s = defaultStyle;
+                });
+
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Progression by Lesson');
                 XLSX.writeFile(workbook, 'NGSS_Progression_by_Lesson.xlsx');
             },
