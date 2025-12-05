@@ -38,8 +38,8 @@
           "type": "lesson",
           "title": "Lesson 1: Hawaiian Hot Spot Phenomenon",
           "trackingData": {
-            "SEP.1-M1": "I",
-            "CCC.2-M2": "I"
+            "AQDP-M1": "I",
+            "CE-M2": "I"
           },
           "scope": "",
           "details": {
@@ -52,7 +52,7 @@
           "type": "lesson",
           "title": "Lesson 2: Initial Models",
           "trackingData": {
-            "SEP.2-M3": "I",
+            "MOD-M3": "I",
             "MS-ESS2-2": "I"
           },
           "scope": "F",
@@ -85,8 +85,8 @@
           "title": "Lesson 4: Modeling Mantle Convection",
           "trackingData": {
             "ESS2.A-M1": "D",
-            "SEP.2-M3": "D",
-            "CCC.5-M1": "I"
+            "MOD-M3": "D",
+            "EM-M1": "I"
           },
           "scope": "F",
           "details": { "notes": "", "links": [] }
@@ -117,8 +117,8 @@
           "type": "lesson",
           "title": "Lesson 7: Revisiting Initial Models",
           "trackingData": {
-            "SEP.2-M3": "D",
-            "CCC.2-M2": "D"
+            "MOD-M3": "D",
+            "CE-M2": "D"
           },
           "scope": "F",
           "details": { "notes": "", "links": [] }
@@ -148,7 +148,7 @@
           "trackingData": {
             "ESS2.A-M2": "D",
             "MS-ESS2-1": "I",
-            "CCC.7-M1": "I"
+            "SC-M1": "I"
           },
           "scope": "F",
           "details": { "notes": "", "links": [] }
@@ -180,7 +180,7 @@
           "title": "Lesson 12: Connecting the Rock Cycle to Plate Tectonics",
           "trackingData": {
             "MS-ESS2-1": "D",
-            "CCC.7-M1": "D"
+            "SC-M1": "D"
           },
           "scope": "F",
           "details": { "notes": "", "links": [] }
@@ -220,7 +220,7 @@
           "title": "Lesson 15: Geologic Time Scale",
           "trackingData": {
             "MS-ESS1-4": "D",
-            "CCC.6-M1": "I"
+            "SF-M1": "I"
           },
           "scope": "",
           "details": { "notes": "", "links": [] }
@@ -240,7 +240,7 @@
           "type": "lesson",
           "title": "Lesson 17: Analyzing Global Data",
           "trackingData": {
-            "SEP.4-M4": "I",
+            "DATA-M4": "I",
             "MS-ESS2-3": "A"
           },
           "scope": "F",
@@ -279,8 +279,8 @@
           "type": "lesson",
           "title": "Lesson 20: Finalizing the Hawaiian Islands Model",
           "trackingData": {
-            "SEP.2-M3": "A",
-            "CCC.2-M2": "A"
+            "MOD-M3": "A",
+            "CE-M2": "A"
           },
           "scope": "F",
           "details": { "notes": "", "links": [] }
@@ -290,7 +290,7 @@
           "type": "lesson",
           "title": "Lesson 21: Constructing an Argument",
           "trackingData": {
-            "SEP.7-M3": "I"
+            "ARG-M3": "I"
           },
           "scope": "",
           "details": { "notes": "", "links": [] }
@@ -300,7 +300,7 @@
           "type": "lesson",
           "title": "Lesson 22: Peer Review and Refinement",
           "trackingData": {
-            "SEP.7-M3": "D"
+            "ARG-M3": "D"
           },
           "scope": "",
           "details": { "notes": "", "links": [] }
@@ -330,7 +330,7 @@
           "title": "Final Assessment",
           "trackingData": {
             "MS-ESS2-3": "A",
-            "SEP.7-M3": "A",
+            "ARG-M3": "A",
             "ESS1.C-M1": "A",
             "ESS2.A-M1": "A",
             "ESS2.B-M1": "A"
