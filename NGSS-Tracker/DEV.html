@@ -686,7 +686,7 @@
                 document.getElementById('lesson-links-container').addEventListener('click', (e) => { if(e.target.classList.contains('remove-link-btn')) this.utils.removeLinkFromDetailsModal(e.target); });
                 document.getElementById('lesson-details-modal-close').addEventListener('click', () => this.utils.saveLessonDetails());
 
-                document.body.addEventListener('click', e => { if(e.target.matches('.modal-backdrop, [id$="-modal-cancel"], [id$="-modal-close"]')) this.utils.closeAllModals(); });
+                document.body.addEventListener('click', e => { if(e.target.matches('.modal-backdrop, [id$="-cancel"], [id$="-close"]')) this.utils.closeAllModals(); });
 
                 document.getElementById('menu-toggle').addEventListener('click', () => this.dom.body.classList.toggle('sidebar-open'));
                 document.getElementById('sidebar-backdrop').addEventListener('click', () => this.dom.body.classList.remove('sidebar-open'));
@@ -1279,11 +1279,17 @@
                         return;
                     }
                     const childCodes = th.dataset.childCodes.split(',');
-                    const hasVisibleChildren = childCodes.some(code => {
+                    const visibleChildrenCount = childCodes.reduce((count, code) => {
                         const childTh = table.querySelector(`th[data-code="${code}"]`);
-                        return childTh && childTh.style.display !== 'none';
-                    });
-                    th.style.display = hasVisibleChildren ? '' : 'none';
+                        return (childTh && childTh.style.display !== 'none') ? count + 1 : count;
+                    }, 0);
+
+                    if (visibleChildrenCount > 0) {
+                        th.style.display = '';
+                        th.colSpan = visibleChildrenCount;
+                    } else {
+                        th.style.display = 'none';
+                    }
                 });
 
                 // Handle the main PE group header specifically
@@ -3059,6 +3065,113 @@
                     </body></html>
                 `;
                 this.downloadFile(`${title.replace(/\s/g, '_')}_Summary.html`, htmlContent, 'text/html');
+            }
+        };
+
+        App.import = {
+            handleImport() {
+                const fileInput = document.createElement('input');
+                fileInput.type = 'file';
+                fileInput.accept = '.json,application/json';
+                fileInput.style.display = 'none';
+
+                fileInput.addEventListener('change', (event) => {
+                    const file = event.target.files[0];
+                    if (!file) {
+                        document.body.removeChild(fileInput);
+                        return;
+                    }
+
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const data = JSON.parse(e.target.result);
+                            if (!data.id || !data.title || !data.rows) {
+                                throw new Error('Invalid planner file format.');
+                            }
+                            App.state.pendingImportData = data;
+                            this.showImportOptions(data);
+                        } catch (error) {
+                            alert(`Error reading file: ${error.message}`);
+                            console.error(error);
+                        } finally {
+                            document.body.removeChild(fileInput);
+                        }
+                    };
+                    reader.readAsText(file);
+                });
+
+                document.body.appendChild(fileInput);
+                fileInput.click();
+            },
+
+            showImportOptions(plannerData) {
+                document.getElementById('import-planner-name').textContent = plannerData.title;
+                
+                const currentPlannerOpen = !!App.state.currentPlannerId;
+                
+                const mergeLabel = document.getElementById('import-merge-label');
+                const mergeInput = mergeLabel.querySelector('input');
+                mergeLabel.classList.toggle('disabled:opacity-50', !currentPlannerOpen);
+                mergeLabel.classList.toggle('disabled:cursor-not-allowed', !currentPlannerOpen);
+                mergeInput.disabled = !currentPlannerOpen;
+
+                const replaceLabel = document.getElementById('import-replace-label');
+                const replaceInput = replaceLabel.querySelector('input');
+                replaceLabel.classList.toggle('disabled:opacity-50', !currentPlannerOpen);
+                replaceLabel.classList.toggle('disabled:cursor-not-allowed', !currentPlannerOpen);
+                replaceInput.disabled = !currentPlannerOpen;
+
+                document.querySelector('input[name="import-option"][value="create"]').checked = true;
+
+                App.utils.openModal('import-options-modal-backdrop');
+            },
+
+            processImport() {
+                const importData = App.state.pendingImportData;
+                if (!importData) return;
+
+                const selectedOption = document.querySelector('input[name="import-option"]:checked').value;
+
+                switch (selectedOption) {
+                    case 'create':
+                        const idExists = App.state.programData.planners.some(p => p.id === importData.id);
+                        const plannerToAdd = idExists ? App.utils.clonePlannerWithNewIds(importData) : importData;
+                        App.state.programData.planners.push(plannerToAdd);
+                        App.render.plannerView(plannerToAdd.id);
+                        break;
+                    
+                    case 'merge':
+                        const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
+                        if (currentPlanner) {
+                            App.history.saveState();
+                            const allPes = [...(currentPlanner.assignedPes || []), ...(importData.assignedPes || [])];
+                            const uniquePeMap = new Map();
+                            allPes.forEach(pe => uniquePeMap.set(pe.id, pe));
+                            currentPlanner.assignedPes = Array.from(uniquePeMap.values());
+                            currentPlanner.rows.push(...(importData.rows || []));
+                            App.render.plannerView(currentPlanner.id);
+                        }
+                        break;
+
+                    case 'replace':
+                        const plannerIndex = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
+                        if (plannerIndex > -1) {
+                            const otherPlannersConflict = App.state.programData.planners.some(p => p.id === importData.id && p.id !== App.state.currentPlannerId);
+                            const plannerToReplaceWith = otherPlannersConflict ? App.utils.clonePlannerWithNewIds(importData) : importData;
+                            App.state.programData.planners[plannerIndex] = plannerToReplaceWith;
+                            App.state.currentPlannerId = plannerToReplaceWith.id;
+                            App.render.plannerView(App.state.currentPlannerId);
+                        }
+                        break;
+                }
+
+                App.persistence.saveProgramData();
+                App.render.navigator();
+                App.render.welcomeView();
+                
+                App.state.pendingImportData = null;
+                App.utils.closeAllModals();
             }
         };
 		 
