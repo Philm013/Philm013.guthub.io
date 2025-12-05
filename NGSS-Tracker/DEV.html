@@ -38,8 +38,7 @@
         /* --- STRICT FIXED LAYOUT --- */
         table.fixed-layout {
             table-layout: fixed;
-            width: max-content; 
-            min-width: 100%;
+            width: 100%; /* Use 100% for better responsiveness within container */
             border-collapse: separate; 
             border-spacing: 0;
         }
@@ -66,21 +65,16 @@
             justify-content: flex-start;
         }
 
-        /* --- STICKY COLUMNS & COLGROUP FOR LAYOUT STABILITY --- */
-        .sticky-col-1 { position: sticky; left: 0; z-index: 25; }
-        .sticky-col-2 { position: sticky; left: 65px; z-index: 24; }
+        /* --- STICKY COLUMNS --- */
+        .sticky-col-1 { position: sticky; left: 0; z-index: 25; width: 65px; min-width: 65px; }
+        .sticky-col-2 { position: sticky; left: 65px; z-index: 24; width: 40px; min-width: 40px; }
         .sticky-col-3 { 
-            position: sticky; left: 105px; z-index: 23; 
+            position: sticky; left: 105px; z-index: 23; width: 400px; min-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
         }
         .dark .sticky-col-3 { box-shadow: 4px 0 5px -2px rgba(0,0,0,0.25); }
         
-        col.sticky-col-1 { width: 65px; min-width: 65px; }
-        col.sticky-col-2 { width: 40px; min-width: 40px; }
-        col.sticky-col-3 { width: 400px; min-width: 400px; }
-        col.data-col { width: 50px; min-width: 50px; }
-        col.collapsed { width: 0; min-width: 0; }
-
+        .data-col { width: 50px; min-width: 50px; }
 
         #planner-table-container thead th.sticky-col-1, 
         #planner-table-container thead th.sticky-col-2, 
@@ -99,7 +93,6 @@
         details > summary { list-style: none; }
         details > summary::-webkit-details-marker { display: none; }
         .group-toggle-header { top: 0; z-index: 21 !important; height: auto !important; vertical-align: middle !important; padding: 4px !important; }
-        .collapsed-placeholder { width: 30px; min-width: 30px; font-size: 0.8rem; }
     </style>
 </head>
 <body id="body-tag" class="bg-gray-100 dark:bg-gray-900 font-sans text-gray-800 dark:text-gray-200 antialiased">
@@ -410,7 +403,6 @@
                 summaryShowCoveredOnly: false,
                 summaryChartFilter: null,
                 activeCharts: {},
-                collapsedSections: new Set(),
             },
 			dataMaps: {
                 peMap: new Map(),
@@ -1048,13 +1040,11 @@
                 App.dom.plannerTableContainer.innerHTML = ''; 
                 const table = document.createElement('table'); 
                 table.className = 'table-view fixed-layout';
-                const colgroup = document.createElement('colgroup');
                 
                 let groupHeaderRow = `<tr class="group-header-row">`;
                 let mainHeaderRow = `<tr>`;
                 
-                // Sticky columns
-                colgroup.innerHTML = '<col class="sticky-col-1"><col class="sticky-col-2"><col class="sticky-col-3">';
+                // Static sticky columns for header
                 groupHeaderRow += `<th class="sticky-col-1 bg-gray-100 dark:bg-gray-800"></th><th class="sticky-col-2 bg-gray-100 dark:bg-gray-800"></th><th class="sticky-col-3 bg-gray-100 dark:bg-gray-800"></th>`;
                 mainHeaderRow += `<th class="sticky-col-1 bg-gray-100 dark:bg-gray-800 border-b border-r">Actions</th><th class="sticky-col-2 bg-gray-100 dark:bg-gray-800 border-b border-r">Scope</th><th class="sticky-col-3 bg-gray-100 dark:bg-gray-800 border-b border-r text-left pl-2">Instructional Sequence</th>`;
 
@@ -1067,28 +1057,23 @@
 
                         (planner?.assignedPes || []).forEach(peObj => {
                              const peCode = peObj.id;
-                             colgroup.innerHTML += `<col class="data-col" data-tab-group="pe" data-code="${peCode}">`;
                              const peData = App.dataMaps.peMap.get(peCode);
                              const tooltip = peData ? `${peCode}: ${peData.description.replace(/"/g, '&quot;')}` : peCode;
                              const secondaryClass = peObj.isSecondary ? 'font-normal italic text-gray-500 dark:text-gray-400' : 'font-semibold';
-                             mainHeaderRow += `<th class="cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
+                             mainHeaderRow += `<th class="data-col cursor-pointer ${secondaryClass}" data-tab-group="pe" data-code="${peCode}" data-tooltip="${tooltip}"><div class="vertical-header-text">${peCode}</div></th>`;
                         });
                         if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                             colgroup.innerHTML += `<col class="data-col" data-tab-group="pe">`;
-                             mainHeaderRow += `<th class="font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
+                             mainHeaderRow += `<th class="data-col font-normal" data-tab-group="pe"><div>Assign PEs</div></th>`;
                         }
                     } else {
                         Object.entries(columnGroups[key].groups).forEach(([groupKey, groupData]) => {
                             if (groupData.cols.length > 0) {
                                 const fullGroupKey = `${key}-${groupKey}`;
-                                const isCollapsed = App.state.collapsedSections.has(fullGroupKey);
-                                const icon = isCollapsed ? '▶' : '▼';
-                                const colspan = groupData.cols.length;
-                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700 cursor-pointer" data-tab-group="${key}" data-group-toggle="${fullGroupKey}" colspan="${colspan}" data-original-colspan="${colspan}"><span class="toggle-icon">${icon}</span> ${groupData.name}</th>`;
+                                const childCodes = groupData.cols.map(c => c.code).join(',');
+                                groupHeaderRow += `<th class="group-toggle-header bg-gray-200 dark:bg-gray-800 border-l border-r border-gray-300 dark:border-gray-700" data-tab-group="${key}" data-group-parent-of="${fullGroupKey}" data-child-codes="${childCodes}" colspan="${groupData.cols.length}">${groupData.name}</th>`;
                                 
                                 groupData.cols.forEach(col => {
-                                    colgroup.innerHTML += `<col class="data-col" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}">`;
-                                    mainHeaderRow += `<th class="cursor-pointer" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
+                                    mainHeaderRow += `<th class="data-col cursor-pointer" data-tab-group="${key}" data-group-parent="${fullGroupKey}" data-code="${col.code}" data-tooltip="${col.title}"><div class="vertical-header-text">${col.title}</div></th>`;
                                 });
                             }
                         });
@@ -1098,7 +1083,6 @@
                 groupHeaderRow += '</tr>';
                 const thead = document.createElement('thead');
                 thead.innerHTML = groupHeaderRow + mainHeaderRow; 
-                table.appendChild(colgroup);
                 table.appendChild(thead); 
                 table.appendChild(document.createElement('tbody')); 
                 App.dom.plannerTableContainer.appendChild(table);
@@ -1176,7 +1160,7 @@
                                  cellsHTML += this.createTrackingCellHTML({ code: peObj.id, type: 'pe' }, rowData);
                              });
                              if (!planner?.assignedPes || planner.assignedPes.length === 0) {
-                                cellsHTML += `<td data-tab-group="pe" class="p-2 ${borderClass}"></td>`;
+                                cellsHTML += `<td data-tab-group="pe" class="data-col p-2 ${borderClass}"></td>`;
                              }
                          } else {
                             Object.entries(columnGroups[key].groups).forEach(([groupKey, groupData]) => {
@@ -1189,7 +1173,7 @@
                 } return row;
             },
             createTrackingCellHTML(column, rowData) {
-                const commonCellClasses = "p-2 border border-gray-200 dark:border-gray-700 align-top";
+                const commonCellClasses = "data-col p-2 border border-gray-200 dark:border-gray-700 align-top";
                 if (column.type === 'pe') {
                     const status = rowData.trackingData?.[column.code] || '';
                     const statusClass = App.constants.statusClasses[status] || '';
@@ -1262,9 +1246,8 @@
 
                 if (App.state.isPeBundleMode && planner) {
                     bundledParentCodes = new Set();
-                    const assignedPes = (planner.assignedPes || []).map(p => p.id);
-                    assignedPes.forEach(peCode => {
-                        const links = App.dataMaps.peTo3dMap.get(peCode);
+                    (planner.assignedPes || []).forEach(peObj => {
+                        const links = App.dataMaps.peTo3dMap.get(peObj.id);
                         if (links) {
                             links.componentCodes.forEach(code => bundledParentCodes.add(code));
                             links.secondaryComponentCodes.forEach(code => bundledParentCodes.add(code));
@@ -1278,67 +1261,34 @@
                     });
                 }
                 
-                // Update Colgroup
-                table.querySelectorAll('colgroup col[data-code]').forEach(col => {
-                    const colTab = col.dataset.tabGroup;
-                    const colCode = col.dataset.code;
-                    const colParentGroup = col.dataset.groupParent;
-
-                    let isVisible = (colTab === tabKey);
-                    if (bundledParentCodes !== null && colTab !== 'pe') {
-                        isVisible = isVisible && bundledParentCodes.has(colCode);
-                    }
-                    if (App.state.collapsedSections.has(colParentGroup)) {
-                        isVisible = false;
-                    }
-                    col.classList.toggle('collapsed', !isVisible);
+                // Handle individual columns (headers and data cells)
+                const allDataCells = table.querySelectorAll('th[data-code], td.data-col');
+                allDataCells.forEach(cell => {
+                    const code = cell.dataset.code;
+                    const isVisibleForTab = cell.dataset.tabGroup === tabKey;
+                    const isVisibleForBundle = !App.state.isPeBundleMode || cell.dataset.tabGroup === 'pe' || (bundledParentCodes && bundledParentCodes.has(code));
+                    cell.style.display = (isVisibleForTab && isVisibleForBundle) ? '' : 'none';
                 });
 
-                // Update Group Headers
-                table.querySelectorAll('th[data-group-toggle]').forEach(th => {
-                    const groupTab = th.dataset.tabGroup;
-                    const fullGroupKey = th.dataset.groupToggle;
-                    let isVisible = (groupTab === tabKey);
-                    if (bundledParentCodes !== null) {
-                        const hasVisibleChild = Array.from(table.querySelectorAll(`col[data-group-parent="${fullGroupKey}"]`))
-                            .some(col => bundledParentCodes.has(col.dataset.code));
-                        isVisible = isVisible && hasVisibleChild;
+                // Handle group headers
+                const allGroupHeaders = table.querySelectorAll('th[data-group-parent-of]');
+                allGroupHeaders.forEach(th => {
+                    const isVisibleForTab = th.dataset.tabGroup === tabKey;
+                    if (!isVisibleForTab) {
+                        th.style.display = 'none';
+                        return;
                     }
-                    th.style.display = isVisible ? '' : 'none';
-
-                    if(isVisible) {
-                        const isCollapsed = App.state.collapsedSections.has(fullGroupKey);
-                        th.classList.toggle('collapsed-placeholder', isCollapsed);
-                        th.colSpan = isCollapsed ? 1 : th.dataset.originalColspan;
-                    }
+                    const childCodes = th.dataset.childCodes.split(',');
+                    const hasVisibleChildren = childCodes.some(code => {
+                        const childTh = table.querySelector(`th[data-code="${code}"]`);
+                        return childTh && childTh.style.display !== 'none';
+                    });
+                    th.style.display = hasVisibleChildren ? '' : 'none';
                 });
-                
-                // Also hide/show the main PE header
+
+                // Handle the main PE group header specifically
                 const peHeader = table.querySelector('th[data-tab-group="pe"][colspan]');
                 if(peHeader) peHeader.style.display = (tabKey === 'pe') ? '' : 'none';
-
-
-                 // Update main header cells and body cells
-                table.querySelectorAll('th[data-code], td[data-code]').forEach(cell => {
-                    const cellCol = table.querySelector(`col[data-code="${cell.dataset.code}"]`);
-                    if (cellCol) {
-                         cell.style.display = cellCol.classList.contains('collapsed') ? 'none' : '';
-                    }
-                });
-
-                // Update placeholder cells for collapsed groups
-                table.querySelectorAll('.collapsed-placeholder').forEach(ph => {
-                    const groupKey = ph.dataset.groupToggle;
-                    const groupTab = ph.dataset.tabGroup;
-                    let isVisible = (groupTab === tabKey) && App.state.collapsedSections.has(groupKey);
-                    
-                    if (bundledParentCodes !== null) {
-                         const hasVisibleChild = Array.from(table.querySelectorAll(`col[data-group-parent="${groupKey}"]`))
-                            .some(col => bundledParentCodes.has(col.dataset.code));
-                        isVisible = isVisible && hasVisibleChild;
-                    }
-                    ph.style.display = isVisible ? '' : 'none';
-                });
             },
             updateTableHeaderHighlights() {
                 const planner = App.utils.findPlanner(App.state.currentPlannerId); if (!planner) return;
@@ -1907,20 +1857,6 @@
             mainTableClick(e) {
                 const target = e.target;
                 const rowEl = target.closest('[data-id]');
-
-                const groupToggle = target.closest('[data-group-toggle]');
-                if (groupToggle) {
-                    const groupKey = groupToggle.dataset.groupToggle;
-
-                    if (App.state.collapsedSections.has(groupKey)) {
-                        App.state.collapsedSections.delete(groupKey);
-                    } else {
-                        App.state.collapsedSections.add(groupKey);
-                    }
-                    App.render.plannerView(App.state.currentPlannerId); // Re-render to apply changes
-                    return;
-                }
-                
                 if (!rowEl) return;
                 
                 const rowId = rowEl.dataset.id;
