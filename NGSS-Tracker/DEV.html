@@ -473,7 +473,9 @@
             },
             
             buildDataMaps() {
-                const { ngss3dMap, peMap, peTo3dMap, parentToChildrenMap, major3DMap, nameToCodeMap, textToSpecificCodeMap, fuzzyMatchCache } = this.dataMaps;
+                // destructured gradeBandMap here to ensure it is available in the loop
+                const { ngss3dMap, peMap, peTo3dMap, parentToChildrenMap, major3DMap, nameToCodeMap, textToSpecificCodeMap, fuzzyMatchCache, gradeBandMap } = this.dataMaps;
+                
                 ngss3dMap.clear(); peMap.clear(); peTo3dMap.clear(); parentToChildrenMap.clear(); major3DMap.clear(); nameToCodeMap.clear(); textToSpecificCodeMap.clear(); fuzzyMatchCache.clear();
                 
                 const processElementForMaps = (element) => {
@@ -502,25 +504,27 @@
                                  Object.values(item.progressions).forEach(pArr=>{
                                      if(Array.isArray(pArr)) {
                                          pArr.forEach(i=>{
-										    if(!i) return;
-										    i.parentName = item.name;
-										    i.parentCode = item.name.split(':')[0].trim();
-										    i.dimension = dim.short_name;
-										    
-										    // FIX: Normalize progression keys to match planner gradeBands
-										    // (e.g., maps "3-5" to "elementary")
-										    i.allProgressions = {};
-										    if (item.progressions) {
-										        Object.keys(item.progressions).forEach(k => {
-										            const normalizedKey = App.dataMaps.gradeBandMap[k] || k;
-										            i.allProgressions[normalizedKey] = item.progressions[k];
-										        });
-										    }
-										
-										    i.relatedPes = new Set();
-										    ngss3dMap.set(i.code,i);
-										    textToSpecificCodeMap.set(i.text.trim(), i.code);
-										});
+                                             if(!i) return;
+                                             i.parentName = item.name;
+                                             i.parentCode = item.name.split(':')[0].trim();
+                                             i.dimension = dim.short_name;
+                                             
+                                             // --- FIX STARTS HERE ---
+                                             // We create a new object for allProgressions and normalize the keys
+                                             // (e.g., maps "3-5" to "elementary") based on gradeBandMap
+                                             i.allProgressions = {};
+                                             if (item.progressions) {
+                                                Object.keys(item.progressions).forEach(k => {
+                                                    const normalizedKey = gradeBandMap[k] || k;
+                                                    i.allProgressions[normalizedKey] = item.progressions[k];
+                                                });
+                                             }
+                                             // --- FIX ENDS HERE ---
+
+                                             i.relatedPes = new Set();
+                                             ngss3dMap.set(i.code,i);
+                                             textToSpecificCodeMap.set(i.text.trim(), i.code);
+                                         });
                                      }
                                  });
                              }
@@ -603,31 +607,25 @@
                     if (!parent.progressions) return;
                     const parentCode = parent.code || parent.name.split(':')[0].trim();
                     const children = [];
+                    // Flatten children for parent lookup map
                     Object.values(parent.progressions).forEach(bandProg => { if(bandProg) children.push(...bandProg) });
                     const uniqueChildren = Array.from(new Map(children.map(item => [item.code, item])).values());
+                    
+                    // Note: We don't need to normalize keys inside the *Parent* map because the children 
+                    // themselves now contain the normalized `allProgressions` property we added above.
                     parentToChildrenMap.set(parentCode, {name: parent.name, children: uniqueChildren, dimension: dimShortName});
                 };
 
-                // CORRECTED CODE
-				this.state.allNgss3dElements.forEach(dim => {
-				    // Corrected logic for dim.elements
-				    (dim.elements || []).forEach(el => {
-				        if (el.progressions) {
-				            processParent(el, dim.short_name);
-				        } else if (el.components) {
-				            el.components.forEach(comp => processParent(comp, dim.short_name));
-				        }
-				    });
-				
-				    // Original, correct logic for dim.core_ideas remains
-				    (dim.core_ideas || []).forEach(el => {
-				        if (el.progressions) {
-				            processParent(el, dim.short_name);
-				        } else if (el.components) {
-				            el.components.forEach(comp => processParent(comp, dim.short_name));
-				        }
-				    });
-				});
+                this.state.allNgss3dElements.forEach(dim => {
+                    (dim.elements || []).forEach(el => processParent(el, dim.short_name));
+                    (dim.core_ideas || []).forEach(el => {
+                        if (el.progressions) {
+                            processParent(el, dim.short_name);
+                        } else if (el.components) {
+                            el.components.forEach(comp => processParent(comp, dim.short_name));
+                        }
+                    });
+                });
                 parentToChildrenMap.set('PE', {name: "Performance Expectations", children: [], dimension: 'PE'});
             },
 
