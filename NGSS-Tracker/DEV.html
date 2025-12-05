@@ -1002,7 +1002,6 @@
                 }
 
                 const existingIds = new Set(planners.map(p => p.id));
-                // FIX IS HERE: Added checks for file and file.content before accessing file.content.id
                 const availableFiles = (App.state.availableExamples || []).filter(file => file && file.content && !existingIds.has(file.content.id));
 
                 let examplesHTML = '';
@@ -1728,7 +1727,7 @@
                         labels: ['Introduced', 'Developed', 'Assessed'],
                         datasets: [{ 
                             label: 'Count', 
-                            data: [globalStats.status.I, globalStats.status.D, globalStats.A], 
+                            data: [globalStats.status.I, globalStats.status.D, globalStats.status.A], 
                             backgroundColor: ['#FBBF24', '#34D399', '#60A5FA'],
                             borderRadius: 4
                         }]
@@ -3223,18 +3222,20 @@
                 const filenames = await manifestResponse.json();
 
                 const filePromises = filenames.map(async (name) => {
-                    try {
-                        const res = await fetch(`data/${name}`);
-                        if (!res.ok) throw new Error(`Failed to fetch ${name}`);
-                        const content = await res.json();
-                        return { status: 'fulfilled', value: { filename: name, content } };
-                    } catch (error) {
-                        console.error(`Error loading example file ${name}:`, error);
-                        return { status: 'rejected', reason: error };
-                    }
+                    const res = await fetch(`data/${name}`);
+                    if (!res.ok) throw new Error(`Failed to fetch ${name}: ${res.statusText}`);
+                    const content = await res.json();
+                    return { filename: name, content };
                 });
                 
                 const results = await Promise.allSettled(filePromises);
+                
+                results.forEach(result => {
+                    if (result.status === 'rejected') {
+                        console.error("Failed to load an example file:", result.reason);
+                    }
+                });
+
                 App.state.availableExamples = results
                     .filter(result => result.status === 'fulfilled')
                     .map(result => result.value);
