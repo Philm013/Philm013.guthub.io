@@ -75,12 +75,12 @@
             overflow: hidden;
         }
         .sticky-col-2 { 
-            position: sticky; left: 120px; z-index: 24; 
-            width: 65px; min-width: 65px; max-width: 65px;
+            position: sticky; left: 65px; z-index: 24; 
+            width: 40px; min-width: 40px; max-width: 40px;
             overflow: hidden;
         }
         .sticky-col-3 { 
-            position: sticky; left: 200px; z-index: 23; 
+            position: sticky; left: 105px; z-index: 23; 
             width: 400px; min-width: 400px; max-width: 400px;
             box-shadow: 4px 0 5px -2px rgba(0,0,0,0.05);
             overflow: hidden; text-overflow: ellipsis;
@@ -119,7 +119,6 @@
         <aside id="sidebar" class="bg-gray-800 text-gray-100 flex flex-col w-80 flex-shrink-0 p-4 transform transition-transform duration-300 ease-in-out z-[1000] -translate-x-full md:relative md:translate-x-0 fixed top-0 left-0 h-full md:shadow-lg">
             <h2 class="text-xl font-bold border-b border-gray-600 pb-3 mb-4">Planner Navigator</h2>
             
-            <!-- Updated Navigator Controls with Summary Button -->
             <div id="navigator-controls" class="grid grid-cols-1 gap-2 mb-4">
                 <button id="new-planner-btn" class="w-full px-3 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors font-semibold text-sm">+ New Planner</button>
                 <div class="grid grid-cols-2 gap-2">
@@ -176,7 +175,6 @@
                             <input type="search" id="search-input" placeholder="Search lessons..." class="w-full md:w-48 pl-8 pr-2 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-gray-50 dark:bg-gray-700 focus:ring-blue-500 focus:border-blue-500">
                             <div class="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none text-gray-400">⚲</div>
                         </div>
-                        <!-- Removed Summary Button from here -->
                         <div class="controls-group flex gap-2">
                             <button id="assign-pe-btn" class="px-3 py-2 bg-cyan-500 text-white rounded-md hover:bg-cyan-600 text-sm font-medium transition-colors">Manage PEs</button>
                         </div>
@@ -432,7 +430,13 @@
                 nameToCodeMap: new Map(),
                 textToSpecificCodeMap: new Map(),
                 fuzzyMatchCache: new Map(),
-                gradeBandMap: { 'K': 'primary', '1': 'primary', '2': 'primary', '3': 'elementary', '4': 'elementary', '5': 'elementary', 'MS': 'middle', 'HS': 'high' }
+                // Updated to include ETS grade keys (K-2, 3-5, etc.)
+                gradeBandMap: { 
+                    'K': 'primary', '1': 'primary', '2': 'primary', 'K-2': 'primary',
+                    '3': 'elementary', '4': 'elementary', '5': 'elementary', '3-5': 'elementary',
+                    'MS': 'middle', '6-8': 'middle',
+                    'HS': 'high', '9-12': 'high'
+                }
             },
             dom: {
                 sidebar: document.getElementById('sidebar'),
@@ -629,7 +633,6 @@
             attachEventListeners() {
                 document.getElementById('new-planner-btn').addEventListener('click', () => this.utils.openPlannerModal());
                 document.getElementById('view-progression-btn').addEventListener('click', () => this.render.progressionViewer());
-                // Summary Button Listener (Now in Sidebar)
                 document.getElementById('view-summary-btn').addEventListener('click', () => this.render.summary());
                 
                 this.dom.navigatorList.addEventListener('click', e => { if (e.target.type === 'checkbox') return; const item = e.target.closest('.planner-item'); if (item) { this.render.plannerView(item.dataset.plannerId); if (window.innerWidth <= 768) this.dom.body.classList.remove('sidebar-open'); } });
@@ -651,16 +654,13 @@
                 document.getElementById('export-planner-btn').addEventListener('click', () => this.export.showExportOptions());
                 document.getElementById('import-planner-btn').addEventListener('click', () => this.import.handleImport());
                 
-                // Export Options Click Handler
                 document.getElementById('export-options-list').addEventListener('click', e => {
                     const btn = e.target.closest('.export-option-btn');
                     if (btn) {
                         const format = btn.dataset.format;
                         const planner = App.utils.findPlanner(App.state.currentPlannerId);
                         if (!planner) return;
-                        
                         App.export.handleExportClick(format, planner);
-                        
                         if (format !== 'clipboard') {
                             this.utils.closeAllModals();
                         }
@@ -1086,7 +1086,6 @@
                     row.innerHTML = cellsHTML;
                 } return row;
             },
-            // ... (createTrackingCellHTML, generateCellContent, tabs, setActiveTab, updateTableHeaderHighlights, progressionViewer, renderProgressionByElement, renderProgressionByLesson, createStorylineLessonHTML - No changes needed) ...
             createTrackingCellHTML(column, rowData) {
                 const commonCellClasses = "p-2 border border-gray-200 dark:border-gray-700 align-top";
                 if (column.type === 'pe') {
@@ -1306,25 +1305,31 @@
                     alert('Please select at least one planner from the navigator to view its progression.'); 
                     return; 
                 } 
-                const planner = App.utils.findPlanner(selectedPlannerIds[0]);
-                if (!planner) return;
+                const selectedPlanners = selectedPlannerIds.map(id => App.utils.findPlanner(id));
                 
                 const container = document.getElementById('progression-table-view');
                 container.innerHTML = '';
-                document.getElementById('progression-subtitle').textContent = `Storyline for: ${planner.title}`;
+                document.getElementById('progression-subtitle').textContent = `Storyline for: ${selectedPlanners.map(p => p.title).join(', ')}`;
 
-                (planner.rows || []).forEach(row => {
-                    const rowEl = document.createElement('div');
-                    rowEl.className = 'mb-4';
-                    if (row.type === 'lesson-set') {
-                        rowEl.innerHTML = `<h3 class="text-lg font-bold p-2 bg-blue-100 dark:bg-blue-900/50 rounded-t-lg text-blue-800 dark:text-blue-200">${row.title}</h3>`;
-                        (row.children || []).forEach(lesson => {
-                            rowEl.innerHTML += this.createStorylineLessonHTML(lesson);
-                        });
-                    } else {
-                        rowEl.innerHTML = this.createStorylineLessonHTML(row);
-                    }
-                    container.appendChild(rowEl);
+                selectedPlanners.forEach(planner => {
+                    const plannerSection = document.createElement('div');
+                    plannerSection.className = 'mb-8 border-b-4 border-gray-300 dark:border-gray-600 pb-4';
+                    plannerSection.innerHTML = `<h2 class="text-2xl font-bold mb-4 text-gray-800 dark:text-gray-200">${planner.title} <small class="text-base font-normal text-gray-500">(${planner.gradeBand})</small></h2>`;
+                    
+                    (planner.rows || []).forEach(row => {
+                        const rowEl = document.createElement('div');
+                        rowEl.className = 'mb-4';
+                        if (row.type === 'lesson-set') {
+                            rowEl.innerHTML = `<h3 class="text-lg font-bold p-2 bg-blue-100 dark:bg-blue-900/50 rounded-t-lg text-blue-800 dark:text-blue-200">${row.title}</h3>`;
+                            (row.children || []).forEach(lesson => {
+                                rowEl.innerHTML += this.createStorylineLessonHTML(lesson);
+                            });
+                        } else {
+                            rowEl.innerHTML = this.createStorylineLessonHTML(row);
+                        }
+                        plannerSection.appendChild(rowEl);
+                    });
+                    container.appendChild(plannerSection);
                 });
             },
             createStorylineLessonHTML(lesson) {
@@ -1582,10 +1587,11 @@
                     }
                 });
                 
-                // 6. Render Coverage Report
+                // 6. Render Coverage Report - Updated to show elements from ANY selected planner
                 const coverageReportContainer = document.getElementById('element-coverage-report');
-                const referenceBand = selectedPlanners[0].gradeBand; 
-                const allColumns = App.utils.gatherColumns(referenceBand);
+                
+                // Collect all unique grade bands from selected planners to ensure we display relevant parent categories
+                const relevantBands = new Set(selectedPlanners.map(p => p.gradeBand));
                 
                 let reportHTML = '';
                 let groupOrder = ['dci', 'sep', 'ccc'];
@@ -1594,26 +1600,45 @@
                     else groupOrder = [filter.value];
                 }
                 
-                groupOrder.forEach(groupKey => {
-                    const group = allColumns[groupKey];
-                    if (!group || group.cols.length === 0) return;
+                // We iterate through parentToChildrenMap directly to find relevant groups
+                const groups = { dci: [], sep: [], ccc: [] };
+                
+                App.dataMaps.parentToChildrenMap.forEach((parentInfo, parentCode) => {
+                    if (parentCode === 'PE') return;
+                    
+                    let dimKey = '';
+                    if (parentInfo.dimension.startsWith('DCI')) dimKey = 'dci';
+                    else if (parentInfo.dimension === 'SEP') dimKey = 'sep';
+                    else if (parentInfo.dimension === 'CCC' || parentInfo.dimension === 'C-ETAS') dimKey = 'ccc';
+                    else if (parentInfo.dimension === 'CNS') {
+                        // CNS belongs to both SEP and CCC depending on the code
+                        if (['VOM', 'BEE', 'OTR', 'ENP'].includes(parentCode)) dimKey = 'sep';
+                        else dimKey = 'ccc';
+                    }
+                    
+                    if (dimKey && groups[dimKey]) {
+                        groups[dimKey].push({ code: parentCode, ...parentInfo });
+                    }
+                });
 
-                    let groupHTML = `<div class="mb-6"><h4 class="text-xl font-bold border-b-2 pb-2 mb-4 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100">${group.name}</h4>`;
+                groupOrder.forEach(groupKey => {
+                    const parentsInGroup = groups[groupKey];
+                    if (!parentsInGroup || parentsInGroup.length === 0) return;
+
+                    let groupHTML = `<div class="mb-6"><h4 class="text-xl font-bold border-b-2 pb-2 mb-4 border-gray-200 dark:border-gray-600 text-gray-800 dark:text-gray-100">${groupKey.toUpperCase()}</h4>`;
                     let hasVisibleParents = false;
 
-                    group.cols.forEach(parentCol => {
-                        const parentInfo = App.dataMaps.parentToChildrenMap.get(parentCol.code);
-                        if (!parentInfo) return;
-                        
-                        const gradeBandProgressions = parentInfo.children[0]?.allProgressions?.[referenceBand] || [];
-                        const validCodesForBand = new Set(gradeBandProgressions.map(p => p.code));
-                        const childrenForBand = parentInfo.children.filter(child => {
-                            const inBand = validCodesForBand.has(child.code);
+                    parentsInGroup.forEach(parentInfo => {
+                        // Check if any children are relevant either by band OR by coverage
+                        const childrenForReport = parentInfo.children.filter(child => {
+                            // Is it in one of the selected grade bands?
+                            const inSelectedBands = Array.from(relevantBands).some(band => child.allProgressions[band]?.length > 0);
+                            // Is it tracked in the aggregated data?
                             const isTracked = coverageMap.has(child.code);
-                            return inBand || isTracked;
+                            return inSelectedBands || isTracked;
                         });
 
-                        const visibleChildren = childrenForBand.filter(child => {
+                        const visibleChildren = childrenForReport.filter(child => {
                             const coverage = coverageMap.get(child.code);
                             const isCovered = !!coverage;
                             if (App.state.summaryShowCoveredOnly && !isCovered) return false;
@@ -2689,193 +2714,6 @@
                 } else {
                     alert("No data available to export.");
                 }
-            }
-        };
-
-        App.import = {
-            handleImport() {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.json,application/json';
-                input.style.display = 'none'; 
-                document.body.appendChild(input);
-
-                input.onchange = e => {
-                    const file = e.target.files[0];
-                    if (!file) {
-                        document.body.removeChild(input);
-                        return;
-                    }
-
-                    const reader = new FileReader();
-                    reader.onload = event => {
-                        try {
-                            const importedPlanner = JSON.parse(event.target.result);
-                            if (!importedPlanner.title) throw new Error('Invalid planner file: Missing title.');
-                            if (!importedPlanner.rows) importedPlanner.rows = [];
-                            App.state.pendingImportData = importedPlanner;
-                            this.showImportOptions();
-                        } catch (error) {
-                            console.error("Import Error:", error);
-                            alert(`Error importing file: ${error.message}`);
-                        } finally {
-                            if (document.body.contains(input)) document.body.removeChild(input);
-                        }
-                    };
-                    reader.readAsText(file); 
-                };
-                input.click();
-            },
-
-            showImportOptions() {
-                const modal = document.getElementById('import-options-modal-backdrop');
-                if (!modal) return;
-                document.getElementById('import-planner-name').textContent = App.state.pendingImportData.title;
-
-                const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
-                const mergeLabel = document.getElementById('import-merge-label');
-                const replaceLabel = document.getElementById('import-replace-label');
-                const mergeInput = mergeLabel.querySelector('input');
-                const replaceInput = replaceLabel.querySelector('input');
-                const createInput = document.querySelector('input[name="import-option"][value="create"]');
-
-                createInput.checked = true;
-
-                if (currentPlanner) {
-                    mergeLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    replaceLabel.classList.remove('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    mergeInput.disabled = false;
-                    replaceInput.disabled = false;
-                } else {
-                    mergeLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    replaceLabel.classList.add('disabled:opacity-50', 'disabled:cursor-not-allowed');
-                    mergeInput.disabled = true;
-                    replaceInput.disabled = true;
-                }
-                App.utils.openModal('import-options-modal-backdrop');
-            },
-
-            processImport() {
-                const importedPlanner = App.state.pendingImportData;
-                if (!importedPlanner) return;
-
-                const option = document.querySelector('input[name="import-option"]:checked').value;
-                const currentPlanner = App.utils.findPlanner(App.state.currentPlannerId);
-
-                try {
-                    switch (option) {
-                        case 'create':
-                            importedPlanner.id = `planner-${Date.now()}`;
-                            App.state.programData.planners.push(importedPlanner);
-                            alert(`Planner "${importedPlanner.title}" imported successfully!`);
-                            break;
-                        case 'merge':
-                            if (!currentPlanner) { alert("No planner open to merge with."); return; }
-                            App.history.saveState(currentPlanner);
-                            const currentPes = new Map((currentPlanner.assignedPes || []).map(p => [p.id, p]));
-                            (importedPlanner.assignedPes || []).forEach(p => {
-                                if (!currentPes.has(p.id)) currentPes.set(p.id, p);
-                            });
-                            currentPlanner.assignedPes = Array.from(currentPes.values());
-                            const newRows = (importedPlanner.rows || []).map(row => {
-                                row.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                                if (row.children) {
-                                    row.children.forEach(child => {
-                                        child.id = `row-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`;
-                                    });
-                                }
-                                return row;
-                            });
-                            currentPlanner.rows.push(...newRows);
-                            alert(`Merged "${importedPlanner.title}" into "${currentPlanner.title}".`);
-                            break;
-                        case 'replace':
-                            if (!currentPlanner) { alert("No planner open to replace."); return; }
-                            const index = App.state.programData.planners.findIndex(p => p.id === App.state.currentPlannerId);
-                            if (index > -1) {
-                                importedPlanner.id = currentPlanner.id; 
-                                App.state.programData.planners[index] = importedPlanner;
-                                App.history.clear(); 
-                            }
-                            alert(`Replaced "${currentPlanner.title}" with "${importedPlanner.title}".`);
-                            break;
-                    }
-                    App.persistence.saveProgramData();
-                    App.render.navigator();
-                    if (option === 'create') {
-                        App.render.plannerView(importedPlanner.id);
-                    } else {
-                        App.render.plannerView(App.state.currentPlannerId);
-                    }
-                    App.utils.closeAllModals();
-                    App.state.pendingImportData = null;
-                } catch (err) {
-                    console.error("Process Import Error", err);
-                    alert("An error occurred while processing the import.");
-                }
-            }
-        };
-        
-        App.tour = {
-            instance: null,
-            init() {
-                this.instance = new Shepherd.Tour({
-                    useModalOverlay: true,
-                    defaultStepOptions: {
-                        classes: 'shadow-md bg-gray-100 dark:bg-gray-700',
-                        scrollTo: true
-                    }
-                });
-
-                this.instance.addStep({
-                    id: 'step1', text: 'Welcome! This is the Navigator. All your planners are listed here. Let\'s create a new one.',
-                    attachTo: { element: '#new-planner-btn', on: 'bottom' }, buttons: [{ action() { this.next(); }, text: 'Next' }]
-                });
-                this.instance.addStep({
-                    id: 'step2', text: 'After creating a planner, assign the Performance Expectations (PEs) you\'ll be targeting.',
-                    attachTo: { element: '#assign-pe-btn', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                this.instance.addStep({
-                    id: 'step3', text: 'Your instructional sequence appears here. You can edit titles, add lessons, and drag-and-drop to reorder.',
-                    attachTo: { element: '#planner-table-container', on: 'top' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                 this.instance.addStep({
-                    id: 'step4', text: 'Use these tabs to switch between tracking PEs and the three dimensions (DCIs, SEPs, CCCs).',
-                    attachTo: { element: '#tab-container', on: 'bottom' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                 this.instance.addStep({
-                    id: 'step5', text: 'Click inside a cell to open a popover and track an element\'s status (Introduced, Developed, or Assessed) for that lesson.',
-                    attachTo: { element: '#planner-table-container tbody tr:first-child td:last-child', on: 'left' }, isRequired: ['#planner-table-container tbody tr'], buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.next(); }, text: 'Next' }]
-                });
-                this.instance.addStep({
-                    id: 'step6', text: 'You can check multiple planners in the navigator and click Summary to see aggregated analytics.',
-                    attachTo: { element: '#view-summary-btn', on: 'right' }, buttons: [{ action() { this.back(); }, text: 'Back' }, { action() { this.complete(); }, text: 'Finish' }]
-                });
-
-                this.instance.on('complete', () => {
-                    localStorage.setItem('ngssPlannerTourCompleted', 'true');
-                });
-            },
-            start() {
-                if (App.state.currentPlannerId === null && App.state.programData.planners.length > 0) {
-                    App.render.plannerView(App.state.programData.planners[0].id);
-                } else if (App.state.programData.planners.length === 0) {
-                    const newPlanner = {
-                        id: `planner-${Date.now()}`, title: 'Sample 4th Grade Unit', course: '4th Grade Science', gradeBand: 'elementary', standardSet: 'NGSS',
-                        phenomenon: 'A wrecking ball can knock down a wall.', question: 'How does energy change and move?', description: 'A sample unit.',
-                        assignedPes: [{id: "4-PS3-1", isSecondary: false}, {id:"4-PS3-2", isSecondary: false}, {id:"4-PS3-4", isSecondary: false}],
-                        rows: [
-                            { id: `row-${Date.now()}-1`, type: 'lesson-set', title: 'Lesson Set 1', isCollapsed: false, children: [
-                                { id: `row-${Date.now()}-2`, type: 'lesson', title: 'Lesson 1', trackingData: {'4-PS3-1':'I'}, scope:'F', details:{notes:'', links:[]} }
-                            ]}
-                        ]
-                    };
-                    App.state.programData.planners.push(newPlanner);
-                    App.persistence.saveProgramData();
-                    App.render.navigator();
-                    App.render.plannerView(newPlanner.id);
-                }
-                setTimeout(() => this.instance.start(), 200);
             }
         };
         
