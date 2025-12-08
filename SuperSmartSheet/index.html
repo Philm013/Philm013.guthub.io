@@ -102,7 +102,7 @@
             padding: 12px 8px; border-bottom: 1px solid var(--border);
             border-right: 1px solid var(--border);
             position: sticky; top: 0; z-index: 10; 
-            white-space: nowrap; overflow: hidden; /* Changed from visible */
+            white-space: nowrap; overflow: hidden;
             text-overflow: ellipsis;
             user-select: none; cursor: pointer;
             transition: background-color 0.2s;
@@ -111,8 +111,8 @@
         
         thead th.primary-header-cell {
             position: relative;
-            padding-bottom: 34px; /* Make space for buttons */
-            overflow: visible; /* Allow buttons to show */
+            padding-bottom: 34px;
+            overflow: visible;
         }
 
         thead th.selected {
@@ -121,7 +121,6 @@
             border-bottom: 2px solid var(--primary);
         }
         
-        /* System Columns in Raw View */
         thead th.th-system { background: #f1f5f9; color: #475569; border-right: 1px dashed #cbd5e1; }
         td.td-system { background: #f8fafc; color: #64748b; font-family: monospace; font-size: 0.8rem; border-right: 1px dashed #cbd5e1; user-select: text; }
 
@@ -158,66 +157,31 @@
         }
         thead th:first-child { z-index: 30; background: #f8fafc; }
 
-        .actions-wrapper {
-            display: flex; justify-content: center; gap: 4px;
-            width: 100%; height: 100%; align-items: center;
-        }
-        
-        .action-btn {
-            padding: 0; width: 28px; height: 28px;
-            display: flex; align-items: center; justify-content: center;
-            border-radius: 4px; border: 1px solid transparent; background: transparent;
-            color: var(--text-muted); cursor: pointer;
-        }
+        .actions-wrapper { display: flex; justify-content: center; gap: 4px; width: 100%; height: 100%; align-items: center; }
+        .action-btn { padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; }
         .action-btn:hover { background: #f1f5f9; color: var(--text-main); border-color: #cbd5e1; }
         .action-btn.btn-del:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
         .action-btn.btn-add:hover { background: #eff6ff; color: #2563eb; border-color: #bfdbfe; }
-        
         .drag-handle { cursor: grab; color: #94a3b8; }
         .drag-handle:active { cursor: grabbing; color: var(--primary); }
-
         .mobile-toggle-btn { display: none; width: 100%; height: 100%; border: none; background: transparent; color: var(--text-muted); }
 
         tr.row-new td { background-color: var(--row-bg-override, var(--row-new)) !important; }
         tr.row-modified td { background-color: var(--row-bg-override, var(--row-mod)) !important; }
         tr.row-deleted td { background-color: var(--row-del) !important; opacity: 0.5; text-decoration: line-through; pointer-events: none; }
         
-        /* Sortable ghost class */
         .sortable-ghost { opacity: 1 !important; background: #fff !important; box-shadow: 0 8px 24px rgba(0,0,0,0.15); position: relative; z-index: 1000; }
         .sortable-ghost td { background: #eef2ff !important; border-top: 2px solid var(--primary); border-bottom: 2px solid var(--primary); }
         .dragging-parent::after { content: ""; position: absolute; bottom: -4px; left: 4px; right: 4px; height: 6px; background: white; border: 1px solid #cbd5e1; border-radius: 0 0 4px 4px; z-index: -1; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
 
-        .cell-input {
-            width: 100%; height: 100%; border: none; background: transparent;
-            padding: 0 12px; font-family: inherit; color: inherit;
-        }
+        .cell-input { width: 100%; height: 100%; border: none; background: transparent; padding: 0 12px; font-family: inherit; color: inherit; }
         .cell-input:focus { outline: none; background: white; box-shadow: inset 0 0 0 2px var(--primary); }
 
-        .badge-cell {
-            padding: 0 8px; height: 100%; display: flex; align-items: center; gap: 4px;
-            overflow: hidden; cursor: pointer; white-space: nowrap; position: relative;
-        }
+        .badge-cell { padding: 0 8px; height: 100%; display: flex; align-items: center; gap: 4px; overflow: hidden; cursor: pointer; white-space: nowrap; position: relative; }
         .badge-cell:hover { background-color: #f1f5f9; }
-        .badge-pill {
-            background: var(--primary-soft); color: var(--primary-dark);
-            font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px;
-        }
+        .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
 
-        /* Multi-Select Popover styles */
-        #multiPopover {
-            display: none;
-            position: absolute;
-            z-index: 1050;
-            background: white;
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
-            width: 300px;
-            max-height: 350px;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-        }
+        #multiPopover { display: none; position: absolute; z-index: 1050; background: white; border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 300px; max-height: 350px; overflow: hidden; display: flex; flex-direction: column; }
         #multiPopover.show { display: flex; }
         #multiPopover .popover-content { padding: 8px; overflow-y: auto; flex-grow: 1; }
         #multiPopover .popover-footer { padding: 8px; border-top: 1px solid var(--border); }
@@ -227,30 +191,37 @@
 
         .tree-wrap { display: flex; align-items: center; height: 100%; padding-left: 8px; }
         .tree-indent { width: 16px; height: 100%; border-left: 1px dashed #cbd5e1; margin-right: 2px; }
-        .tree-toggle {
-            width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-            border-radius: 6px; color: var(--text-muted); cursor: pointer; margin-right: 4px;
-        }
+        .tree-toggle { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--text-muted); cursor: pointer; margin-right: 4px; }
         .tree-toggle:hover { background: #e2e8f0; color: var(--primary); }
         .tree-toggle i { transition: transform 0.2s; font-size: 0.8rem; }
         .expanded i { transform: rotate(90deg); }
 
-        /* Setup Tree */
-        .setup-tree-item { display: flex; align-items: center; padding: 6px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; }
-        .setup-tree-item:hover { background-color: #f8fafc; }
-        
+        /* --- MODIFICATION --- New styles for setup modal controls */
         #setupModal .modal-body { display: flex; flex-direction: column; overflow: hidden !important; }
         #setupModal .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-pane { height: 100%; width: 100%; overflow-y: auto; }
         
+        .setup-tree-item { display: flex; align-items: center; padding: 6px; border-bottom: 1px solid #f8fafc; font-size: 0.9rem; }
+        .setup-tree-item:hover { background-color: #f8fafc; }
+        
         .setup-tree-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
             padding: 4px 8px 12px;
             margin-bottom: 8px;
             border-bottom: 1px solid var(--border);
             background: #f8fafc;
         }
-
-        /* Utils */
+        .setup-outline-group {
+            padding-left: 50px; /* Aligns '1' with first level of indented text */
+        }
+        .setup-selection-btns .btn-outline-xs {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
         .toast-container { position: fixed; top: 1rem; right: 1rem; z-index: 9999; }
         .log-line { font-family: monospace; font-size: 0.7rem; border-bottom: 1px solid #333; padding: 6px; color: #a5b4fc; }
         .nav-pills .nav-link { border-radius: 50px; color: var(--text-muted); padding: 8px 20px; font-weight: 600; font-size: 0.9rem; }
@@ -259,45 +230,31 @@
         .btn-outline-xs:hover { background: var(--primary-soft); color: var(--primary-dark); border-color: var(--primary); }
 
         .header-outline-btns {
-            position: absolute;
-            bottom: 4px;
-            left: 0;
-            right: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 4px;
+            position: absolute; bottom: 4px; left: 0; right: 0;
+            display: flex; justify-content: center; align-items: center; gap: 4px;
         }
         .header-outline-btns .btn {
-            --bs-btn-padding-y: .1rem;
-            --bs-btn-padding-x: .4rem;
-            --bs-btn-font-size: .65rem;
-            border-radius: 4px;
-            background: white;
-            border: 1px solid var(--border);
-            color: var(--text-muted);
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            --bs-btn-padding-y: .1rem; --bs-btn-padding-x: .4rem; --bs-btn-font-size: .65rem;
+            border-radius: 4px; background: white; border: 1px solid var(--border);
+            color: var(--text-muted); box-shadow: 0 1px 2px rgba(0,0,0,0.05);
         }
-        .header-outline-btns .btn:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background-color: var(--primary-soft);
-        }
+        .header-outline-btns .btn:hover { border-color: var(--primary); color: var(--primary); background-color: var(--primary-soft); }
         
         .outline-scroll-group {
-            display: flex; gap: 0; overflow-x: auto;
-            border-radius: 4px; background: white;
-            scrollbar-width: none; /* Firefox */
+            display: flex; gap: 4px; overflow-x: auto;
+            border-radius: 6px; background: #eef2ff; padding: 4px;
+            border: 1px solid #c7d2fe;
+            scrollbar-width: none;
         }
         .outline-scroll-group::-webkit-scrollbar { display: none; }
         .outline-scroll-group .btn {
-            border-radius: 0; border: none; border-right: 1px solid var(--border); 
-            font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-            flex: 0 0 auto; width: 30px;
+            border-radius: 4px; border: 1px solid transparent; 
+            font-size: 0.7rem; font-weight: 700; color: var(--primary-dark);
+            background-color: white; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            flex: 0 0 auto; min-width: 28px;
         }
-        .outline-scroll-group .btn:last-child { border-right: none; width: auto; padding: 0 8px; }
-        .outline-scroll-group .btn:hover { background: #f8fafc; color: var(--primary); }
-
+        .outline-scroll-group .btn:last-child { padding: 0 8px; }
+        .outline-scroll-group .btn:hover { background: white; border-color: var(--primary); }
 
         @media (max-width: 768px) {
             .modal.bottom-sheet .modal-dialog { position: fixed; bottom: 0; margin: 0; width: 100%; max-width: 100%; }
@@ -306,8 +263,7 @@
             th:first-child, td:first-child { width: 75px; min-width: 75px; max-width: 75px; }
             .mobile-toggle-btn { display: flex; justify-content: center; align-items: center; cursor: pointer; }
             .actions-wrapper { 
-                display: none; position: absolute; left: 40px; top: 5px; 
-                background: white; padding: 4px; border-radius: 8px;
+                display: none; position: absolute; left: 40px; top: 5px; background: white; padding: 4px; border-radius: 8px;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--border);
                 width: auto; z-index: 1000;
             }
@@ -318,6 +274,8 @@
     </style>
 </head>
 <body>
+
+<!-- DASHBOARD, EDITOR, etc. (No changes needed in these sections) -->
 
 <!-- DASHBOARD -->
 <div id="dashboardView" class="view-section active">
@@ -333,7 +291,6 @@
             <button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="loadFromDash()">Open</button>
         </div>
     </div>
-
     <div class="container mt-5">
         <h6 class="text-uppercase text-muted fw-bold small mb-3 ls-1">Library</h6>
         <div id="libraryGrid" class="row g-3"></div>
@@ -345,7 +302,6 @@
 
 <!-- EDITOR -->
 <div id="editorView" class="view-section">
-    <!-- Navbar -->
     <div class="glass-header">
         <div class="d-flex align-items-center gap-3 overflow-hidden">
             <button class="btn btn-light rounded-circle shadow-sm border" onclick="toDash()">
@@ -363,8 +319,6 @@
             <button class="btn btn-primary shadow-sm rounded-pill px-3 fw-bold" onclick="addNewRowInline()"><i class="bi bi-plus-lg"></i></button>
         </div>
     </div>
-
-    <!-- Toolbar (Sync & Filter) -->
     <div class="toolbar">
         <div class="d-flex align-items-center gap-3 flex-wrap">
             <input type="text" id="search" class="form-control form-control-sm border-0 bg-white shadow-sm" placeholder="Filter..." style="max-width: 120px;" onkeyup="renderTable()">
@@ -382,8 +336,6 @@
             </div>
         </div>
     </div>
-
-    <!-- Table -->
     <div class="table-container" onclick="deselectColumn(event)">
         <table id="mainTable">
             <thead id="tHead"></thead>
@@ -392,7 +344,7 @@
     </div>
 </div>
 
-<!-- SETUP WIZARD (Columns & Row Selection) -->
+<!-- SETUP WIZARD -->
 <div class="modal fade" id="setupModal" tabindex="-1" data-bs-backdrop="static">
     <div class="modal-dialog modal-dialog-scrollable modal-lg">
         <div class="modal-content" style="height: 80vh;">
@@ -407,11 +359,9 @@
                 </ul>
                 <div class="tab-content flex-grow-1">
                     <div class="tab-pane fade show active" id="tabRows">
+                        <!-- <!-- MODIFICATION --> Simplified header, controls are now inside the tree view -->
                         <div class="d-flex gap-2 mb-2 align-items-center">
                             <input type="text" id="setupRowSearch" class="form-control form-control-sm" placeholder="Search rows..." onkeyup="renderSetupTree()">
-                            <div class="vr"></div>
-                            <button class="btn btn-outline-xs" onclick="toggleAllSetupRows(true)">All</button>
-                            <button class="btn btn-outline-xs" onclick="toggleAllSetupRows(false)">None</button>
                         </div>
                         <div id="setupRowTree" class="border rounded bg-white h-100 overflow-auto p-2"></div>
                     </div>
@@ -434,77 +384,21 @@
     </div>
 </div>
 
-<!-- SETTINGS & LOGS -->
+<!-- Rest of the Modals and Helpers (No changes needed) -->
 <div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content rounded-4 border-0 p-4"><h5 class="fw-bold mb-3">API Configuration</h5><label class="form-label small fw-bold text-muted">ACCESS TOKEN</label><input type="password" id="apiToken" class="form-control form-control-lg bg-light border-0 mb-3" placeholder="Token..."><button class="btn btn-primary w-100 rounded-pill" onclick="saveSettings()">Save</button></div></div></div>
 <div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn btn-sm btn-outline-light ms-auto me-2" onclick="copyLogs()">Copy</button><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
-
-<!-- RAW DATA MODAL -->
-<div class="modal fade" id="rawDataModal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down">
-        <div class="modal-content">
-            <div class="modal-header bg-light border-bottom">
-                <h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5>
-                <button class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-0 position-relative">
-                <div class="table-container" style="height: 100%;">
-                    <table id="rawTable" style="width:100%">
-                        <thead id="rawHead"></thead>
-                        <tbody id="rawBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- HELPERS -->
+<div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
 <div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
 <div class="toast-container" id="toastArea"></div>
-
-<!-- Multi-select popover element -->
-<div id="multiPopover">
-    <div class="popover-content" id="multiOptions"></div>
-    <div class="popover-footer">
-        <button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button>
-    </div>
-</div>
-
+<div id="multiPopover"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
+// --- SCRIPT START --- (No changes to CONFIG, SMARTSHEET_COLORS, STATE, etc.)
 const CONFIG = { proxy: "https://cors-anywhere.herokuapp.com/", api: "https://api.smartsheet.com/2.0" };
-
-// Map of Smartsheet format codes to CSS colors.
-const SMARTSHEET_COLORS = {
-    // Background colors are typically at index 15 of the format string
-    '22': '#FFFF00', // Yellow
-    '23': '#FFC0CB', // Pink
-    '24': '#00FFFF', // Cyan
-    '25': '#FF00FF', // Magenta
-    '26': '#C0C0C0', // Silver
-    '27': '#808080', // Gray
-    '30': '#008000', // Green
-    '31': '#00FF00', // Lime
-    '32': '#800000', // Maroon
-    '33': '#000080', // Navy
-    '34': '#808000', // Olive
-    '35': '#800080', // Purple
-    '36': '#FF0000', // Red
-    '37': '#008080', // Teal
-};
-
-
-// Global State
-let STATE = { 
-    sheetId: null, serverRows: [], allRows: [], activeRows: [], cols: [], colWidths: {}, selectedCol: null,
-    visibleCols: new Set(), selectedRowIds: new Set(), 
-    adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, 
-    meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), depth: {} }, 
-    tempMulti: null, logs: [] 
-};
-
+const SMARTSHEET_COLORS = {'22':'#FFFF00','23':'#FFC0CB','24':'#00FFFF','25':'#FF00FF','26':'#C0C0C0','27':'#808080','30':'#008000','31':'#00FF00','32':'#800000','33':'#000080','34':'#808000','35':'#800080','36':'#FF0000','37':'#008080',};
+let STATE = { sheetId: null, serverRows: [], allRows: [], activeRows: [], cols: [], colWidths: {}, selectedCol: null,visibleCols: new Set(), selectedRowIds: new Set(), adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), depth: {} }, tempMulti: null, logs: [] };
 let sortableInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -514,48 +408,13 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', closeMultiPopoverOnClickOutside);
 });
 
-// --- LIBRARY ---
-function renderLibrary() {
-    const lib = JSON.parse(localStorage.getItem('smLib') || '[]');
-    const grid = document.getElementById('libraryGrid'); grid.innerHTML = '';
-    document.getElementById('emptyLib').style.display = lib.length ? 'none' : 'block';
-    lib.forEach(s => {
-        const d = document.createElement('div'); d.className = 'col-12 col-md-6';
-        d.innerHTML = `<div class="sheet-card" onclick="loadSheet('${s.id}')"><div class="d-flex align-items-center"><div class="bg-light rounded-circle p-2 me-3 text-primary"><i class="bi bi-table"></i></div><div class="overflow-hidden me-auto"><div class="fw-bold text-truncate">${s.name}</div><div class="small text-muted font-monospace">${s.id}</div></div><button class="btn btn-sm text-danger z-2" onclick="removeSheet(event, '${s.id}')"><i class="bi bi-x-lg"></i></button></div></div>`;
-        grid.appendChild(d);
-    });
-}
-function addToLib(id, name) {
-    let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); lib = lib.filter(s => s.id !== id);
-    lib.unshift({ id, name, date: Date.now() }); localStorage.setItem('smLib', JSON.stringify(lib.slice(0,10)));
-}
-function removeSheet(e, id) {
-    e.stopPropagation();
-    if(confirm('Remove?')) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); localStorage.setItem('smLib', JSON.stringify(lib.filter(s => s.id !== id))); renderLibrary(); }
-}
+// --- LIBRARY & CORE UTILS (No Changes) ---
+function renderLibrary() { const lib = JSON.parse(localStorage.getItem('smLib') || '[]'); const grid = document.getElementById('libraryGrid'); grid.innerHTML = ''; document.getElementById('emptyLib').style.display = lib.length ? 'none' : 'block'; lib.forEach(s => { const d = document.createElement('div'); d.className = 'col-12 col-md-6'; d.innerHTML = `<div class="sheet-card" onclick="loadSheet('${s.id}')"><div class="d-flex align-items-center"><div class="bg-light rounded-circle p-2 me-3 text-primary"><i class="bi bi-table"></i></div><div class="overflow-hidden me-auto"><div class="fw-bold text-truncate">${s.name}</div><div class="small text-muted font-monospace">${s.id}</div></div><button class="btn btn-sm text-danger z-2" onclick="removeSheet(event, '${s.id}')"><i class="bi bi-x-lg"></i></button></div></div>`; grid.appendChild(d); }); }
+function addToLib(id, name) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); lib = lib.filter(s => s.id !== id); lib.unshift({ id, name, date: Date.now() }); localStorage.setItem('smLib', JSON.stringify(lib.slice(0,10))); }
+function removeSheet(e, id) { e.stopPropagation(); if(confirm('Remove?')) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); localStorage.setItem('smLib', JSON.stringify(lib.filter(s => s.id !== id))); renderLibrary(); } }
+function toggleFullScreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.log); else document.exitFullscreen(); }
 
-// --- CORE UTILS ---
-function toggleFullScreen() {
-    if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(console.log);
-    else document.exitFullscreen();
-}
-
-// --- VIEW CONTROLLERS ---
-function setOutline(level, context) {
-    const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed;
-    targetSet.clear();
-    
-    if(level < 99) {
-        STATE.allRows.forEach(r => {
-            const d = STATE.meta.depth[r.id] || 0;
-            if(d >= level - 1) targetSet.add(r.id);
-        });
-    }
-
-    if(context === 'SETUP') renderSetupTree();
-    else renderTable();
-}
-
+// --- MODIFICATION --- `generateOutlineButtonsHTML` now adds tooltips
 function generateOutlineButtonsHTML(context) {
     let max = 0;
     Object.values(STATE.meta.depth).forEach(d => max = Math.max(max, d));
@@ -563,175 +422,46 @@ function generateOutlineButtonsHTML(context) {
     let html = '';
     
     for(let i = 1; i <= maxLevel; i++) {
-        html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`;
+        html += `<button class="btn" onclick="setOutline(${i}, '${context}')" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Collapse to Level ${i}">${i}</button>`;
     }
-    html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`;
+    html += `<button class="btn" onclick="setOutline(99, '${context}')" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Expand All">All</button>`;
     return html;
 };
 
-// --- RAW DATA INSPECTOR ---
-function viewRawData() {
-    renderRawTable();
-    new bootstrap.Modal('#rawDataModal').show();
-}
+// --- VIEW CONTROLLERS (setOutline) & RAW DATA (No Changes) ---
+function setOutline(level, context) { const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; targetSet.clear(); if(level < 99) { STATE.allRows.forEach(r => { const d = STATE.meta.depth[r.id] || 0; if(d >= level - 1) targetSet.add(r.id); }); } if(context === 'SETUP') renderSetupTree(); else renderTable(); }
+function viewRawData() { renderRawTable(); new bootstrap.Modal('#rawDataModal').show(); }
+function renderRawTable() { const th = document.getElementById('rawHead'); const tb = document.getElementById('rawBody'); th.innerHTML = ''; tb.innerHTML = ''; let h = `<tr><th class="th-system" style="width:120px">Row ID</th><th class="th-system" style="width:120px">Parent ID</th><th class="th-system" style="width:60px">#</th>`; STATE.cols.forEach(c => { h += `<th style="width:200px">${c.title} <span class="fw-normal text-muted small">(${c.id})</span></th>`; }); h += '</tr>'; th.innerHTML = h; const all = STATE.allRows; all.forEach(r => { if(isRawHidden(r)) return; const tr = document.createElement('tr'); let html = `<td class="td-system">${r.id}</td><td class="td-system">${r.parentId || '-'}</td><td class="td-system text-center">${r.rowNumber}</td>`; STATE.cols.forEach(c => { const val = r.cells.find(x => x.columnId === c.id)?.displayValue ?? r.cells.find(x => x.columnId === c.id)?.value ?? ''; html += `<td>`; if(c.primary) { html += `<div class="tree-wrap">`; const depth = STATE.meta.depth[r.id] || 0; for(let i=0; i<depth; i++) html += `<div class="tree-indent"></div>`; const hasChild = all.some(x => x.parentId === r.id); if(hasChild) { const col = STATE.meta.rawCollapsed.has(r.id); html += `<div class="tree-toggle ${col?'':'expanded'}" onclick="toggleRaw('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>`; } else { html += `<div style="width:28px"></div>`; } html += `<span>${val}</span></div>`; } else { html += `<div class="p-2 text-truncate">${val}</div>`; } html += `</td>`; }); tr.innerHTML = html; tb.appendChild(tr); }); }
+function isRawHidden(r) { if(!r.parentId) return false; if(STATE.meta.rawCollapsed.has(r.parentId)) return true; const p = STATE.allRows.find(x => x.id === r.parentId); if(p) return isRawHidden(p); return false; }
+function toggleRaw(id) { const rid = parseInt(id); if(STATE.meta.rawCollapsed.has(rid)) STATE.meta.rawCollapsed.delete(rid); else STATE.meta.rawCollapsed.add(rid); renderRawTable(); }
 
-function renderRawTable() {
-    const th = document.getElementById('rawHead');
-    const tb = document.getElementById('rawBody');
-    th.innerHTML = ''; tb.innerHTML = '';
-
-    let h = `<tr>
-        <th class="th-system" style="width:120px">Row ID</th>
-        <th class="th-system" style="width:120px">Parent ID</th>
-        <th class="th-system" style="width:60px">#</th>`;
-    
-    STATE.cols.forEach(c => {
-        h += `<th style="width:200px">${c.title} <span class="fw-normal text-muted small">(${c.id})</span></th>`;
-    });
-    h += '</tr>';
-    th.innerHTML = h;
-
-    const all = STATE.allRows;
-    all.forEach(r => {
-        if(isRawHidden(r)) return;
-        const tr = document.createElement('tr');
-        
-        let html = `
-            <td class="td-system">${r.id}</td>
-            <td class="td-system">${r.parentId || '-'}</td>
-            <td class="td-system text-center">${r.rowNumber}</td>
-        `;
-        STATE.cols.forEach(c => {
-            const val = r.cells.find(x => x.columnId === c.id)?.displayValue ?? r.cells.find(x => x.columnId === c.id)?.value ?? '';
-            html += `<td>`;
-            if(c.primary) {
-                html += `<div class="tree-wrap">`;
-                const depth = STATE.meta.depth[r.id] || 0;
-                for(let i=0; i<depth; i++) html += `<div class="tree-indent"></div>`;
-                const hasChild = all.some(x => x.parentId === r.id);
-                if(hasChild) { 
-                    const col = STATE.meta.rawCollapsed.has(r.id); 
-                    html += `<div class="tree-toggle ${col?'':'expanded'}" onclick="toggleRaw('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>`; 
-                } else { 
-                    html += `<div style="width:28px"></div>`; 
-                }
-                html += `<span>${val}</span></div>`;
-            } else {
-                html += `<div class="p-2 text-truncate">${val}</div>`;
-            }
-            html += `</td>`;
-        });
-
-        tr.innerHTML = html;
-        tb.appendChild(tr);
-    });
-}
-
-function isRawHidden(r) {
-    if(!r.parentId) return false;
-    if(STATE.meta.rawCollapsed.has(r.parentId)) return true;
-    const p = STATE.allRows.find(x => x.id === r.parentId);
-    if(p) return isRawHidden(p);
-    return false;
-}
-
-function toggleRaw(id) {
-    const rid = parseInt(id);
-    if(STATE.meta.rawCollapsed.has(rid)) STATE.meta.rawCollapsed.delete(rid);
-    else STATE.meta.rawCollapsed.add(rid);
-    renderRawTable();
-}
-
-// --- API ---
-async function api(ep, method='GET', body=null) {
-    const t = localStorage.getItem('smToken');
-    const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } };
-    if(body) opts.body = JSON.stringify(body);
-    sysLog(`REQ ${method} ${ep}`, body);
-    const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts);
-    if(res.status === 403) { if(confirm("Proxy Locked. Open unlock page?")) window.open('https://cors-anywhere.herokuapp.com/corsdemo', '_blank'); throw 'PROXY_LOCK'; }
-    const json = await res.json();
-    if(!res.ok) { sysLog(`ERR ${res.status}`, json); throw (json.message || `Error ${res.status}`); }
-    return json;
-}
-
-// --- LOADING & STATE ---
+// --- API & LOADING (No Changes) ---
+async function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); sysLog(`REQ ${method} ${ep}`, body); const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts); if(res.status === 403) { if(confirm("Proxy Locked. Open unlock page?")) window.open('https://cors-anywhere.herokuapp.com/corsdemo', '_blank'); throw 'PROXY_LOCK'; } const json = await res.json(); if(!res.ok) { sysLog(`ERR ${res.status}`, json); throw (json.message || `Error ${res.status}`); } return json; }
 function loadFromDash() { const id = document.getElementById('dashSheetId').value.trim(); if(id) loadSheet(id); }
-function loadSheet(id) { 
-    STATE.sheetId = id; 
-    document.getElementById('dashboardView').classList.remove('active'); 
-    document.getElementById('editorView').classList.add('active'); 
-    resetState(); 
-    fetchData(); 
-}
-
-function resetState() { 
-    STATE.serverRows = []; STATE.allRows=[]; STATE.activeRows=[]; STATE.adds=[]; 
-    STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; 
-    STATE.visibleCols.clear(); STATE.selectedRowIds.clear(); STATE.colWidths = {}; STATE.selectedCol = null;
-    STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear();
-    updateSyncUI(); 
-    document.getElementById('tBody').innerHTML=''; 
-    document.getElementById('sheetName').innerText='Loading...'; 
-}
-
-async function fetchData() {
-    showLoader(true);
-    try {
-        const d = await api(`/sheets/${STATE.sheetId}?includeAll=true`);
-        STATE.serverRows = JSON.parse(JSON.stringify(d.rows));
-        STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
-        STATE.cols = d.columns;
-        document.getElementById('sheetName').innerText = d.name; 
-        document.getElementById('sheetIdDisplay').innerText = d.id;
-        addToLib(d.id, d.name);
-        STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id));
-        STATE.visibleCols = new Set(STATE.cols.map(c => c.id));
-        calcAllDepth();
-        openSetup(false);
-    } catch(e) { if(e!=='PROXY_LOCK') showToast(e, 'danger'); } finally { showLoader(false); }
-}
-
-function calcAllDepth() {
-    STATE.meta.depth = {}; 
-    const map = new Map(); 
-    const allRowsForDepth = [...STATE.allRows, ...STATE.adds];
-    allRowsForDepth.forEach(r => map.set(r.id, r));
-    allRowsForDepth.forEach(r => { 
-        let d=0, curr=r; 
-        while(curr && curr.parentId && map.has(curr.parentId) && d<20) { 
-            d++; 
-            curr=map.get(curr.parentId); 
-        } 
-        STATE.meta.depth[r.id]=d; 
-    });
-}
-
+function loadSheet(id) { STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); fetchData(); }
+function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.activeRows=[]; STATE.adds=[]; STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; STATE.visibleCols.clear(); STATE.selectedRowIds.clear(); STATE.colWidths = {}; STATE.selectedCol = null; STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear(); updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; }
+async function fetchData() { showLoader(true); try { const d = await api(`/sheets/${STATE.sheetId}?includeAll=true`); STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); STATE.allRows = JSON.parse(JSON.stringify(d.rows)); STATE.cols = d.columns; document.getElementById('sheetName').innerText = d.name; document.getElementById('sheetIdDisplay').innerText = d.id; addToLib(d.id, d.name); STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); STATE.visibleCols = new Set(STATE.cols.map(c => c.id)); calcAllDepth(); openSetup(false); } catch(e) { if(e!=='PROXY_LOCK') showToast(e, 'danger'); } finally { showLoader(false); } }
+function calcAllDepth() { STATE.meta.depth = {}; const map = new Map(); const allRowsForDepth = [...STATE.allRows, ...STATE.adds]; allRowsForDepth.forEach(r => map.set(r.id, r)); allRowsForDepth.forEach(r => { let d=0, curr=r; while(curr && curr.parentId && map.has(curr.parentId) && d<20) { d++; curr=map.get(curr.parentId); } STATE.meta.depth[r.id]=d; }); }
 function toDash() { if(hasChanges() && !confirm("Unsaved changes. Exit?")) return; document.getElementById('editorView').classList.remove('active'); document.getElementById('dashboardView').classList.add('active'); renderLibrary(); }
 
-// --- SETUP WIZARD ---
-function openSetup(isEdit = false) { renderSetupCols(); renderSetupTree(); updateSetupBadges(); new bootstrap.Modal('#setupModal').show(); }
-function renderSetupCols() {
-    const list = document.getElementById('setupColList'); if(!list) return;
-    let html = '';
-    STATE.cols.forEach(c => {
-        const checked = STATE.visibleCols.has(c.id) ? 'checked' : '';
-        html += `<div class="d-flex align-items-center p-2 border rounded bg-white"><input class="form-check-input m-0" type="checkbox" value="${c.id}" id="col_${c.id}" ${checked} onchange="updateSetupBadges()" style="cursor:pointer"><label class="form-check-label flex-grow-1 ms-3 fw-bold" for="col_${c.id}" style="cursor:pointer">${c.title}</label></div>`;
-    });
-    list.innerHTML = html;
-}
+// --- MODIFICATION --- `renderSetupTree` has new UI logic
 function renderSetupTree() {
     const term = document.getElementById('setupRowSearch').value.toLowerCase();
     const tree = document.getElementById('setupRowTree');
     const primId = STATE.cols.find(c => c.primary)?.id;
     const rowMap = new Map(STATE.allRows.map(r => [r.id, r]));
     
-    const controlsHTML = `<div class="setup-tree-controls outline-scroll-group">${generateOutlineButtonsHTML('SETUP')}</div>`;
+    const outlineGroup = `<div class="outline-scroll-group setup-outline-group">${generateOutlineButtonsHTML('SETUP')}</div>`;
+    const selectionGroup = `<div class="d-flex gap-2 setup-selection-btns">
+        <button class="btn btn-outline-xs" onclick="toggleAllSetupRows(true)" data-bs-toggle="tooltip" title="Select all rows"><i class="bi bi-check-square-fill"></i> All</button>
+        <button class="btn btn-outline-xs" onclick="toggleAllSetupRows(false)" data-bs-toggle="tooltip" title="Deselect all rows"><i class="bi bi-square"></i> None</button>
+    </div>`;
+    const controlsHTML = `<div class="setup-tree-controls">${outlineGroup}${selectionGroup}</div>`;
+    
     let mainHTML = '';
-
     STATE.allRows.forEach(r => {
         if(isSetupHidden(r, rowMap)) return;
-        const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || r.cells.find(c => c.columnId === primId)?.value || `Row ${r.rowNumber}`);
+        const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || `Row ${r.rowNumber}`);
         if(term && !String(txt).toLowerCase().includes(term)) return;
         
         const d = STATE.meta.depth[r.id] || 0;
@@ -753,573 +483,47 @@ function renderSetupTree() {
 
     tree.innerHTML = controlsHTML + mainHTML;
     updateSetupBadges();
+    
+    // Initialize tooltips after rendering
+    const tooltipTriggerList = tree.querySelectorAll('[data-bs-toggle="tooltip"]');
+    [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl));
 }
 
-function isSetupHidden(r, map) {
-    if(!r.parentId) return false;
-    if(STATE.meta.setupCollapsed.has(r.parentId)) return true;
-    const p = map.get(r.parentId);
-    if(p) return isSetupHidden(p, map);
-    return false;
-}
-
-function toggleSetup(id) {
-    if(STATE.meta.setupCollapsed.has(id)) STATE.meta.setupCollapsed.delete(id);
-    else STATE.meta.setupCollapsed.add(id);
-    renderSetupTree();
-}
-
-function toggleSetupRow(id, status) {
-    if(status) STATE.selectedRowIds.add(id); else STATE.selectedRowIds.delete(id);
-    const children = STATE.allRows.filter(r => r.parentId === id);
-    children.forEach(c => toggleSetupRow(c.id, status));
-    renderSetupTree(); 
-}
-function toggleAllSetupRows(status) {
-    if(status) STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); else STATE.selectedRowIds.clear();
-    renderSetupTree();
-}
+// --- SETUP WIZARD (Remaining functions, no changes) ---
+function openSetup(isEdit = false) { renderSetupCols(); renderSetupTree(); updateSetupBadges(); new bootstrap.Modal('#setupModal').show(); }
+function renderSetupCols() { const list = document.getElementById('setupColList'); if(!list) return; let html = ''; STATE.cols.forEach(c => { const checked = STATE.visibleCols.has(c.id) ? 'checked' : ''; html += `<div class="d-flex align-items-center p-2 border rounded bg-white"><input class="form-check-input m-0" type="checkbox" value="${c.id}" id="col_${c.id}" ${checked} onchange="updateSetupBadges()" style="cursor:pointer"><label class="form-check-label flex-grow-1 ms-3 fw-bold" for="col_${c.id}" style="cursor:pointer">${c.title}</label></div>`; }); list.innerHTML = html; }
+function isSetupHidden(r, map) { if(!r.parentId) return false; if(STATE.meta.setupCollapsed.has(r.parentId)) return true; const p = map.get(r.parentId); if(p) return isSetupHidden(p, map); return false; }
+function toggleSetup(id) { if(STATE.meta.setupCollapsed.has(id)) STATE.meta.setupCollapsed.delete(id); else STATE.meta.setupCollapsed.add(id); renderSetupTree(); }
+function toggleSetupRow(id, status) { if(status) STATE.selectedRowIds.add(id); else STATE.selectedRowIds.delete(id); const children = STATE.allRows.filter(r => r.parentId === id); children.forEach(c => toggleSetupRow(c.id, status)); renderSetupTree(); }
+function toggleAllSetupRows(status) { if(status) STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); else STATE.selectedRowIds.clear(); renderSetupTree(); }
 function toggleAllCols(status) { document.querySelectorAll('#setupColList input').forEach(cb => cb.checked = status); updateSetupBadges(); }
 function updateSetupBadges() { document.getElementById('badgeRows').innerText = STATE.selectedRowIds.size; document.getElementById('badgeCols').innerText = document.querySelectorAll('#setupColList input:checked').length; }
-function applySetup() {
-    STATE.visibleCols.clear();
-    document.querySelectorAll('#setupColList input:checked').forEach(cb => STATE.visibleCols.add(parseInt(cb.value)));
-    if(STATE.visibleCols.size === 0) return alert("Select at least one column");
-    STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
-    bootstrap.Modal.getInstance('#setupModal').hide();
-    renderTable();
-}
+function applySetup() { STATE.visibleCols.clear(); document.querySelectorAll('#setupColList input:checked').forEach(cb => STATE.visibleCols.add(parseInt(cb.value))); if(STATE.visibleCols.size === 0) return alert("Select at least one column"); STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)); bootstrap.Modal.getInstance('#setupModal').hide(); renderTable(); }
 
-// --- COLUMN SELECTION & RESIZING ---
-function selectColumn(e, colId) {
-    e.stopPropagation();
-    if (STATE.selectedCol === colId) STATE.selectedCol = null;
-    else STATE.selectedCol = colId;
-    renderTable();
-}
-function deselectColumn(e) {
-    if (!e.target.closest('th')) { if(STATE.selectedCol !== null) { STATE.selectedCol = null; renderTable(); } }
-}
-
-function startResize(e, resizer) {
-    e.preventDefault(); e.stopPropagation();
-    let x = e.touches ? e.touches[0].clientX : e.clientX;
-    let th = resizer.parentElement;
-    let w = th.getBoundingClientRect().width;
-    resizer.classList.add('resizing');
-
-    const onMove = (evt) => {
-        if(evt.cancelable) evt.preventDefault(); 
-        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
-        const newWidth = Math.max(50, w + (clientX - x));
-        th.style.width = `${newWidth}px`;
-    };
-
-    const onUp = () => {
-        document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp);
-        document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp);
-        if(th.dataset.colId) STATE.colWidths[parseInt(th.dataset.colId)] = parseInt(th.style.width);
-        resizer.classList.remove('resizing');
-    };
-    document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp);
-    document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onUp);
-}
-
-// --- RENDER TABLE ---
-function renderTable() {
-    const tb = document.getElementById('tBody'); const th = document.getElementById('tHead');
-    tb.innerHTML = ''; th.innerHTML = '';
-    
-    const primColId = STATE.cols.find(c => c.primary)?.id;
-    let h = `<tr><th class="text-center">Actions</th>`;
-
-    STATE.cols.forEach(c => { 
-        if(STATE.visibleCols.has(c.id)) {
-            const w = STATE.colWidths[c.id] ? `${STATE.colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px');
-            const selClass = STATE.selectedCol === c.id ? 'selected' : '';
-            const isPrimary = c.id === primColId;
-            const primaryClass = isPrimary ? 'primary-header-cell' : '';
-            const outlineBtns = isPrimary ? `<div class="header-outline-btns">${generateOutlineButtonsHTML('MAIN')}</div>` : '';
-
-            h += `<th style="width:${w}" class="${selClass} ${primaryClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})">
-                    ${c.title}
-                    ${outlineBtns}
-                    <div class="resizer" onmousedown="startResize(event, this)" ontouchstart="startResize(event, this)"></div>
-                  </th>`; 
-        }
-    });
-    h += `</tr>`; th.innerHTML = h;
-
-    // <!-- BUG FIX --> Use only activeRows for rendering order.
-    const all = STATE.activeRows;
-    const term = document.getElementById('search').value.toLowerCase();
-    
-    // Recalculate view-specific depths based on the current `activeRows`
-    const viewDepth = {};
-    const activeIds = new Set(all.map(r => r.id));
-    all.forEach(r => {
-        let d = 0, curr = r;
-        while(curr && curr.parentId && activeIds.has(curr.parentId) && d < 20) { 
-            d++; 
-            curr = all.find(x => x.id === curr.parentId);
-        }
-        viewDepth[r.id] = d;
-    });
-
-
-    all.forEach((r, idx) => {
-        if(isHidden(r, activeIds) && !term) return;
-        if(term) { const txt = (r.cells || []).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase(); if(!txt.includes(term)) return; }
-
-        const tr = document.createElement('tr');
-        tr.setAttribute('data-id', r.id);
-        if(STATE.dels.has(r.id)) tr.className = 'row-deleted';
-        else if(String(r.id).startsWith('NEW')) tr.className = 'row-new';
-        else if(STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) tr.className = 'row-modified';
-
-        if (r.format) {
-            const formatParts = r.format.split(',');
-            const bgColorCode = formatParts[15];
-            const cssColor = SMARTSHEET_COLORS[bgColorCode];
-            if (cssColor) {
-                tr.style.setProperty('--row-bg-override', cssColor);
-            }
-        }
-
-        let html = `<td class="text-center border-end p-0">`;
-        if(STATE.dels.has(r.id)) {
-            html += `<button class="btn btn-sm border-0 text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>`;
-        } else {
-             html += `
-             <button class="mobile-toggle-btn" onclick="toggleMobileActions(this)"><i class="bi bi-three-dots"></i></button>
-             <div class="actions-wrapper">
-                <button class="action-btn drag-handle" title="Drag"><i class="bi bi-grip-vertical"></i></button>
-                <button class="action-btn" onclick="indentRow('${r.id}')" title="Indent"><i class="bi bi-text-indent-left"></i></button>
-                <button class="action-btn" onclick="outdentRow('${r.id}')" title="Outdent"><i class="bi bi-text-indent-right"></i></button>
-                <button class="action-btn btn-add" onclick="addNewRowInline('${r.id}')" title="Add Child Row"><i class="bi bi-plus-lg"></i></button>
-                <button class="action-btn btn-del" onclick="delRow('${r.id}')" title="Del"><i class="bi bi-trash"></i></button>
-             </div>`;
-        }
-        html += `</td>`;
-
-        STATE.cols.forEach(c => {
-            if(!STATE.visibleCols.has(c.id)) return;
-            const cid = c.id;
-            let val = STATE.edits[r.id]?.[cid];
-            if(val === undefined) { const cell = (r.cells || []).find(x => x.columnId === cid); val = cell ? (cell.displayValue ?? cell.value ?? '') : ''; }
-
-            html += `<td>`;
-            if(c.primary) {
-                html += `<div class="tree-wrap">`;
-                const depth = viewDepth[r.id] || 0;
-                for(let i=0; i<depth; i++) html += `<div class="tree-indent"></div>`;
-                const hasChild = all.some(x => x.parentId === r.id);
-                if(hasChild) { const col = STATE.meta.collapsed.has(r.id); html += `<div class="tree-toggle ${col?'':'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>`; }
-                else { html += `<div style="width:28px"></div>`; }
-            }
-            if(STATE.dels.has(r.id)) html += `<div class="p-2 small text-muted">${val}</div>`;
-            else html += getCellHtml(r.id, c, val);
-            if(c.primary) html += `</div>`;
-            html += `</td>`;
-        });
-        tr.innerHTML = html; tb.appendChild(tr);
-    });
-
-    initSortable();
-}
-
-function isHidden(r, activeSet) {
-    if(!r.parentId) return false;
-    if(!activeSet.has(r.parentId)) return false; 
-    if(STATE.meta.collapsed.has(r.parentId)) return true;
-    const parentInActive = STATE.activeRows.find(x => x.id === r.parentId);
-    if(parentInActive) return isHidden(parentInActive, activeSet);
-    return false;
-}
+// --- Rest of script (TABLE, SORTABLE, SYNC, etc.) (No changes needed) ---
+function selectColumn(e, colId) { e.stopPropagation(); if (STATE.selectedCol === colId) STATE.selectedCol = null; else STATE.selectedCol = colId; renderTable(); }
+function deselectColumn(e) { if (!e.target.closest('th')) { if(STATE.selectedCol !== null) { STATE.selectedCol = null; renderTable(); } } }
+function startResize(e, resizer) { e.preventDefault(); e.stopPropagation(); let x = e.touches ? e.touches[0].clientX : e.clientX; let th = resizer.parentElement; let w = th.getBoundingClientRect().width; resizer.classList.add('resizing'); const onMove = (evt) => { if(evt.cancelable) evt.preventDefault(); const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX; const newWidth = Math.max(50, w + (clientX - x)); th.style.width = `${newWidth}px`; }; const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); if(th.dataset.colId) STATE.colWidths[parseInt(th.dataset.colId)] = parseInt(th.style.width); resizer.classList.remove('resizing'); }; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onUp); }
+function renderTable() { const tb = document.getElementById('tBody'); const th = document.getElementById('tHead'); tb.innerHTML = ''; th.innerHTML = ''; const primColId = STATE.cols.find(c => c.primary)?.id; let h = `<tr><th class="text-center">Actions</th>`; STATE.cols.forEach(c => { if(STATE.visibleCols.has(c.id)) { const w = STATE.colWidths[c.id] ? `${STATE.colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px'); const selClass = STATE.selectedCol === c.id ? 'selected' : ''; const isPrimary = c.id === primColId; const primaryClass = isPrimary ? 'primary-header-cell' : ''; const outlineBtns = isPrimary ? `<div class="header-outline-btns">${generateOutlineButtonsHTML('MAIN')}</div>` : ''; h += `<th style="width:${w}" class="${selClass} ${primaryClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})">${c.title}${outlineBtns}<div class="resizer" onmousedown="startResize(event, this)" ontouchstart="startResize(event, this)"></div></th>`; } }); h += `</tr>`; th.innerHTML = h; const all = STATE.activeRows; const term = document.getElementById('search').value.toLowerCase(); const viewDepth = {}; const activeIds = new Set(all.map(r => r.id)); all.forEach(r => { let d = 0, curr = r; while(curr && curr.parentId && activeIds.has(curr.parentId) && d < 20) { d++; curr = all.find(x => x.id === curr.parentId); } viewDepth[r.id] = d; }); all.forEach((r, idx) => { if(isHidden(r, activeIds) && !term) return; if(term) { const txt = (r.cells || []).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase(); if(!txt.includes(term)) return; } const tr = document.createElement('tr'); tr.setAttribute('data-id', r.id); if(STATE.dels.has(r.id)) tr.className = 'row-deleted'; else if(String(r.id).startsWith('NEW')) tr.className = 'row-new'; else if(STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) tr.className = 'row-modified'; if (r.format) { const formatParts = r.format.split(','); const bgColorCode = formatParts[15]; const cssColor = SMARTSHEET_COLORS[bgColorCode]; if (cssColor) { tr.style.setProperty('--row-bg-override', cssColor); } } let html = `<td class="text-center border-end p-0">`; if(STATE.dels.has(r.id)) { html += `<button class="btn btn-sm border-0 text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>`; } else { html += `<button class="mobile-toggle-btn" onclick="toggleMobileActions(this)"><i class="bi bi-three-dots"></i></button><div class="actions-wrapper"><button class="action-btn drag-handle" title="Drag"><i class="bi bi-grip-vertical"></i></button><button class="action-btn" onclick="indentRow('${r.id}')" title="Indent"><i class="bi bi-text-indent-left"></i></button><button class="action-btn" onclick="outdentRow('${r.id}')" title="Outdent"><i class="bi bi-text-indent-right"></i></button><button class="action-btn btn-add" onclick="addNewRowInline('${r.id}')" title="Add Child Row"><i class="bi bi-plus-lg"></i></button><button class="action-btn btn-del" onclick="delRow('${r.id}')" title="Del"><i class="bi bi-trash"></i></button></div>`; } html += `</td>`; STATE.cols.forEach(c => { if(!STATE.visibleCols.has(c.id)) return; const cid = c.id; let val = STATE.edits[r.id]?.[cid]; if(val === undefined) { const cell = (r.cells || []).find(x => x.columnId === cid); val = cell ? (cell.displayValue ?? cell.value ?? '') : ''; } html += `<td>`; if(c.primary) { html += `<div class="tree-wrap">`; const depth = viewDepth[r.id] || 0; for(let i=0; i<depth; i++) html += `<div class="tree-indent"></div>`; const hasChild = all.some(x => x.parentId === r.id); if(hasChild) { const col = STATE.meta.collapsed.has(r.id); html += `<div class="tree-toggle ${col?'':'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>`; } else { html += `<div style="width:28px"></div>`; } } if(STATE.dels.has(r.id)) html += `<div class="p-2 small text-muted">${val}</div>`; else html += getCellHtml(r.id, c, val); if(c.primary) html += `</div>`; html += `</td>`; }); tr.innerHTML = html; tb.appendChild(tr); }); initSortable(); }
+function isHidden(r, activeSet) { if(!r.parentId) return false; if(!activeSet.has(r.parentId)) return false; if(STATE.meta.collapsed.has(r.parentId)) return true; const parentInActive = STATE.activeRows.find(x => x.id === r.parentId); if(parentInActive) return isHidden(parentInActive, activeSet); return false; }
 function toggle(id) { const realId = isNaN(id) ? id : parseInt(id); if(STATE.meta.collapsed.has(realId)) STATE.meta.collapsed.delete(realId); else STATE.meta.collapsed.add(realId); renderTable(); }
-
-function toggleMobileActions(btn) {
-    const wrap = btn.nextElementSibling;
-    if (wrap.classList.contains('show')) wrap.classList.remove('show');
-    else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); }
-}
-
-// --- SORTABLE (DRAG & DROP) ---
-function getAllDescendants(parentId, allRows) {
-    const children = allRows.filter(r => r.parentId === parentId);
-    let results = [...children];
-    children.forEach(child => {
-        results = [...results, ...getAllDescendants(child.id, allRows)];
-    });
-    return results;
-}
-
-function initSortable() {
-    if(sortableInstance) sortableInstance.destroy();
-    const tbody = document.getElementById('tBody');
-    sortableInstance = new Sortable(tbody, {
-        handle: '.drag-handle',
-        animation: 150,
-        ghostClass: 'sortable-ghost',
-        onStart: function(evt) {
-            const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id);
-            const descendants = getAllDescendants(rid, STATE.activeRows);
-            descendants.forEach(d => {
-                const row = document.querySelector(`tr[data-id="${d.id}"]`);
-                if(row) row.style.display = 'none';
-            });
-            if(descendants.length > 0) {
-                evt.item.classList.add('dragging-parent');
-                const primaryCol = STATE.cols.find(c => c.primary);
-                if(primaryCol && STATE.visibleCols.has(primaryCol.id)) {
-                    const cell = evt.item.querySelector('.tree-wrap');
-                    if(cell) {
-                         const badge = document.createElement('span');
-                         badge.className = "badge bg-primary rounded-pill ms-2 fw-normal";
-                         badge.innerText = `+ ${descendants.length} sub-rows`;
-                         badge.id = "dragBadge";
-                         cell.appendChild(badge);
-                    }
-                }
-            }
-        },
-        onEnd: function (evt) {
-            const item = evt.item;
-            const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id);
-            
-            item.classList.remove('dragging-parent');
-            const badge = document.getElementById('dragBadge');
-            if(badge) badge.remove();
-            
-            if (evt.oldIndex === evt.newIndex) {
-                const descendants = getAllDescendants(rid, STATE.activeRows);
-                descendants.forEach(d => {
-                    const row = document.querySelector(`tr[data-id="${d.id}"]`);
-                    if (row) row.style.display = '';
-                });
-                return;
-            }
-
-            const prevRow = item.previousElementSibling;
-            let targetPrevId = null;
-            if (prevRow) targetPrevId = isNaN(prevRow.dataset.id) ? prevRow.dataset.id : parseInt(prevRow.dataset.id);
-
-            let newParentId = undefined;
-            let siblingId = undefined;
-            let toTop = false;
-
-            if (targetPrevId) {
-                const prevRowObj = STATE.allRows.find(r => r.id === targetPrevId);
-                const isCollapsed = STATE.meta.collapsed.has(targetPrevId);
-                const hasChildren = STATE.allRows.some(r => r.parentId === targetPrevId);
-
-                if (prevRowObj && hasChildren && !isCollapsed) {
-                    newParentId = targetPrevId;
-                    toTop = true;
-                } else if (prevRowObj) {
-                    newParentId = prevRowObj.parentId;
-                    siblingId = targetPrevId;
-                }
-            } else {
-                toTop = true;
-            }
-            
-            const allAndNewRows = [...STATE.allRows, ...STATE.adds];
-            const rowToUpdate = allAndNewRows.find(r => r.id === rid);
-            if(rowToUpdate) rowToUpdate.parentId = newParentId;
-
-            STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId, toTop };
-            
-            // Re-order the activeRows array to reflect the DOM change
-            const newOrderIds = Array.from(evt.to.children).map(tr => isNaN(tr.dataset.id) ? tr.dataset.id : parseInt(tr.dataset.id));
-            STATE.activeRows.sort((a,b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id));
-
-            calcAllDepth(); 
-            renderTable(); 
-            updateSyncUI();
-        },
-    });
-}
-
-// --- SYNC ENGINE & UI ---
-function updateSyncUI() {
-    const modifiedCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size;
-    document.getElementById('cntMod').innerText = modifiedCount; 
-    document.getElementById('cntAdd').innerText = STATE.adds.length; 
-    document.getElementById('cntDel').innerText = STATE.dels.size;
-    const has = (modifiedCount + STATE.adds.length + STATE.dels.size) > 0;
-    document.getElementById('btnSync').disabled = !has;
-    document.getElementById('btnDiscard').disabled = !has;
-    document.getElementById('btnSync').className = has ? "btn btn-sm btn-primary rounded-pill px-3 fw-bold" : "btn btn-sm btn-secondary rounded-pill px-3";
-}
-
-function discard() {
-    if(!confirm('Discard all unsaved changes?')) return;
-    
-    STATE.allRows = JSON.parse(JSON.stringify(STATE.serverRows));
-    STATE.adds = [];
-    STATE.dels.clear();
-    STATE.edits = {};
-    STATE.hierarchyChanges = {};
-    STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
-    
-    calcAllDepth();
-    renderTable();
-    updateSyncUI();
-    showToast('Changes discarded', 'success');
-}
-
-async function sync() {
-    if(!confirm('Sync to Smartsheet?')) return;
-    showLoader(true);
-    try {
-        if(STATE.dels.size > 0) {
-            await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE');
-        }
-        
-        if (STATE.adds.length > 0) {
-            const newRowsPayload = STATE.adds.map(r => {
-                const editsForNewRow = STATE.edits[r.id] || {};
-                const finalCells = (r.cells || []).map(c => ({ ...c }));
-                Object.keys(editsForNewRow).forEach(cid => {
-                    const existingCellIndex = finalCells.findIndex(cell => cell.columnId == cid);
-                    if (existingCellIndex > -1) finalCells[existingCellIndex].value = editsForNewRow[cid];
-                    else finalCells.push({ columnId: parseInt(cid), value: editsForNewRow[cid] });
-                });
-
-                const cleanCells = finalCells.map(c => {
-                    const colDef = STATE.cols.find(col => col.id === c.columnId);
-                    const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(',')));
-                    if(isMulti) {
-                        const arr = String(c.value).split(/,\s*/).filter(s => s !== '');
-                        return { columnId: c.columnId, objectValue: { objectType: "MULTI_PICKLIST", values: arr } };
-                    }
-                    return { columnId: c.columnId, value: c.value };
-                });
-                const o={cells:cleanCells}; 
-                if(r.parentId) o.parentId=r.parentId; 
-                else o.toTop=true; 
-                return o;
-            });
-            await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRowsPayload);
-        }
-
-        const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]);
-        if(updateIds.size > 0) {
-            const updates = Array.from(updateIds)
-                .filter(rid => !String(rid).startsWith("NEW"))
-                .map(rid => {
-                const payload = { id: parseInt(rid) };
-                if(STATE.edits[rid]) {
-                    payload.cells = Object.keys(STATE.edits[rid]).map(cid => {
-                        const colDef = STATE.cols.find(c => c.id === parseInt(cid));
-                        let rawVal = STATE.edits[rid][cid];
-                        const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(rawVal).includes(',')));
-                        if(isMulti) {
-                            const arr = String(rawVal).split(/,\s*/).filter(s => s !== '');
-                            return { columnId: parseInt(cid), objectValue: { objectType: "MULTI_PICKLIST", values: arr } };
-                        }
-                        return { columnId: parseInt(cid), value: rawVal };
-                    });
-                }
-                if(STATE.hierarchyChanges[rid]) {
-                    const change = STATE.hierarchyChanges[rid];
-                    if(change.toTop) payload.toTop = true;
-                    else if(change.siblingId) payload.siblingId = change.siblingId;
-                    if(change.parentId !== undefined) payload.parentId = change.parentId;
-                }
-                return payload;
-            });
-            if (updates.length > 0) {
-                await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates);
-            }
-        }
-
-        const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`);
-        STATE.allRows = freshData.rows;
-        STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows));
-        STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
-        
-        STATE.adds = [];
-        STATE.dels.clear();
-        STATE.edits = {};
-        STATE.hierarchyChanges = {};
-
-        calcAllDepth(); 
-        renderTable(); 
-        updateSyncUI(); 
-        showToast('Sync Successful!', 'success');
-    } catch(e) { showToast('Sync Failed: ' + e, 'danger'); } finally { showLoader(false); }
-}
-
-// --- ROW ACTIONS ---
-function indentRow(id) {
-    const rid = isNaN(id) ? id : parseInt(id);
-    const rowList = STATE.activeRows;
-    const idx = rowList.findIndex(r => r.id === rid);
-    if(idx <= 0) return;
-    const prev = rowList[idx-1];
-    
-    const allAndNewRows = [...STATE.allRows, ...STATE.adds];
-    const rowToUpdate = allAndNewRows.find(r => r.id === rid);
-    if(rowToUpdate) rowToUpdate.parentId = prev.id;
-    
-    STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prev.id };
-    calcAllDepth(); renderTable(); updateSyncUI();
-}
-function outdentRow(id) {
-    const rid = isNaN(id) ? id : parseInt(id);
-    const allAndNewRows = [...STATE.allRows, ...STATE.adds];
-    const row = allAndNewRows.find(r => r.id === rid);
-    if(!row || !row.parentId) return;
-    
-    const parent = allAndNewRows.find(p => p.id === row.parentId);
-    const newPid = parent ? parent.parentId : undefined;
-    
-    row.parentId = newPid;
-    STATE.hierarchyChanges[rid] = { type: 'OUTDENT', parentId: newPid, siblingId: parent.id };
-    calcAllDepth(); renderTable(); updateSyncUI();
-}
-
-function delRow(id) { 
-    if(String(id).startsWith('NEW')) {
-        STATE.adds = STATE.adds.filter(r => r.id !== id);
-        STATE.activeRows = STATE.activeRows.filter(r => r.id !== id);
-    } 
-    else STATE.dels.add(parseInt(id)); 
-    renderTable(); updateSyncUI(); 
-}
+function toggleMobileActions(btn) { const wrap = btn.nextElementSibling; if (wrap.classList.contains('show')) wrap.classList.remove('show'); else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); } }
+function getAllDescendants(parentId, allRows) { const children = allRows.filter(r => r.parentId === parentId); let results = [...children]; children.forEach(child => { results = [...results, ...getAllDescendants(child.id, allRows)]; }); return results; }
+function initSortable() { if(sortableInstance) sortableInstance.destroy(); const tbody = document.getElementById('tBody'); sortableInstance = new Sortable(tbody, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onStart: function(evt) { const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); const descendants = getAllDescendants(rid, STATE.activeRows); descendants.forEach(d => { const row = document.querySelector(`tr[data-id="${d.id}"]`); if(row) row.style.display = 'none'; }); if(descendants.length > 0) { evt.item.classList.add('dragging-parent'); const primaryCol = STATE.cols.find(c => c.primary); if(primaryCol && STATE.visibleCols.has(primaryCol.id)) { const cell = evt.item.querySelector('.tree-wrap'); if(cell) { const badge = document.createElement('span'); badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; badge.innerText = `+ ${descendants.length} sub-rows`; badge.id = "dragBadge"; cell.appendChild(badge); } } } }, onEnd: function (evt) { const item = evt.item; const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id); item.classList.remove('dragging-parent'); const badge = document.getElementById('dragBadge'); if(badge) badge.remove(); if (evt.oldIndex === evt.newIndex) { const descendants = getAllDescendants(rid, STATE.activeRows); descendants.forEach(d => { const row = document.querySelector(`tr[data-id="${d.id}"]`); if (row) row.style.display = ''; }); return; } const prevRow = item.previousElementSibling; let targetPrevId = null; if (prevRow) targetPrevId = isNaN(prevRow.dataset.id) ? prevRow.dataset.id : parseInt(prevRow.dataset.id); let newParentId = undefined; let siblingId = undefined; let toTop = false; if (targetPrevId) { const prevRowObj = STATE.allRows.find(r => r.id === targetPrevId); const isCollapsed = STATE.meta.collapsed.has(targetPrevId); const hasChildren = STATE.allRows.some(r => r.parentId === targetPrevId); if (prevRowObj && hasChildren && !isCollapsed) { newParentId = targetPrevId; toTop = true; } else if (prevRowObj) { newParentId = prevRowObj.parentId; siblingId = targetPrevId; } } else { toTop = true; } const allAndNewRows = [...STATE.allRows, ...STATE.adds]; const rowToUpdate = allAndNewRows.find(r => r.id === rid); if(rowToUpdate) rowToUpdate.parentId = newParentId; STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId, toTop }; const newOrderIds = Array.from(evt.to.children).map(tr => isNaN(tr.dataset.id) ? tr.dataset.id : parseInt(tr.dataset.id)); STATE.activeRows.sort((a,b) => newOrderIds.indexOf(a.id) - newOrderIds.indexOf(b.id)); calcAllDepth(); renderTable(); updateSyncUI(); }, }); }
+function updateSyncUI() { const modifiedCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size; document.getElementById('cntMod').innerText = modifiedCount; document.getElementById('cntAdd').innerText = STATE.adds.length; document.getElementById('cntDel').innerText = STATE.dels.size; const has = (modifiedCount + STATE.adds.length + STATE.dels.size) > 0; document.getElementById('btnSync').disabled = !has; document.getElementById('btnDiscard').disabled = !has; document.getElementById('btnSync').className = has ? "btn btn-sm btn-primary rounded-pill px-3 fw-bold" : "btn btn-sm btn-secondary rounded-pill px-3"; }
+function discard() { if(!confirm('Discard all unsaved changes?')) return; STATE.allRows = JSON.parse(JSON.stringify(STATE.serverRows)); STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)); calcAllDepth(); renderTable(); updateSyncUI(); showToast('Changes discarded', 'success'); }
+async function sync() { if(!confirm('Sync to Smartsheet?')) return; showLoader(true); try { if(STATE.dels.size > 0) { await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE'); } if (STATE.adds.length > 0) { const newRowsPayload = STATE.adds.map(r => { const editsForNewRow = STATE.edits[r.id] || {}; const finalCells = (r.cells || []).map(c => ({ ...c })); Object.keys(editsForNewRow).forEach(cid => { const existingCellIndex = finalCells.findIndex(cell => cell.columnId == cid); if (existingCellIndex > -1) finalCells[existingCellIndex].value = editsForNewRow[cid]; else finalCells.push({ columnId: parseInt(cid), value: editsForNewRow[cid] }); }); const cleanCells = finalCells.map(c => { const colDef = STATE.cols.find(col => col.id === c.columnId); const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(','))); if(isMulti) { const arr = String(c.value).split(/,\s*/).filter(s => s !== ''); return { columnId: c.columnId, objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; } return { columnId: c.columnId, value: c.value }; }); const o={cells:cleanCells}; if(r.parentId) o.parentId=r.parentId; else o.toTop=true; return o; }); await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRowsPayload); } const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]); if(updateIds.size > 0) { const updates = Array.from(updateIds) .filter(rid => !String(rid).startsWith("NEW")) .map(rid => { const payload = { id: parseInt(rid) }; if(STATE.edits[rid]) { payload.cells = Object.keys(STATE.edits[rid]).map(cid => { const colDef = STATE.cols.find(c => c.id === parseInt(cid)); let rawVal = STATE.edits[rid][cid]; const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(rawVal).includes(','))); if(isMulti) { const arr = String(rawVal).split(/,\s*/).filter(s => s !== ''); return { columnId: parseInt(cid), objectValue: { objectType: "MULTI_PICKLIST", values: arr } }; } return { columnId: parseInt(cid), value: rawVal }; }); } if(STATE.hierarchyChanges[rid]) { const change = STATE.hierarchyChanges[rid]; if(change.toTop) payload.toTop = true; else if(change.siblingId) payload.siblingId = change.siblingId; if(change.parentId !== undefined) payload.parentId = change.parentId; } return payload; }); if (updates.length > 0) { await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); } } const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`); STATE.allRows = freshData.rows; STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows)); STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)); STATE.adds = []; STATE.dels.clear(); STATE.edits = {}; STATE.hierarchyChanges = {}; calcAllDepth(); renderTable(); updateSyncUI(); showToast('Sync Successful!', 'success'); } catch(e) { showToast('Sync Failed: ' + e, 'danger'); } finally { showLoader(false); } }
+function indentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const rowList = STATE.activeRows; const idx = rowList.findIndex(r => r.id === rid); if(idx <= 0) return; const prev = rowList[idx-1]; const allAndNewRows = [...STATE.allRows, ...STATE.adds]; const rowToUpdate = allAndNewRows.find(r => r.id === rid); if(rowToUpdate) rowToUpdate.parentId = prev.id; STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prev.id }; calcAllDepth(); renderTable(); updateSyncUI(); }
+function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const allAndNewRows = [...STATE.allRows, ...STATE.adds]; const row = allAndNewRows.find(r => r.id === rid); if(!row || !row.parentId) return; const parent = allAndNewRows.find(p => p.id === row.parentId); const newPid = parent ? parent.parentId : undefined; row.parentId = newPid; STATE.hierarchyChanges[rid] = { type: 'OUTDENT', parentId: newPid, siblingId: parent.id }; calcAllDepth(); renderTable(); updateSyncUI(); }
+function delRow(id) { if(String(id).startsWith('NEW')) { STATE.adds = STATE.adds.filter(r => r.id !== id); STATE.activeRows = STATE.activeRows.filter(r => r.id !== id); } else STATE.dels.add(parseInt(id)); renderTable(); updateSyncUI(); }
 function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(); updateSyncUI(); }
 function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds.length > 0 || STATE.dels.size > 0 || Object.keys(STATE.hierarchyChanges).length > 0; }
-
-// --- CELL RENDERER ---
-function getCellHtml(rid, col, val) {
-    if(col.type === 'CHECKBOX') {
-        const checked = (val === true || val === 'true');
-        return `<div class="d-flex justify-content-center h-100 align-items-center"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`;
-    }
-    const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0);
-    if(isMulti) {
-        let arr = []; if(Array.isArray(val)) arr = val; else if(val) arr = String(val).split(',').map(s=>s.trim()).filter(s=>s!=='');
-        let badges = ''; if(arr.length === 0) badges = `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>`;
-        else { arr.slice(0, 2).forEach(t => badges += `<span class="badge-pill">${t}</span>`); if(arr.length > 2) badges += `<span class="small text-muted fw-bold ms-1">+${arr.length-2}</span>`; }
-        const safeVal = encodeURIComponent(JSON.stringify(arr));
-        return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeVal}')">${badges}</div>`;
-    }
-    if(col.options && col.options.length > 0) {
-        let opts = `<option value=""></option>`; col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; });
-        return `<select class="cell-input" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`;
-    }
-    let type = col.type === 'DATE' ? 'date' : 'text'; if(type === 'date' && val && val.length > 10) val = val.substring(0, 10);
-    return `<input type="${type}" class="cell-input" value="${val}" onchange="edit('${rid}', ${col.id}, this.value)">`;
-}
-function edit(rid, cid, val) { 
-    if(!STATE.edits[rid]) STATE.edits[rid] = {}; 
-    STATE.edits[rid][cid] = val; 
-    updateSyncUI(); 
-    const col = STATE.cols.find(c => c.id === cid); 
-    if(col && (col.type.includes('MULTI') || col.options)) renderTable(); 
-}
-
-// --- MODALS & POPOVERS ---
-function openMultiPopover(event, rid, cid, encoded) {
-    event.stopPropagation();
-    const popover = document.getElementById('multiPopover');
-    const cell = event.currentTarget;
-    
-    const vals = JSON.parse(decodeURIComponent(encoded));
-    const col = STATE.cols.find(c => c.id === cid);
-    STATE.tempMulti = { rid, cid };
-    
-    const box = document.getElementById('multiOptions');
-    box.innerHTML = '';
-    const opts = Array.from(new Set([...(col.options || []), ...vals]));
-    opts.forEach((o, i) => {
-        if (!o) return;
-        const checked = vals.includes(o) ? 'checked' : '';
-        const safeVal = String(o).replace(/"/g, '&quot;');
-        const uId = `opt_${i}`;
-        box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100" for="${uId}">${o}</label></div>`;
-    });
-    
-    const rect = cell.getBoundingClientRect();
-    popover.style.top = `${rect.bottom + window.scrollY}px`;
-    popover.style.left = `${rect.left + window.scrollX}px`;
-    popover.classList.add('show');
-}
-
-function saveMultiFromPopover() {
-    if (!STATE.tempMulti) return;
-    const { rid, cid } = STATE.tempMulti;
-    const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value);
-    const val = selected.join(', ');
-    edit(rid, cid, val);
-    document.getElementById('multiPopover').classList.remove('show');
-    STATE.tempMulti = null;
-}
-
-function closeMultiPopoverOnClickOutside(event) {
-    const popover = document.getElementById('multiPopover');
-    if (popover.classList.contains('show')) {
-        if (!popover.contains(event.target) && !event.target.closest('.badge-cell')) {
-            popover.classList.remove('show');
-            STATE.tempMulti = null;
-        }
-    }
-}
-
-// <!-- BUG FIX --> Rewritten to insert rows directly into activeRows for correct visual positioning.
-function addNewRowInline(parentId = null) {
-    const tempId = 'NEW_' + Date.now();
-    const newRow = {
-        id: tempId,
-        cells: [],
-        parentId: parentId ? (isNaN(parentId) ? parentId : parseInt(parentId)) : undefined,
-        rowNumber: 9999, // Placeholder
-        format: ",,,,,,,,,,,,,,22,,,,,,", // Default highlight
-    };
-
-    // Add to adds array for syncing
-    STATE.adds.push(newRow);
-    
-    // Insert into activeRows array for rendering
-    if (parentId) {
-        const parentIndex = STATE.activeRows.findIndex(r => r.id === parentId);
-        if (parentIndex !== -1) {
-            // Find where to insert: after the parent and all its descendants
-            const parentDepth = STATE.meta.depth[parentId] || 0;
-            let insertionIndex = parentIndex + 1;
-            while (insertionIndex < STATE.activeRows.length && (STATE.meta.depth[STATE.activeRows[insertionIndex].id] || 0) > parentDepth) {
-                insertionIndex++;
-            }
-            STATE.activeRows.splice(insertionIndex, 0, newRow);
-        } else {
-            // Parent not in view, add to top as a fallback
-            STATE.activeRows.unshift(newRow);
-        }
-    } else {
-        // No parent, add to top
-        STATE.activeRows.unshift(newRow);
-    }
-
-    // Recalculate all depths to include the new row, then render
-    calcAllDepth();
-    renderTable();
-    updateSyncUI();
-
-    // Scroll and focus
-    setTimeout(() => {
-        const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`);
-        if (newRowEl) {
-            newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            const firstInput = newRowEl.querySelector('input, select');
-            if (firstInput) firstInput.focus();
-        }
-    }, 100);
-}
-
-
-// --- UTILS ---
+function getCellHtml(rid, col, val) { if(col.type === 'CHECKBOX') { const checked = (val === true || val === 'true'); return `<div class="d-flex justify-content-center h-100 align-items-center"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; } const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0); if(isMulti) { let arr = []; if(Array.isArray(val)) arr = val; else if(val) arr = String(val).split(',').map(s=>s.trim()).filter(s=>s!==''); let badges = ''; if(arr.length === 0) badges = `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>`; else { arr.slice(0, 2).forEach(t => badges += `<span class="badge-pill">${t}</span>`); if(arr.length > 2) badges += `<span class="small text-muted fw-bold ms-1">+${arr.length-2}</span>`; } const safeVal = encodeURIComponent(JSON.stringify(arr)); return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeVal}')">${badges}</div>`; } if(col.options && col.options.length > 0) { let opts = `<option value=""></option>`; col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); return `<select class="cell-input" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; } let type = col.type === 'DATE' ? 'date' : 'text'; if(type === 'date' && val && val.length > 10) val = val.substring(0, 10); return `<input type="${type}" class="cell-input" value="${val}" onchange="edit('${rid}', ${col.id}, this.value)">`; }
+function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const col = STATE.cols.find(c => c.id === cid); if(col && (col.type.includes('MULTI') || col.options)) renderTable(); }
+function openMultiPopover(event, rid, cid, encoded) { event.stopPropagation(); const popover = document.getElementById('multiPopover'); const cell = event.currentTarget; const vals = JSON.parse(decodeURIComponent(encoded)); const col = STATE.cols.find(c => c.id === cid); STATE.tempMulti = { rid, cid }; const box = document.getElementById('multiOptions'); box.innerHTML = ''; const opts = Array.from(new Set([...(col.options || []), ...vals])); opts.forEach((o, i) => { if (!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100" for="${uId}">${o}</label></div>`; }); const rect = cell.getBoundingClientRect(); popover.style.top = `${rect.bottom + window.scrollY}px`; popover.style.left = `${rect.left + window.scrollX}px`; popover.classList.add('show'); }
+function saveMultiFromPopover() { if (!STATE.tempMulti) return; const { rid, cid } = STATE.tempMulti; const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value); const val = selected.join(', '); edit(rid, cid, val); document.getElementById('multiPopover').classList.remove('show'); STATE.tempMulti = null; }
+function closeMultiPopoverOnClickOutside(event) { const popover = document.getElementById('multiPopover'); if (popover.classList.contains('show')) { if (!popover.contains(event.target) && !event.target.closest('.badge-cell')) { popover.classList.remove('show'); STATE.tempMulti = null; } } }
+function addNewRowInline(parentId = null) { const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId: parentId ? (isNaN(parentId) ? parentId : parseInt(parentId)) : undefined, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", }; STATE.adds.push(newRow); if (parentId) { const parentIndex = STATE.activeRows.findIndex(r => r.id === parentId); if (parentIndex !== -1) { const parentDepth = STATE.meta.depth[parentId] || 0; let insertionIndex = parentIndex + 1; while (insertionIndex < STATE.activeRows.length && (STATE.meta.depth[STATE.activeRows[insertionIndex].id] || 0) > parentDepth) { insertionIndex++; } STATE.activeRows.splice(insertionIndex, 0, newRow); } else { STATE.activeRows.unshift(newRow); } } else { STATE.activeRows.unshift(newRow); } calcAllDepth(); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('input, select'); if (firstInput) firstInput.focus(); } }, 100); }
 function showLoader(s) { const l=document.getElementById('loader'); if(l) l.style.display=s?'flex':'none'; }
 function showToast(msg, type='primary') { const t = document.createElement('div'); t.className = `toast align-items-center text-white bg-${type} border-0 show mb-2 shadow`; t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`; document.getElementById('toastArea').appendChild(t); setTimeout(() => t.remove(), 4000); }
 function sysLog(msg, data) { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> ${msg}`; if(data) line.innerHTML += `<br><span style="color:#666">${JSON.stringify(data).substring(0,200)}...</span>`; document.getElementById('logContent').prepend(line); STATE.logs.push({time:Date.now(), msg, data}); }
