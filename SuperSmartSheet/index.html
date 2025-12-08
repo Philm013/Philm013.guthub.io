@@ -30,25 +30,60 @@
             --row-bg-override: transparent;
         }
 
-        body {
+        /* FIX 1: Ensure body takes full height and prevents overscroll bounce */
+        body, html {
+            height: 100%;
+            width: 100%;
             background-color: var(--bg);
             font-family: 'Plus Jakarta Sans', sans-serif;
             color: var(--text-main);
             -webkit-font-smoothing: antialiased;
             overflow: hidden; 
+            overscroll-behavior: none;
         }
 
-        .view-section { display: none; opacity: 0; transition: opacity 0.2s ease; height: 100vh; overflow-y: auto; }
-        .view-section.active { display: block; opacity: 1; }
-        #editorView { overflow: hidden; }
-        .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1rem .75rem 1.25rem; border-radius: 0 0 2.5rem 2.5rem; color: white; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); margin-bottom: 0px; }
+        /* FIX 2: Switch View Section to Flex Column layout */
+        .view-section { 
+            display: none; 
+            opacity: 0; 
+            transition: opacity 0.2s ease; 
+            height: 100dvh; /* Use dynamic viewport height for mobile browsers */
+            width: 100vw;
+            overflow: hidden; /* Prevent the container itself from scrolling */
+            flex-direction: column; 
+        }
+        
+        .view-section.active { 
+            display: flex; 
+            opacity: 1; 
+        }
+
+        /* Dashboard specific: needs scrolling internally */
+        #dashboardView {
+            overflow-y: auto;
+        }
+
+        #editorView { 
+            overflow: hidden; 
+        }
+
+        .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1rem .75rem 1.25rem; border-radius: 0 0 2.5rem 2.5rem; color: white; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); margin-bottom: 0px; flex: 0 0 auto; }
         .sheet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; }
         .sheet-card:active { transform: scale(0.98); }
         .sheet-card:hover { border-color: var(--primary); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); }
         
-        .glass-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+        /* FIX 3: Header and Toolbar are flex items that don't shrink */
+        .glass-header { 
+            background: var(--surface); 
+            border-bottom: 1px solid var(--border); 
+            padding: 0.75rem 1rem; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            flex: 0 0 auto;
+            width: 100%;
+        }
         
-        /* --- REVISED TOOLBAR STYLES --- */
         .toolbar { 
             background: #f1f5f9; 
             border-bottom: 1px solid var(--border); 
@@ -58,6 +93,8 @@
             align-items: center; 
             position: relative;
             z-index: 50;
+            flex: 0 0 auto;
+            width: 100%;
         }
 
         .search-container-desktop { display: block; }
@@ -71,6 +108,8 @@
             height: 0; 
             opacity: 0;
             transition: height 0.3s ease, opacity 0.2s ease, padding 0.3s ease;
+            flex: 0 0 auto; /* Don't stretch */
+            width: 100%;
         }
         .mobile-search-bar.show { 
             height: 50px; 
@@ -85,24 +124,27 @@
             .toolbar { padding: 0.5rem; }
             .search-container-desktop { display: none; }
             .search-trigger-mobile { display: flex; }
-            .mobile-search-bar { display: block; } /* Enabled in DOM, hidden by height */
+            .mobile-search-bar { display: block; }
             
-            /* Compact buttons on mobile */
             #btnSync, #btnDiscard { padding: 0.25rem 0.75rem; font-size: 0.8rem; }
             .counter-group { gap: 8px !important; }
             .counter-badge b { font-size: 0.8rem; }
         }
 
-        .table-container { background: var(--surface); height: calc(100vh - 125px); overflow: auto; position: relative; transition: height 0.3s ease; }
-        /* Adjust table height when search bar is open on mobile */
-        .mobile-search-bar.show ~ .table-container { height: calc(100vh - 175px); }
-
+        /* FIX 4: Table Container fills remaining space automatically */
+        .table-container { 
+            background: var(--surface); 
+            /* Remove calc height, use flex-grow */
+            flex: 1 1 auto;
+            overflow: auto; 
+            position: relative; 
+            width: 100%;
+        }
+        
         table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 0.9rem; table-layout: fixed; }
         thead th { background: #f8fafc; color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 8px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: sticky; top: 0; z-index: 10; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; cursor: pointer; transition: background-color 0.2s; box-sizing: border-box; }
         
-        /* Sticky Header Fix */
         thead th.primary-header-cell { position: sticky; padding-bottom: 34px; overflow: visible; z-index: 12; }
-        
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
         td {
@@ -113,7 +155,15 @@
             vertical-align: top;
         }
 
-        th:first-child, td:first-child { position: sticky; left: 0; z-index: 20; background: var(--row-bg-override, var(--surface)); border-right: 2px solid var(--border); width: 170px; min-width: 170px; max-width: 170px; box-shadow: 2px 0 5px rgba(0,0,0,0.02); overflow: visible; }
+        /* FIX 5: Reduce first column width on mobile from 170px to 50px */
+        th:first-child, td:first-child { 
+            position: sticky; left: 0; z-index: 20; 
+            background: var(--row-bg-override, var(--surface)); 
+            border-right: 2px solid var(--border); 
+            width: 170px; min-width: 170px; max-width: 170px; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.02); overflow: visible; 
+        }
+        
         thead th:first-child { z-index: 30; background: #f8fafc; }
 
         .actions-wrapper { display: flex; justify-content: center; gap: 4px; width: 100%; height: 100%; align-items: flex-start; padding-top: 10px; }
@@ -135,7 +185,6 @@
 
         .tree-wrap { display: flex; height: 100%; align-items: flex-start; padding-top: 12px; padding-left: 8px; }
         
-        /* Modal Fixes */
         #setupModal .modal-body { display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-pane { display: none; }
@@ -195,7 +244,20 @@
         .outline-scroll-group .btn:last-child { padding: 0 8px; }
         .outline-scroll-group .btn:hover { background: white; border-color: var(--primary); }
         .mobile-toggle-btn { display: none; width: 100%; height: 100%; border: none; background: transparent; color: var(--text-muted); }
-        @media (max-width: 768px) { .modal.bottom-sheet .modal-dialog { position: fixed; bottom: 0; margin: 0; width: 100%; max-width: 100%; } .modal.bottom-sheet .modal-content { border-radius: 24px 24px 0 0; border: none; min-height: 40vh; max-height: 85vh; } th:first-child, td:first-child { width: 75px; min-width: 75px; max-width: 75px; } .mobile-toggle-btn { display: flex; justify-content: center; align-items: center; cursor: pointer; } .actions-wrapper { display: none; position: absolute; left: 40px; top: 5px; background: white; padding: 4px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--border); width: auto; z-index: 1000; } .actions-wrapper.show { display: flex; animation: fadeIn 0.1s ease-out; } .action-btn { width: 36px; height: 36px; font-size: 1.1rem; } }
+        
+        @media (max-width: 768px) { 
+            .modal.bottom-sheet .modal-dialog { position: fixed; bottom: 0; margin: 0; width: 100%; max-width: 100%; } 
+            .modal.bottom-sheet .modal-content { border-radius: 24px 24px 0 0; border: none; min-height: 40vh; max-height: 85vh; } 
+            
+            /* Apply reduced width to the Actions column on mobile */
+            th:first-child, td:first-child { width: 50px !important; min-width: 50px !important; max-width: 50px !important; } 
+            
+            .mobile-toggle-btn { display: flex; justify-content: center; align-items: center; cursor: pointer; } 
+            .actions-wrapper { display: none; position: absolute; left: 40px; top: 5px; background: white; padding: 4px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid var(--border); width: auto; z-index: 1000; } 
+            .actions-wrapper.show { display: flex; animation: fadeIn 0.1s ease-out; } 
+            .action-btn { width: 36px; height: 36px; font-size: 1.1rem; } 
+        }
+        
         @keyframes fadeIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
     </style>
 </head>
@@ -224,11 +286,9 @@
     <div class="toolbar">
         <!-- Left: Search Controls -->
         <div class="d-flex align-items-center gap-2">
-            <!-- Mobile Toggle Button -->
             <button class="btn btn-light border search-trigger-mobile" onclick="toggleMobileSearch()">
                 <i class="bi bi-search"></i>
             </button>
-            <!-- Desktop Input -->
             <div class="search-container-desktop">
                 <input type="text" id="desktopSearch" class="form-control form-control-sm border-0 bg-white shadow-sm" placeholder="Filter..." style="max-width: 150px;" onkeyup="syncSearch(this.value)">
             </div>
@@ -254,7 +314,6 @@
         <input type="text" id="mobileSearchInput" class="form-control border-0 bg-white shadow-sm" placeholder="Search rows..." onkeyup="syncSearch(this.value)">
     </div>
 
-    <!-- Hidden Main Search Input (Logic uses id='search') -->
     <input type="hidden" id="search">
 
     <div class="table-container" onclick="deselectColumn(event)">
