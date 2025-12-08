@@ -27,7 +27,7 @@
             --row-mod: #fff7ed;
             --row-new: #f0fdf4;
             --row-del: #fef2f2;
-            --row-bg-override: transparent; /* For Smartsheet row colors */
+            --row-bg-override: transparent;
         }
 
         body {
@@ -79,32 +79,23 @@
         .drag-handle { cursor: grab; color: #94a3b8; }
         .drag-handle:active { cursor: grabbing; color: var(--primary); }
 
-        .cell-textarea {
-            width: 100%; height: 100%; min-height: 48px;
-            border: none; background: transparent;
-            padding: 12px; font-family: inherit; color: inherit;
-            resize: none; overflow-y: hidden; line-height: 1.5;
-        }
+        .cell-textarea { width: 100%; height: 100%; min-height: 48px; border: none; background: transparent; padding: 12px; font-family: inherit; color: inherit; resize: none; overflow-y: hidden; line-height: 1.5; }
         .cell-textarea:focus { outline: none; background: white; box-shadow: inset 0 0 0 2px var(--primary); }
 
         .tree-wrap { display: flex; height: 100%; align-items: flex-start; padding-top: 12px; padding-left: 8px; }
         
-        /* --- MODIFICATION --- CSS Fixes for Sheet Setup Modal */
+        /* --- MODIFICATION --- Final CSS for Sheet Setup Modal Layout */
         #setupModal .modal-body { display: flex; flex-direction: column; overflow: hidden; }
         #setupModal .tab-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-        #setupModal .tab-pane { height: 100%; display: flex; flex-direction: column; overflow: hidden; }
-        #setupRowTree { flex-grow: 1; overflow-y: auto; } /* This makes the tree list scrollable and fill space */
+        #setupModal .tab-pane { flex: 1; display: flex; flex-direction: column; overflow: auto; }
+        #setupRowTree { flex-grow: 1; overflow-y: auto; }
         .setup-tree-controls {
-            position: sticky; /* This makes the controls stick to the top */
-            top: -8px; /* Offset to align with padding */
-            z-index: 10; /* Ensures it stays on top of scrolling content */
-            margin: -8px -8px 8px -8px; /* Absorb container padding */
-            padding: 4px 8px 12px;
+            position: sticky; top: -8px; z-index: 10;
+            margin: -8px -8px 8px -8px; padding: 4px 8px 12px;
             display: flex; justify-content: space-between; align-items: center;
             border-bottom: 1px solid var(--border); background: #f8fafc;
         }
-        
-        /* Styles from previous valid states, now reintegrated */
+
         thead th.th-system { background: #f1f5f9; color: #475569; border-right: 1px dashed #cbd5e1; }
         td.td-system { background: #f8fafc; color: #64748b; font-family: monospace; font-size: 0.8rem; border-right: 1px dashed #cbd5e1; user-select: text; }
         .resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 40px; transform: translateX(50%); z-index: 100; cursor: col-resize; touch-action: none; display: none; justify-content: center; align-items: center; }
@@ -156,7 +147,6 @@
 </head>
 <body>
 
-<!-- HTML sections are unchanged -->
 <div id="dashboardView" class="view-section active"><div class="hero-section"><div class="d-flex justify-content-between align-items-center mb-4"><h1 class="fw-bold m-0"><i class="bi bi-kanban-fill me-2"></i>Smartsheet Pro</h1><button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="openSettings()"><i class="bi bi-gear-fill"></i></button></div><div class="bg-white p-1 rounded-pill shadow-lg d-flex"><input type="text" id="dashSheetId" class="form-control border-0 rounded-pill ps-4" placeholder="Paste Sheet ID..."><button class="btn btn-primary rounded-pill px-4 fw-bold" onclick="loadFromDash()">Open</button></div></div><div class="container mt-5"><h6 class="text-uppercase text-muted fw-bold small mb-3 ls-1">Library</h6><div id="libraryGrid" class="row g-3"></div><div id="emptyLib" class="text-center text-muted py-5" style="display:none;"><i class="bi bi-journal-album fs-1 d-block mb-3 opacity-25"></i> No recent sheets found.</div></div></div>
 <div id="editorView" class="view-section"><div class="glass-header"><div class="d-flex align-items-center gap-3 overflow-hidden"><button class="btn btn-light rounded-circle shadow-sm border" onclick="toDash()"><i class="bi bi-chevron-left"></i></button><div class="text-truncate"><div class="fw-bold text-truncate" id="sheetName">Loading...</div><div class="small text-muted font-monospace" id="sheetIdDisplay">...</div></div></div><div class="d-flex gap-2"><button class="btn btn-white border shadow-sm font-monospace" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button><button class="btn btn-white border shadow-sm" onclick="toggleFullScreen()"><i class="bi bi-arrows-fullscreen"></i></button><button class="btn btn-white border shadow-sm fw-bold" onclick="openSetup(true)"><i class="bi bi-sliders"></i></button></div></div><div class="toolbar"><div class="d-flex align-items-center gap-3 flex-wrap"><input type="text" id="search" class="form-control form-control-sm border-0 bg-white shadow-sm" placeholder="Filter..." style="max-width: 120px;" onkeyup="renderTable()"></div><div class="d-flex align-items-center gap-3 mt-2 mt-md-0"><div class="d-flex gap-3 small text-muted"><span title="Modified"><i class="bi bi-pencil text-warning"></i> <b class="text-dark" id="cntMod">0</b></span><span title="Added"><i class="bi bi-plus-circle text-success"></i> <b class="text-dark" id="cntAdd">0</b></span><span title="Deleted"><i class="bi bi-trash text-danger"></i> <b class="text-dark" id="cntDel">0</b></span></div><div class="vr"></div><div class="d-flex gap-2"><button class="btn btn-sm btn-outline-secondary rounded-pill px-3" onclick="discard()" id="btnDiscard" disabled>Discard</button><button class="btn btn-sm btn-primary rounded-pill px-3 fw-bold" onclick="sync()" id="btnSync" disabled>Sync Changes</button></div></div></div><div class="table-container" onclick="deselectColumn(event)"><table id="mainTable"><thead id="tHead"></thead><tbody id="tBody"></tbody></table></div></div>
 <div class="modal fade" id="setupModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-scrollable modal-lg"><div class="modal-content" style="height: 80vh;"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Sheet Setup</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body pt-2 d-flex flex-column h-100"><ul class="nav nav-pills nav-fill mb-3 bg-light rounded-pill p-1"><li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tabRows">Rows <span class="badge bg-white text-dark ms-1 rounded-pill" id="badgeRows">0</span></a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabCols">Columns <span class="badge bg-white text-dark ms-1 rounded-pill" id="badgeCols">0</span></a></li></ul><div class="tab-content flex-grow-1"><div class="tab-pane fade show active" id="tabRows"><div class="d-flex gap-2 mb-2 align-items-center"><input type="text" id="setupRowSearch" class="form-control form-control-sm" placeholder="Search rows..." onkeyup="renderSetupTree()"></div><div id="setupRowTree" class="border rounded bg-white h-100 p-2"></div></div><div class="tab-pane fade" id="tabCols"><div class="d-flex justify-content-between mb-2 px-1"><span class="small text-muted fw-bold">Toggle visible columns</span><div><button class="btn btn-sm btn-link text-decoration-none" onclick="toggleAllCols(true)">All</button><button class="btn btn-sm btn-link text-decoration-none" onclick="toggleAllCols(false)">None</button></div></div><div id="setupColList" class="d-flex flex-column gap-2 pb-3"></div></div></div></div><div class="modal-footer border-0"><button class="btn btn-primary w-100 py-2 rounded-pill fw-bold" onclick="applySetup()">Apply & Load</button></div></div></div></div>
