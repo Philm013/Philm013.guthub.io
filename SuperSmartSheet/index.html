@@ -27,6 +27,7 @@
             --row-mod: #fff7ed;
             --row-new: #f0fdf4;
             --row-del: #fef2f2;
+            --row-bg-override: transparent; /* For Smartsheet row colors */
         }
 
         body {
@@ -137,13 +138,13 @@
             border-bottom: 1px solid var(--border);
             border-right: 1px solid var(--border);
             padding: 0; height: 50px; vertical-align: middle;
-            background: var(--surface);
+            background: var(--row-bg-override, var(--surface));
             white-space: nowrap; overflow: hidden;
         }
 
         th:first-child, td:first-child {
             position: sticky; left: 0; z-index: 20;
-            background: var(--surface);
+            background: var(--row-bg-override, var(--surface)); 
             border-right: 2px solid var(--border);
             width: 170px; min-width: 170px; max-width: 170px;
             box-shadow: 2px 0 5px rgba(0,0,0,0.02);
@@ -171,8 +172,8 @@
 
         .mobile-toggle-btn { display: none; width: 100%; height: 100%; border: none; background: transparent; color: var(--text-muted); }
 
-        tr.row-new td { background-color: var(--row-new) !important; }
-        tr.row-modified td { background-color: var(--row-mod) !important; }
+        tr.row-new td { background-color: var(--row-bg-override, var(--row-new)) !important; }
+        tr.row-modified td { background-color: var(--row-bg-override, var(--row-mod)) !important; }
         tr.row-deleted td { background-color: var(--row-del) !important; opacity: 0.5; text-decoration: line-through; pointer-events: none; }
         
         /* Sortable ghost class */
@@ -188,13 +189,35 @@
 
         .badge-cell {
             padding: 0 8px; height: 100%; display: flex; align-items: center; gap: 4px;
-            overflow: hidden; cursor: pointer; white-space: nowrap;
+            overflow: hidden; cursor: pointer; white-space: nowrap; position: relative;
         }
         .badge-cell:hover { background-color: #f1f5f9; }
         .badge-pill {
             background: var(--primary-soft); color: var(--primary-dark);
             font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px;
         }
+
+        /* Multi-Select Popover styles */
+        #multiPopover {
+            display: none;
+            position: absolute;
+            z-index: 1050;
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+            width: 300px;
+            max-height: 350px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        #multiPopover.show { display: flex; }
+        #multiPopover .popover-content { padding: 8px; overflow-y: auto; flex-grow: 1; }
+        #multiPopover .popover-footer { padding: 8px; border-top: 1px solid var(--border); }
+        #multiPopover .form-check { padding: 8px 12px; border-radius: 6px; }
+        #multiPopover .form-check:hover { background-color: #f8fafc; }
+        #multiPopover .form-check-input { margin-top: 0.2em; }
 
         .tree-wrap { display: flex; align-items: center; height: 100%; padding-left: 8px; }
         .tree-indent { width: 16px; height: 100%; border-left: 1px dashed #cbd5e1; margin-right: 2px; }
@@ -299,7 +322,7 @@
             <button class="btn btn-white border shadow-sm font-monospace" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
             <button class="btn btn-white border shadow-sm" onclick="toggleFullScreen()"><i class="bi bi-arrows-fullscreen"></i></button>
             <button class="btn btn-white border shadow-sm fw-bold" onclick="openSetup(true)"><i class="bi bi-sliders"></i></button>
-            <button class="btn btn-primary shadow-sm rounded-pill px-3 fw-bold" onclick="openAddRow(null)"><i class="bi bi-plus-lg"></i></button>
+            <button class="btn btn-primary shadow-sm rounded-pill px-3 fw-bold" onclick="addNewRowInline()"><i class="bi bi-plus-lg"></i></button>
         </div>
     </div>
 
@@ -379,12 +402,6 @@
     </div>
 </div>
 
-<!-- MULTI SELECT MODAL -->
-<div class="modal fade bottom-sheet" id="multiModal" tabindex="-1"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold" id="multiTitle">Select Options</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div id="multiOptions" class="d-flex flex-column gap-2 mt-2"></div></div><div class="modal-footer border-0 pt-0"><button class="btn btn-primary w-100 py-3 rounded-4 fw-bold" onclick="saveMulti()">Apply</button></div></div></div></div>
-
-<!-- ADD ROW MODAL -->
-<div class="modal fade bottom-sheet" id="addModal" tabindex="-1"><div class="modal-dialog modal-dialog-scrollable"><div class="modal-content"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">New Row</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><label class="small text-muted fw-bold mb-1">PARENT ROW</label><select id="addParent" class="form-select bg-light border-0 mb-4"></select><div id="addFields" class="row g-3"></div></div><div class="modal-footer border-0 pt-0"><button class="btn btn-success w-100 py-3 rounded-4 fw-bold" onclick="commitAdd()">Add Row</button></div></div></div></div>
-
 <!-- SETTINGS & LOGS -->
 <div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content rounded-4 border-0 p-4"><h5 class="fw-bold mb-3">API Configuration</h5><label class="form-label small fw-bold text-muted">ACCESS TOKEN</label><input type="password" id="apiToken" class="form-control form-control-lg bg-light border-0 mb-3" placeholder="Token..."><button class="btn btn-primary w-100 rounded-pill" onclick="saveSettings()">Save</button></div></div></div>
 <div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn btn-sm btn-outline-light ms-auto me-2" onclick="copyLogs()">Copy</button><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
@@ -413,10 +430,39 @@
 <div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
 <div class="toast-container" id="toastArea"></div>
 
+<!-- Multi-select popover element -->
+<div id="multiPopover">
+    <div class="popover-content" id="multiOptions"></div>
+    <div class="popover-footer">
+        <button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button>
+    </div>
+</div>
+
+
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
 const CONFIG = { proxy: "https://cors-anywhere.herokuapp.com/", api: "https://api.smartsheet.com/2.0" };
+
+// Map of Smartsheet format codes to CSS colors.
+const SMARTSHEET_COLORS = {
+    // Background colors are typically at index 15 of the format string
+    '22': '#FFFF00', // Yellow
+    '23': '#FFC0CB', // Pink
+    '24': '#00FFFF', // Cyan
+    '25': '#FF00FF', // Magenta
+    '26': '#C0C0C0', // Silver
+    '27': '#808080', // Gray
+    '30': '#008000', // Green
+    '31': '#00FF00', // Lime
+    '32': '#800000', // Maroon
+    '33': '#000080', // Navy
+    '34': '#808000', // Olive
+    '35': '#800080', // Purple
+    '36': '#FF0000', // Red
+    '37': '#008080', // Teal
+};
+
 
 // Global State
 let STATE = { 
@@ -433,6 +479,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const t = localStorage.getItem('smToken');
     if(!t) new bootstrap.Modal('#settingsModal').show();
     renderLibrary();
+    document.addEventListener('click', closeMultiPopoverOnClickOutside);
 });
 
 // --- LIBRARY ---
@@ -466,11 +513,9 @@ function setOutline(level, context) {
     const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed;
     targetSet.clear();
     
-    // Level 99 means "All" / Expand All
     if(level < 99) {
         STATE.allRows.forEach(r => {
             const d = STATE.meta.depth[r.id] || 0;
-            // Collapse rows that are deeper than or equal to the selected level to hide their children
             if(d >= level - 1) targetSet.add(r.id);
         });
     }
@@ -480,18 +525,15 @@ function setOutline(level, context) {
 }
 
 function updateOutlineButtons() {
-    // Determine max depth
     let max = 0;
     Object.values(STATE.meta.depth).forEach(d => max = Math.max(max, d));
     const maxLevel = max + 1;
 
     const generateBtns = (context) => {
         let html = '';
-        // Create numeric buttons 1..maxLevel
         for(let i=1; i<=maxLevel; i++) {
              html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`;
         }
-        // Add "All" button
         html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`;
         return html;
     };
@@ -511,41 +553,29 @@ function renderRawTable() {
     const tb = document.getElementById('rawBody');
     th.innerHTML = ''; tb.innerHTML = '';
 
-    // Headers
     let h = `<tr>
         <th class="th-system" style="width:120px">Row ID</th>
         <th class="th-system" style="width:120px">Parent ID</th>
         <th class="th-system" style="width:60px">#</th>`;
     
-    // Data Columns
     STATE.cols.forEach(c => {
         h += `<th style="width:200px">${c.title} <span class="fw-normal text-muted small">(${c.id})</span></th>`;
     });
     h += '</tr>';
     th.innerHTML = h;
 
-    // Body
-    // Using STATE.allRows to show everything, including filtered out items from main view
     const all = STATE.allRows;
-    const primId = STATE.cols.find(c => c.primary)?.id;
-
     all.forEach(r => {
-        // Hierarchy check for Raw View (Independent of Main View)
         if(isRawHidden(r)) return;
-
         const tr = document.createElement('tr');
         
-        // System Data Cells
         let html = `
             <td class="td-system">${r.id}</td>
             <td class="td-system">${r.parentId || '-'}</td>
             <td class="td-system text-center">${r.rowNumber}</td>
         `;
-
-        // Data Cells
         STATE.cols.forEach(c => {
             const val = r.cells.find(x => x.columnId === c.id)?.displayValue ?? r.cells.find(x => x.columnId === c.id)?.value ?? '';
-            
             html += `<td>`;
             if(c.primary) {
                 html += `<div class="tree-wrap">`;
@@ -622,9 +652,6 @@ async function fetchData() {
     showLoader(true);
     try {
         const d = await api(`/sheets/${STATE.sheetId}?includeAll=true`);
-        // Store two copies: 
-        // 1. serverRows: The immutable backup from the server
-        // 2. allRows: The working copy that gets mutated by drag-and-drop
         STATE.serverRows = JSON.parse(JSON.stringify(d.rows));
         STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.cols = d.columns;
@@ -666,31 +693,22 @@ function renderSetupTree() {
     const term = document.getElementById('setupRowSearch').value.toLowerCase();
     const tree = document.getElementById('setupRowTree'); tree.innerHTML = '';
     const primId = STATE.cols.find(c => c.primary)?.id;
-    let html = '';
-    
-    // Use set for fast lookups
     const rowMap = new Map(STATE.allRows.map(r => [r.id, r]));
-
+    let html = '';
     STATE.allRows.forEach(r => {
-        // Outline visibility check
         if(isSetupHidden(r, rowMap)) return;
-
         const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || r.cells.find(c => c.columnId === primId)?.value || `Row ${r.rowNumber}`);
         if(term && !String(txt).toLowerCase().includes(term)) return;
         
         const d = STATE.meta.depth[r.id] || 0;
         const checked = STATE.selectedRowIds.has(r.id) ? 'checked' : '';
         const padding = d * 20;
-        
         const hasChild = STATE.allRows.some(x => x.parentId === r.id);
         const isCollapsed = STATE.meta.setupCollapsed.has(r.id);
         
-        let toggleIcon = '';
-        if(hasChild) {
-            toggleIcon = `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>`;
-        } else {
-            toggleIcon = `<div style="width:28px"></div>`;
-        }
+        let toggleIcon = hasChild
+            ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>`
+            : `<div style="width:28px"></div>`;
 
         html += `<div class="setup-tree-item" style="padding-left: ${padding}px">
                     ${toggleIcon}
@@ -719,7 +737,7 @@ function toggleSetup(id) {
 function toggleSetupRow(id, status) {
     if(status) STATE.selectedRowIds.add(id); else STATE.selectedRowIds.delete(id);
     const children = STATE.allRows.filter(r => r.parentId === id);
-    children.forEach(c => { toggleSetupRow(c.id, status); });
+    children.forEach(c => toggleSetupRow(c.id, status));
     renderSetupTree(); 
 }
 function toggleAllSetupRows(status) {
@@ -790,7 +808,7 @@ function renderTable() {
     });
     h += `</tr>`; th.innerHTML = h;
 
-    const all = [...STATE.activeRows, ...STATE.adds];
+    const all = [...STATE.adds, ...STATE.activeRows];
     const term = document.getElementById('search').value.toLowerCase();
     const activeIds = new Set(all.map(r => r.id));
     const viewDepth = {};
@@ -802,13 +820,22 @@ function renderTable() {
 
     all.forEach((r, idx) => {
         if(isHidden(r, activeIds) && !term) return;
-        if(term) { const txt = r.cells.map(c=>c.displayValue||c.value||'').join(' ').toLowerCase(); if(!txt.includes(term)) return; }
+        if(term) { const txt = (r.cells || []).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase(); if(!txt.includes(term)) return; }
 
         const tr = document.createElement('tr');
         tr.setAttribute('data-id', r.id);
         if(STATE.dels.has(r.id)) tr.className = 'row-deleted';
         else if(String(r.id).startsWith('NEW')) tr.className = 'row-new';
         else if(STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) tr.className = 'row-modified';
+
+        if (r.format) {
+            const formatParts = r.format.split(',');
+            const bgColorCode = formatParts[15];
+            const cssColor = SMARTSHEET_COLORS[bgColorCode];
+            if (cssColor) {
+                tr.style.setProperty('--row-bg-override', cssColor);
+            }
+        }
 
         let html = `<td class="text-center border-end p-0">`;
         if(STATE.dels.has(r.id)) {
@@ -820,7 +847,7 @@ function renderTable() {
                 <button class="action-btn drag-handle" title="Drag"><i class="bi bi-grip-vertical"></i></button>
                 <button class="action-btn" onclick="indentRow('${r.id}')" title="Indent"><i class="bi bi-text-indent-left"></i></button>
                 <button class="action-btn" onclick="outdentRow('${r.id}')" title="Outdent"><i class="bi bi-text-indent-right"></i></button>
-                <button class="action-btn btn-add" onclick="openAddRow('${r.id}')" title="Add"><i class="bi bi-plus-lg"></i></button>
+                <button class="action-btn btn-add" onclick="addNewRowInline('${r.id}')" title="Add Child Row"><i class="bi bi-plus-lg"></i></button>
                 <button class="action-btn btn-del" onclick="delRow('${r.id}')" title="Del"><i class="bi bi-trash"></i></button>
              </div>`;
         }
@@ -830,7 +857,7 @@ function renderTable() {
             if(!STATE.visibleCols.has(c.id)) return;
             const cid = c.id;
             let val = STATE.edits[r.id]?.[cid];
-            if(val === undefined) { const cell = r.cells.find(x => x.columnId === cid); val = cell ? (cell.value ?? '') : ''; }
+            if(val === undefined) { const cell = (r.cells || []).find(x => x.columnId === cid); val = cell ? (cell.displayValue ?? cell.value ?? '') : ''; }
 
             html += `<td>`;
             if(c.primary) {
@@ -886,7 +913,7 @@ function initSortable() {
         animation: 150,
         ghostClass: 'sortable-ghost',
         onStart: function(evt) {
-            const rid = parseInt(evt.item.dataset.id);
+            const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id);
             const descendants = getAllDescendants(rid, STATE.activeRows);
             descendants.forEach(d => {
                 const row = document.querySelector(`tr[data-id="${d.id}"]`);
@@ -909,15 +936,25 @@ function initSortable() {
         },
         onEnd: function (evt) {
             const item = evt.item;
-            const rid = parseInt(item.dataset.id);
+            const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id);
             
             item.classList.remove('dragging-parent');
             const badge = document.getElementById('dragBadge');
             if(badge) badge.remove();
+            
+            // <!-- BUG FIX -->: If no move happened, un-hide children and exit.
+            if (evt.oldIndex === evt.newIndex) {
+                const descendants = getAllDescendants(rid, STATE.activeRows);
+                descendants.forEach(d => {
+                    const row = document.querySelector(`tr[data-id="${d.id}"]`);
+                    if (row) row.style.display = '';
+                });
+                return;
+            }
 
             const prevRow = item.previousElementSibling;
             let targetPrevId = null;
-            if (prevRow) targetPrevId = parseInt(prevRow.dataset.id);
+            if (prevRow) targetPrevId = isNaN(prevRow.dataset.id) ? prevRow.dataset.id : parseInt(prevRow.dataset.id);
 
             let newParentId = undefined;
             let siblingId = undefined;
@@ -930,12 +967,10 @@ function initSortable() {
 
                 if (prevRowObj && hasChildren && !isCollapsed) {
                     newParentId = targetPrevId;
-                    siblingId = undefined; 
                     toTop = true;
                 } else if (prevRowObj) {
                     newParentId = prevRowObj.parentId;
                     siblingId = targetPrevId;
-                    toTop = false;
                 }
             } else {
                 toTop = true;
@@ -946,37 +981,12 @@ function initSortable() {
             if (sourceIndex === -1) { renderTable(); return; }
 
             const rowToMove = allRows[sourceIndex];
-            const sourceDepth = STATE.meta.depth[rid] || 0;
+            STATE.allRows.find(r => r.id === rid).parentId = newParentId;
+            STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId, toTop };
             
-            const rowsToMove = [rowToMove];
-            let i = sourceIndex + 1;
-            while(i < allRows.length) {
-                const curr = allRows[i];
-                const currDepth = STATE.meta.depth[curr.id] || 0;
-                if (currDepth > sourceDepth) {
-                    rowsToMove.push(curr);
-                    i++;
-                } else {
-                    break;
-                }
-            }
-
-            const remainingRows = allRows.filter(r => !rowsToMove.includes(r));
-            let insertIndex = 0;
-            if (targetPrevId) {
-                const idx = remainingRows.findIndex(r => r.id === targetPrevId);
-                insertIndex = idx + 1;
-            }
-
-            rowToMove.parentId = newParentId;
-            remainingRows.splice(insertIndex, 0, ...rowsToMove);
-            STATE.activeRows = remainingRows;
-
-            const masterIdx = STATE.allRows.findIndex(r => r.id === rid);
-            if(masterIdx > -1) STATE.allRows[masterIdx].parentId = newParentId;
-
-            STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId: siblingId, toTop: toTop };
-            calcAllDepth(); renderTable(); updateSyncUI();
+            calcAllDepth(); 
+            renderTable(); 
+            updateSyncUI();
         },
     });
 }
@@ -995,19 +1005,13 @@ function updateSyncUI() {
 function discard() {
     if(!confirm('Discard all unsaved changes?')) return;
     
-    // Restore from backup
     STATE.allRows = JSON.parse(JSON.stringify(STATE.serverRows));
-    
-    // Clear trackers
     STATE.adds = [];
     STATE.dels.clear();
     STATE.edits = {};
     STATE.hierarchyChanges = {};
-    
-    // Re-apply Setup filters (activeRows)
     STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
     
-    // Recalc UI helpers
     calcAllDepth();
     updateOutlineButtons();
     renderTable();
@@ -1025,9 +1029,48 @@ async function sync() {
             STATE.activeRows = STATE.activeRows.filter(r => !STATE.dels.has(r.id));
             STATE.dels.clear();
         }
+        
+        if (STATE.adds.length > 0) {
+            const newRows = STATE.adds.map(r => {
+                const editsForNewRow = STATE.edits[r.id] || {};
+                const finalCells = (r.cells || []).map(c => ({ ...c }));
+                Object.keys(editsForNewRow).forEach(cid => {
+                    const existingCellIndex = finalCells.findIndex(cell => cell.columnId == cid);
+                    if (existingCellIndex > -1) finalCells[existingCellIndex].value = editsForNewRow[cid];
+                    else finalCells.push({ columnId: parseInt(cid), value: editsForNewRow[cid] });
+                });
+
+                const cleanCells = finalCells.map(c => {
+                    const colDef = STATE.cols.find(col => col.id === c.columnId);
+                    const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(',')));
+                    if(isMulti) {
+                        const arr = String(c.value).split(/,\s*/).filter(s => s !== '');
+                        return { columnId: c.columnId, objectValue: { objectType: "MULTI_PICKLIST", values: arr } };
+                    }
+                    return { columnId: c.columnId, value: c.value };
+                });
+                const o={cells:cleanCells}; 
+                if(r.parentId) o.parentId=r.parentId; 
+                else o.toTop=true; 
+                return o;
+            });
+            // The API must be called sequentially for new rows, so we do it one by one for simplicity
+            for (const newRow of newRows) {
+                const res = await api(`/sheets/${STATE.sheetId}/rows`, 'POST', [newRow]);
+                 if(res.result) {
+                    STATE.allRows.push(...res.result);
+                    STATE.activeRows.push(...res.result);
+                    res.result.forEach(r => STATE.selectedRowIds.add(r.id));
+                }
+            }
+            STATE.adds = [];
+        }
+
         const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]);
         if(updateIds.size > 0) {
-            const updates = Array.from(updateIds).map(rid => {
+            const updates = Array.from(updateIds)
+                .filter(rid => !String(rid).startsWith("NEW")) // Filter out edits for new rows as they are handled above
+                .map(rid => {
                 const payload = { id: parseInt(rid) };
                 if(STATE.edits[rid]) {
                     payload.cells = Object.keys(STATE.edits[rid]).map(cid => {
@@ -1049,46 +1092,25 @@ async function sync() {
                 }
                 return payload;
             });
-            for(let i=0; i<updates.length; i+=100) {
-                const batch = updates.slice(i, i+100);
-                const res = await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', batch);
-                if(res.result) {
-                    res.result.forEach(updatedRow => {
-                        const allIdx = STATE.allRows.findIndex(r => r.id === updatedRow.id);
-                        if(allIdx !== -1) STATE.allRows[allIdx] = updatedRow;
-                        const actIdx = STATE.activeRows.findIndex(r => r.id === updatedRow.id);
-                        if(actIdx !== -1) STATE.activeRows[actIdx] = updatedRow;
-                    });
+            if (updates.length > 0) {
+                for(let i=0; i<updates.length; i+=100) {
+                    const batch = updates.slice(i, i+100);
+                    await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', batch);
                 }
             }
             STATE.edits = {}; STATE.hierarchyChanges = {};
         }
-        if(STATE.adds.length > 0) {
-            const newRows = STATE.adds.map(r => {
-                const cleanCells = r.cells.map(c => {
-                    const colDef = STATE.cols.find(col => col.id === c.columnId);
-                    const isMulti = colDef && (colDef.type.includes('MULTI') || (colDef.options && String(c.value).includes(',')));
-                    if(isMulti) {
-                        const arr = String(c.value).split(/,\s*/).filter(s => s !== '');
-                        return { columnId: c.columnId, objectValue: { objectType: "MULTI_PICKLIST", values: arr } };
-                    }
-                    return { columnId: c.columnId, value: c.value };
-                });
-                const o={cells:cleanCells}; if(r.parentId) o.parentId=r.parentId; else o.toBottom=true; return o;
-            });
-            const res = await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRows);
-            if(res.result) {
-                STATE.allRows.push(...res.result);
-                STATE.activeRows.push(...res.result);
-                res.result.forEach(r => STATE.selectedRowIds.add(r.id));
-                STATE.adds = [];
-            }
-        }
+
+        // Final re-fetch to ensure perfect state sync after all operations
+        const freshData = await api(`/sheets/${STATE.sheetId}?includeAll=true`);
+        STATE.allRows = freshData.rows;
+        STATE.serverRows = JSON.parse(JSON.stringify(freshData.rows));
+        STATE.activeRows = STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id));
         
-        // Update Server Backup with the new successful state
-        STATE.serverRows = JSON.parse(JSON.stringify(STATE.allRows));
-        
-        calcAllDepth(); renderTable(); updateSyncUI(); showToast('Sync Successful!', 'success');
+        calcAllDepth(); 
+        renderTable(); 
+        updateSyncUI(); 
+        showToast('Sync Successful!', 'success');
     } catch(e) { showToast('Sync Failed: ' + e, 'danger'); } finally { showLoader(false); }
 }
 
@@ -1098,10 +1120,9 @@ function indentRow(id) {
     const idx = STATE.activeRows.findIndex(r => r.id === rid);
     if(idx <= 0) return;
     const prev = STATE.activeRows[idx-1];
-    STATE.activeRows[idx].parentId = prev.id;
-    const masterIdx = STATE.allRows.findIndex(r => r.id === rid);
-    if(masterIdx > -1) STATE.allRows[masterIdx].parentId = prev.id;
-    STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prev.id, siblingId: undefined };
+    STATE.activeRows.find(r => r.id === rid).parentId = prev.id;
+    STATE.allRows.find(r => r.id === rid).parentId = prev.id;
+    STATE.hierarchyChanges[rid] = { type: 'INDENT', parentId: prev.id };
     calcAllDepth(); renderTable(); updateSyncUI();
 }
 function outdentRow(id) {
@@ -1111,8 +1132,7 @@ function outdentRow(id) {
     const parent = STATE.activeRows.find(p => p.id === row.parentId);
     const newPid = parent ? parent.parentId : undefined;
     row.parentId = newPid;
-    const masterIdx = STATE.allRows.findIndex(r => r.id === rid);
-    if(masterIdx > -1) STATE.allRows[masterIdx].parentId = newPid;
+    STATE.allRows.find(r => r.id === rid).parentId = newPid;
     STATE.hierarchyChanges[rid] = { type: 'OUTDENT', parentId: newPid, siblingId: parent.id };
     calcAllDepth(); renderTable(); updateSyncUI();
 }
@@ -1137,7 +1157,7 @@ function getCellHtml(rid, col, val) {
         let badges = ''; if(arr.length === 0) badges = `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>`;
         else { arr.slice(0, 2).forEach(t => badges += `<span class="badge-pill">${t}</span>`); if(arr.length > 2) badges += `<span class="small text-muted fw-bold ms-1">+${arr.length-2}</span>`; }
         const safeVal = encodeURIComponent(JSON.stringify(arr));
-        return `<div class="badge-cell" onclick="openMulti('${rid}', ${col.id}, '${safeVal}')">${badges}</div>`;
+        return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeVal}')">${badges}</div>`;
     }
     if(col.options && col.options.length > 0) {
         let opts = `<option value=""></option>`; col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; });
@@ -1146,32 +1166,87 @@ function getCellHtml(rid, col, val) {
     let type = col.type === 'DATE' ? 'date' : 'text'; if(type === 'date' && val && val.length > 10) val = val.substring(0, 10);
     return `<input type="${type}" class="cell-input" value="${val}" onchange="edit('${rid}', ${col.id}, this.value)">`;
 }
-function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const col = STATE.cols.find(c => c.id === cid); if(col && (col.type.includes('MULTI') || col.options)) renderTable(); }
-
-// --- MODALS ---
-function openMulti(rid, cid, encoded) {
-    const vals = JSON.parse(decodeURIComponent(encoded)); const col = STATE.cols.find(c => c.id === cid); STATE.tempMulti = { rid, cid };
-    document.getElementById('multiTitle').innerText = col.title; const box = document.getElementById('multiOptions'); box.innerHTML = '';
-    const opts = Array.from(new Set([...(col.options||[]), ...vals]));
-    opts.forEach((o, i) => { if(!o) return; const checked = vals.includes(o) ? 'checked' : ''; const safeVal = String(o).replace(/"/g, '&quot;'); const uId = `opt_${i}`; box.innerHTML += `<div class="form-check p-3 bg-light rounded-3 shadow-sm border-bottom position-relative"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked} style="transform:scale(1.3)"><label class="form-check-label w-100 ms-3 stretched-link" for="${uId}">${o}</label></div>`; });
-    new bootstrap.Modal('#multiModal').show();
-}
-function saveMulti() { const { rid, cid } = STATE.tempMulti; const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value); const val = selected.join(', '); edit(rid, cid, val); bootstrap.Modal.getInstance('#multiModal').hide(); }
-
-function openAddRow(parentId = null) {
-    const pSel = document.getElementById('addParent'); pSel.innerHTML = `<option value="">Bottom (Root)</option><option value="TOP">Top (Root)</option>`;
-    STATE.activeRows.forEach(r => { const prim = STATE.cols.find(c => c.primary); const txt = r.cells.find(x => x.columnId === prim.id)?.displayValue || `Row ${r.rowNumber}`; const indent = STATE.meta.depth[r.id] || 0; const pad = "\u00A0".repeat(indent * 4); const sel = (parentId && String(r.id) === String(parentId)) ? 'selected' : ''; const opt = document.createElement('option'); opt.value = r.id; opt.innerHTML = `${pad}↳ ${txt}`; if(sel) opt.selected = true; pSel.appendChild(opt); });
-    const form = document.getElementById('addFields'); form.innerHTML = '';
-    STATE.cols.forEach(c => { if(!STATE.visibleCols.has(c.id) || c.formula || c.systemColumnType) return; let html = ''; if(c.type === 'CHECKBOX') html = `<select class="form-select"><option value="false">Unchecked</option><option value="true">Checked</option></select>`; else if(c.options && c.options.length > 0) { let opts = `<option value=""></option>`; c.options.forEach(o => opts += `<option value="${o}">${o}</option>`); html = `<select class="form-select" multiple style="height:100px">${opts}</select>`; } else { const type = c.type === 'DATE' ? 'date' : 'text'; html = `<input type="${type}" class="form-control">`; } form.innerHTML += `<div class="col-12"><label class="form-label small fw-bold text-muted">${c.title}</label><div data-cid="${c.id}">${html}</div></div>`; });
-    new bootstrap.Modal('#addModal').show();
+function edit(rid, cid, val) { 
+    if(!STATE.edits[rid]) STATE.edits[rid] = {}; 
+    STATE.edits[rid][cid] = val; 
+    updateSyncUI(); 
+    const col = STATE.cols.find(c => c.id === cid); 
+    if(col && (col.type.includes('MULTI') || col.options)) renderTable(); 
 }
 
-function commitAdd() {
-    const pid = document.getElementById('addParent').value; const wraps = document.querySelectorAll('#addFields > div > div'); const cells = [];
-    wraps.forEach(div => { const cid = parseInt(div.dataset.cid); const el = div.querySelector('input, select'); if(!el) return; let val; if(el.type === 'checkbox') val = el.checked; else if(el.multiple) val = Array.from(el.selectedOptions).map(o=>o.value).join(', '); else val = el.value; if(val !== '') cells.push({ columnId: cid, value: val }); });
-    const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells, parentId: (pid === 'TOP' || pid === '') ? undefined : parseInt(pid), rowNumber: 9999 };
-    STATE.adds.push(newRow); bootstrap.Modal.getInstance('#addModal').hide(); renderTable(); updateSyncUI();
+// --- MODALS & POPOVERS ---
+function openMultiPopover(event, rid, cid, encoded) {
+    event.stopPropagation();
+    const popover = document.getElementById('multiPopover');
+    const cell = event.currentTarget;
+    
+    const vals = JSON.parse(decodeURIComponent(encoded));
+    const col = STATE.cols.find(c => c.id === cid);
+    STATE.tempMulti = { rid, cid };
+    
+    const box = document.getElementById('multiOptions');
+    box.innerHTML = '';
+    const opts = Array.from(new Set([...(col.options || []), ...vals]));
+    opts.forEach((o, i) => {
+        if (!o) return;
+        const checked = vals.includes(o) ? 'checked' : '';
+        const safeVal = String(o).replace(/"/g, '&quot;');
+        const uId = `opt_${i}`;
+        box.innerHTML += `<div class="form-check"><input class="form-check-input" type="checkbox" value="${safeVal}" id="${uId}" ${checked}><label class="form-check-label w-100" for="${uId}">${o}</label></div>`;
+    });
+    
+    const rect = cell.getBoundingClientRect();
+    popover.style.top = `${rect.bottom + window.scrollY}px`;
+    popover.style.left = `${rect.left + window.scrollX}px`;
+    popover.classList.add('show');
 }
+
+function saveMultiFromPopover() {
+    if (!STATE.tempMulti) return;
+    const { rid, cid } = STATE.tempMulti;
+    const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value);
+    const val = selected.join(', ');
+    edit(rid, cid, val);
+    document.getElementById('multiPopover').classList.remove('show');
+    STATE.tempMulti = null;
+}
+
+function closeMultiPopoverOnClickOutside(event) {
+    const popover = document.getElementById('multiPopover');
+    if (popover.classList.contains('show')) {
+        if (!popover.contains(event.target) && !event.target.closest('.badge-cell')) {
+            popover.classList.remove('show');
+            STATE.tempMulti = null;
+        }
+    }
+}
+
+
+function addNewRowInline(parentId = null) {
+    const tempId = 'NEW_' + Date.now();
+    const newRow = {
+        id: tempId,
+        cells: [],
+        parentId: parentId ? (isNaN(parentId) ? parentId : parseInt(parentId)) : undefined,
+        rowNumber: 9999,
+        format: ",,,,,,,,,,,,,,22,,,,,,",
+    };
+    STATE.adds.unshift(newRow);
+    renderTable();
+    updateSyncUI();
+
+    setTimeout(() => {
+        const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`);
+        if (newRowEl) {
+            newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const firstInput = newRowEl.querySelector('input, select');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }
+    }, 100);
+}
+
 
 // --- UTILS ---
 function showLoader(s) { const l=document.getElementById('loader'); if(l) l.style.display=s?'flex':'none'; }
@@ -1179,7 +1254,7 @@ function showToast(msg, type='primary') { const t = document.createElement('div'
 function sysLog(msg, data) { const line = document.createElement('div'); line.className = 'log-line'; line.innerHTML = `<span>[${new Date().toLocaleTimeString()}]</span> ${msg}`; if(data) line.innerHTML += `<br><span style="color:#666">${JSON.stringify(data).substring(0,200)}...</span>`; document.getElementById('logContent').prepend(line); STATE.logs.push({time:Date.now(), msg, data}); }
 function showLogs() { new bootstrap.Modal('#logsModal').show(); }
 function copyLogs() { navigator.clipboard.writeText(JSON.stringify(STATE.logs, null, 2)); showToast('Logs Copied'); }
-function openSettings() { new bootstrap.Modal('#settingsModal').show(); }
+function openSettings() { document.getElementById('apiToken').value = localStorage.getItem('smToken') || ''; new bootstrap.Modal('#settingsModal').show(); }
 function saveSettings() { localStorage.setItem('smToken', document.getElementById('apiToken').value); bootstrap.Modal.getInstance('#settingsModal').hide(); }
 </script>
 </body>
