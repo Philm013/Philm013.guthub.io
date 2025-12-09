@@ -4733,8 +4733,7 @@
                    ]
                  }
                }
-             ]
-           },
+             ],
             "connections":{
                "connectionsToOtherDcisInGradeLevel":"Physical Science: HS-PS2-3, HS-PS3-3; Earth and Space Science: HS-ESS3-2, HS-ESS3-4, Life Science: HS-LS2-7, HS-LS4-6",
                "articulationOfDcisAcrossGradeLevels":"MS.ETS1.A (HS-ETS1-1),(HS-ETS1-2),(HS-ETS1-3),(HS-ETS1-4); MS.ETS1.B (HS-ETS1-2),(HS-ETS1-3),(HS-ETS1-4); MS.ETS1.C (HS-ETS1-2),(HS-ETS1-4)",
