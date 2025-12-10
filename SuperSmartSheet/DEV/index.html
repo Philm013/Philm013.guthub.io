@@ -102,16 +102,17 @@
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
         /* 
-           CRITICAL FIX: High Specificity to override Bootstrap's .table > tbody > tr > td white background.
-           We use the ID #mainTable to ensure we win.
-           We default to 'transparent' so the --surface background shows, unless --row-bg-override is set.
+           STYLE FIX: 
+           1. Use 'transparent' background by default so row overrides show through.
+           2. Use 'white-space: nowrap' by default (Smartsheet behavior).
+           3. 'vertical-align: top' is standard.
         */
         #mainTable td {
             border-bottom: 1px solid var(--border); 
             border-right: 1px solid var(--border); 
             padding: 0;
             background-color: var(--row-bg-override, transparent) !important;
-            white-space: normal; 
+            white-space: nowrap; 
             height: auto; 
             min-height: 50px; 
             vertical-align: top;
@@ -145,7 +146,7 @@
         .drag-handle { cursor: grab; color: #94a3b8; }
         .drag-handle:active { cursor: grabbing; color: var(--primary); }
 
-        /* CRITICAL FIX: Ensure inputs are transparent so they don't block the TD color */
+        /* Ensure input elements are transparent */
         .cell-textarea { 
             width: 100%; height: 100%; min-height: 48px; 
             border: none; font-family: inherit; color: inherit; resize: none; overflow-y: hidden; line-height: 1.5; 
@@ -153,11 +154,7 @@
         }
         .cell-textarea:focus { outline: none; background: var(--surface) !important; box-shadow: inset 0 0 0 2px var(--primary); }
         
-        /* Fix for Select elements to be transparent */
-        .form-select.cell-textarea {
-            background-color: transparent !important;
-            border: none;
-        }
+        .form-select.cell-textarea { background-color: transparent !important; border: none; }
 
         /* Dark mode inputs */
         [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: var(--surface); border-color: var(--border); color: var(--text-main); }
@@ -439,7 +436,7 @@
 const CONFIG = { proxy: "https://cors-anywhere.herokuapp.com/", api: "https://api.smartsheet.com/2.0" };
 
 // --- CORRECT COLOR PALETTE BASED ON SMARTSHEET SERVERINFO ---
-// This array maps exactly to the indices used in the format string.
+// This maps standard Smartsheet indices to their hex values.
 const SMARTSHEET_PALETTE = [
   "none",          // 0
   "transparent",   // 1
@@ -473,7 +470,7 @@ const SMARTSHEET_PALETTE = [
   "#F4E4F5",       // 29
   "#F87E7D",       // 30
   "#FEFF00",       // 31
-  "#FEFF85",       // 32  <-- This is the Yellow highlight you mentioned
+  "#FEFF85",       // 32
   "#FF8D00",       // 33
   "#FFCCD2",       // 34
   "#FFCD7A",       // 35
@@ -500,7 +497,7 @@ let STATE = {
     hierarchyChanges: {}, 
     meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), depth: {} }, 
     tempMulti: null, 
-    tempFilterCol: null,
+    tempFilterCol: null, 
     logs: [],
     lastModifiedAt: null, 
     autoRefresh: false, 
@@ -612,31 +609,26 @@ function resolveAll(choice) { const snapshot = [...STATE.conflicts]; snapshot.fo
 function checkConflictsDone() { if(STATE.conflicts.length === 0) { bootstrap.Modal.getInstance('#conflictModal').hide(); updateBaseDataSafe(STATE.serverRows); updateSyncUI(); if(STATE.autoRefresh) startAutoRefresh(); } else { showConflictModal(); } }
 function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!edits) return; const tempId = 'NEW_REC_' + Date.now(); const newRow = { id: tempId, cells: [], rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", toTop: true }; STATE.edits[tempId] = {...edits}; delete STATE.edits[oldId]; STATE.adds.push(newRow); STATE.activeRows.unshift(newRow); }
 
-// --- UPDATED FORMATTING HELPER ---
+// --- FIXED FORMATTING PARSER ---
 function getFormatInfo(fmt) {
     if (!fmt) return { style: '', bg: null };
     const p = fmt.split(',');
     let s = '';
     let bg = null;
     
-    // Smartsheet Format String Schema:
-    // ... index 14 = Text Color
-    // ... index 15 = Background Color
-    
-    if (p.length > 15) {
-        // Background Color (Index 15)
-        const bgIdx = parseInt(p[15]);
+    // Background Color (Index 9)
+    if (p.length > 9) {
+        const bgIdx = parseInt(p[9]);
         if (!isNaN(bgIdx) && SMARTSHEET_PALETTE[bgIdx]) {
-            // 'none' (0) and 'transparent' (1) should result in null to let CSS variable work
-            if(bgIdx > 1) {
+            if(bgIdx > 1) { // 0=none, 1=transparent
                 bg = SMARTSHEET_PALETTE[bgIdx];
             }
         }
     }
     
-    if (p.length > 14) {
-        // Text Color (Index 14)
-        const txtIdx = parseInt(p[14]);
+    // Text Color (Index 8)
+    if (p.length > 8) {
+        const txtIdx = parseInt(p[8]);
         if (!isNaN(txtIdx) && SMARTSHEET_PALETTE[txtIdx]) {
             if(txtIdx > 1) {
                 s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`;
@@ -644,11 +636,31 @@ function getFormatInfo(fmt) {
         }
     }
     
-    // Font Styles
+    // Horizontal Align (Index 6)
+    // 0=default, 1=left, 2=center, 3=right
+    if (p[6]) {
+        const h = ['','left','center','right']; 
+        if (h[p[6]]) s += `text-align: ${h[p[6]]};`;
+    }
+
+    // Vertical Align (Index 7)
+    // 0=default, 1=top, 2=middle, 3=bottom
+    if (p[7]) {
+        const v = ['','top','middle','bottom'];
+        if (v[p[7]]) s += `vertical-align: ${v[p[7]]};`;
+    }
+
+    // Text Wrap (Index 15)
+    // 1 = on
+    if (p[15] === '1') {
+        s += `white-space: normal !important; word-wrap: break-word;`;
+    }
+
+    // Font Styles (Indices 2 & 3)
     if (p[2] === '1') s += 'font-weight: bold;';
     if (p[3] === '1') s += 'font-style: italic;';
     
-    // Decorations
+    // Decorations (Indices 4 & 5)
     let d = [];
     if (p[4] === '1') d.push('underline');
     if (p[5] === '1') d.push('line-through');
@@ -739,8 +751,7 @@ function renderTable() {
         else if (String(r.id).startsWith('NEW')) rowClass += 'row-new ';
         else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass += 'row-modified ';
         
-        // ROW FORMATTING (Fixed)
-        // We split the info: 'bg' is used for the variable override, 'style' is used for font/weight
+        // ROW FORMATTING
         const fmtInfo = getFormatInfo(r.format);
         const rowBgStyle = fmtInfo.bg ? `--row-bg-override: ${fmtInfo.bg};` : '';
         const rowTextStyle = fmtInfo.style;
