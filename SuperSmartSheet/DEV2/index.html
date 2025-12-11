@@ -33,80 +33,152 @@
             --row-height: 48px; /* CRITICAL FOR VIRTUALIZATION */
         }
 
+        /* DARK MODE VARS */
         [data-theme="dark"] {
-            --primary: #6366f1; --primary-dark: #4f46e5; --primary-soft: #1e1b4b; --bg: #0f172a; --surface: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --border: #334155; --glass: rgba(30, 41, 59, 0.95); --row-mod: #422006; --row-new: #064e3b; --row-del: #450a0a; --th-bg: #0f172a; --th-border: #334155; --row-bg-override: transparent;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-soft: #1e1b4b;
+            --bg: #0f172a;
+            --surface: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border: #334155;
+            --glass: rgba(30, 41, 59, 0.95);
+            --row-mod: #422006;
+            --row-new: #064e3b;
+            --row-del: #450a0a;
+            --th-bg: #0f172a;
+            --th-border: #334155;
+            --row-bg-override: transparent;
         }
 
-        body, html { height: 100%; width: 100%; background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-main); overflow: hidden; overscroll-behavior: none; }
+        body, html { height: 100%; width: 100%; background-color: var(--bg); font-family: 'Plus Jakarta Sans', sans-serif; color: var(--text-main); overflow: hidden; overscroll-behavior: none; transition: background-color 0.3s, color 0.3s; }
         
-        ::-webkit-scrollbar { width: 8px; height: 8px; } ::-webkit-scrollbar-track { background: transparent; } ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; } [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #475569; }
+        /* SCROLLBARS */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        [data-theme="dark"] ::-webkit-scrollbar-thumb { background: #475569; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         .view-section { display: none; opacity: 0; transition: opacity 0.2s ease; height: 100dvh; width: 100vw; overflow: hidden; flex-direction: column; }
         .view-section.active { display: flex; opacity: 1; }
+
         #dashboardView { overflow-y: auto; }
         #editorView { overflow: hidden; }
 
-        .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1rem .75rem 1.25rem; border-radius: 0 0 2.5rem 2.5rem; color: white; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); flex: 0 0 auto; }
-        .sheet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; cursor: pointer; }
+        .hero-section { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); padding: 1rem .75rem 1.25rem; border-radius: 0 0 2.5rem 2.5rem; color: white; box-shadow: 0 20px 40px -10px rgba(79, 70, 229, 0.3); margin-bottom: 0px; flex: 0 0 auto; }
+        
+        .sheet-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.25rem; position: relative; overflow: hidden; transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; color: var(--text-main); }
+        .sheet-card:active { transform: scale(0.98); }
+        .sheet-card:hover { border-color: var(--primary); box-shadow: 0 10px 20px -5px rgba(0,0,0,0.05); }
+        
         .glass-header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; width: 100%; }
         
         .views-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 1rem; display: flex; align-items: center; gap: 4px; overflow-x: auto; flex: 0 0 auto; height: 42px; scrollbar-width: none; }
         .views-bar::-webkit-scrollbar { display: none; }
-        .view-tab { padding: 6px 16px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; }
+        .view-tab { padding: 6px 16px; font-size: 0.85rem; font-weight: 600; color: var(--text-muted); border-bottom: 2px solid transparent; cursor: pointer; white-space: nowrap; transition: all 0.2s; border-radius: 4px 4px 0 0; }
+        .view-tab:hover { background: var(--bg); color: var(--primary); }
         .view-tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--primary-soft); }
         .view-add-btn { width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; border: 1px dashed var(--border); color: var(--text-muted); cursor: pointer; flex-shrink: 0; margin-left: 8px; }
+        .view-add-btn:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
 
         .toolbar { background: var(--bg); border-bottom: 1px solid var(--border); padding: 0.5rem 1rem; display: flex; justify-content: space-between; align-items: center; flex: 0 0 auto; width: 100%; z-index: 50; }
 
+        .search-container-desktop { display: block; }
+        .search-trigger-mobile { display: none; }
+        .mobile-search-bar { display: none; background: var(--bg); border-bottom: 1px solid var(--border); padding: 0 1rem; overflow: hidden; height: 0; opacity: 0; transition: height 0.3s ease, opacity 0.2s ease, padding 0.3s ease; flex: 0 0 auto; width: 100%; }
+        .mobile-search-bar.show { height: 50px; opacity: 1; padding: 10px 1rem; }
+
+        .counter-badge { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--text-muted); }
+        .counter-badge b { color: var(--text-main); }
+        
         .table-container { background: var(--surface); flex: 1 1 auto; overflow: auto; position: relative; width: 100%; will-change: transform; }
         
-        table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 0.9rem; table-layout: fixed; }
-        thead th { background: var(--th-bg); color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; padding: 12px 8px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: sticky; top: 0; z-index: 10; user-select: none; }
-        thead th.primary-header-cell { padding-bottom: 22px; overflow: visible; z-index: 12; }
-        thead th.selected { background-color: var(--primary-soft) !important; }
+        table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 0.9rem; table-layout: fixed; color: var(--text-main); }
+        thead th { background: var(--th-bg); color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 8px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: sticky; top: 0; z-index: 10; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; cursor: pointer; transition: background-color 0.2s; box-sizing: border-box; }
+        
+        thead th.primary-header-cell { position: sticky; padding-bottom: 22px; overflow: visible; z-index: 12; }
+        thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
         #mainTable tbody tr { height: var(--row-height); }
-        #mainTable td { border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); padding: 0; background-color: var(--row-bg-override, transparent); white-space: nowrap; vertical-align: top; }
+        #mainTable td {
+            border-bottom: 1px solid var(--border); 
+            border-right: 1px solid var(--border); 
+            padding: 0;
+            background-color: var(--row-bg-override, transparent);
+            white-space: nowrap; 
+            vertical-align: top;
+        }
 
-        th:first-child, #mainTable td:first-child { position: sticky; left: 0; z-index: 20; background-color: var(--row-bg-override, var(--surface)); border-right: 2px solid var(--border); width: 170px; min-width: 170px; max-width: 170px; }
+        th:first-child, #mainTable td:first-child { 
+            position: sticky; left: 0; z-index: 20; 
+            background-color: var(--row-bg-override, var(--surface));
+            border-right: 2px solid var(--border); 
+            width: 170px; min-width: 170px; max-width: 170px; 
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05); overflow: visible; 
+        }
         thead th:first-child { z-index: 30; background: var(--th-bg); }
         
         .col-title-wrap { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .col-filter-btn { background: none; border: none; color: var(--text-muted); }
-        .col-filter-btn.active { color: var(--primary); }
+        .col-filter-btn { background: none; border: none; color: var(--text-muted); padding: 2px 4px; border-radius: 4px; margin-left: 8px; }
+        .col-filter-btn:hover { background-color: var(--primary-soft); color: var(--primary); }
+        .col-filter-btn.active { color: var(--primary); background-color: var(--primary-soft); }
 
         .actions-wrapper { display: flex; justify-content: center; gap: 4px; width: 100%; height: 100%; align-items: flex-start; padding-top: 10px; }
-        .action-btn { padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; background: transparent; color: var(--text-muted); cursor: pointer; }
+        .action-btn { padding: 0; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 4px; border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; }
+        .action-btn:hover { background: var(--primary-soft); color: var(--primary); border-color: var(--border); }
+        .action-btn.btn-del:hover { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
         
-        .drag-handle { cursor: grab; } .drag-handle:active { cursor: grabbing; }
+        .add-btn-group { display: flex; flex-direction: column; }
+        .add-btn-part { width: 28px; height: 14px; font-size: 0.8rem; padding: 0; border: 1px solid transparent; background: transparent; color: var(--text-muted); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .add-btn-part:first-child { border-radius: 4px 4px 0 0; }
+        .add-btn-part:last-child { border-radius: 0 0 4px 4px; }
+        .add-btn-group:hover .add-btn-part { background: var(--primary-soft); color: var(--primary); border-color: var(--border); }
+        
+        .drag-handle { cursor: grab; color: #94a3b8; }
+        .drag-handle:active { cursor: grabbing; color: var(--primary); }
 
-        .cell-textarea { width: 100%; height: 100%; border: none; font-family: inherit; color: inherit; resize: none; line-height: 1.5; padding: 12px 8px; background-color: transparent !important; }
+        .cell-textarea { 
+            width: 100%; height: 100%;
+            border: none; font-family: inherit; color: inherit; resize: none; line-height: 1.5; padding: 12px 8px;
+            background-color: transparent !important; 
+        }
         .cell-textarea:focus { outline: none; background: var(--surface) !important; box-shadow: inset 0 0 0 2px var(--primary); }
         
-        .tree-wrap { display: flex; height: 100%; align-items: flex-start; padding-top: 12px; padding-left: 8px; }
-        
-        .resizer { position: absolute; right: 0; top: 0; bottom: 0; width: 40px; transform: translateX(50%); z-index: 100; cursor: col-resize; touch-action: none; display: none; justify-content: center; align-items: center; }
-        .resizer::after { content: ""; width: 4px; height: 50%; background-color: var(--primary); border-radius: 4px; opacity: 0.7; }
-        thead th.selected .resizer { display: flex; }
-        
+        .form-select.cell-textarea { background-color: transparent !important; border: none; }
+
         tr.row-new td { --row-bg-override: var(--row-new); }
         tr.row-modified td { --row-bg-override: var(--row-mod); }
         tr.row-deleted { background-color: var(--row-del) !important; }
         tr.row-deleted td { opacity: 0.5; text-decoration: line-through; pointer-events: none; }
         
-        .badge-cell { padding: 12px 8px; height: 100%; display: flex; align-items: flex-start; gap: 4px; cursor: pointer; flex-wrap: wrap;}
+        .badge-cell { padding: 12px 8px; height: 100%; display: flex; align-items: flex-start; gap: 4px; overflow: hidden; cursor: pointer; white-space: normal; position: relative; flex-wrap: wrap;}
         .badge-pill { background: var(--primary-soft); color: var(--primary-dark); font-size: 0.75rem; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
         
-        #multiPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); flex-direction: column; }
-        #columnFilterPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; }
+        #multiPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); min-width: 150px; max-height: 350px; overflow: hidden; flex-direction: column; color: var(--text-main); }
+        #columnFilterPopover { display: none; position: fixed; z-index: 1050; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); width: 320px; color: var(--text-main); }
 
-        .tree-indent { width: 16px; height: 100%; border-left: 1px dashed #cbd5e1; margin-right: 2px; }
+        .tree-wrap { display: flex; height: 100%; align-items: flex-start; padding-top: 12px; padding-left: 8px; }
+        .tree-indent { width: 16px; height: 100%; border-left: 1px dashed #cbd5e1; margin-right: 2px; flex-shrink: 0; }
+        [data-theme="dark"] .tree-indent { border-color: #475569; }
         .tree-toggle { width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; border-radius: 6px; color: var(--text-muted); cursor: pointer; margin-right: 4px; flex-shrink: 0; }
+        .tree-toggle:hover { background: var(--bg); color: var(--primary); }
         .tree-toggle i { transition: transform 0.2s; font-size: 0.8rem; }
         .expanded i { transform: rotate(90deg); }
         
-        .header-outline-btns { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; display: flex; align-items: center; background: var(--bg); border-top: 1px solid var(--border); }
-        .header-outline-btns .btn { border-radius: 0; background: transparent; border: none; border-right: 1px solid var(--border); color: var(--text-muted); font-size: 0.6rem; font-weight: 700; padding: 0 10px; height: 100%; }
+        .header-outline-btns { position: absolute; bottom: 0; left: 0; right: 0; height: 18px; display: flex; align-items: center; gap: 0; background: var(--bg); border-top: 1px solid var(--border); }
+        .header-outline-btns .btn { border-radius: 0; background: transparent; border: none; border-right: 1px solid var(--border); color: var(--text-muted); font-size: 0.6rem; font-weight: 700; padding: 0 10px; height: 100%; display: flex; align-items: center; }
+        
+        .mobile-toggle-btn { display: none; width: 100%; height: 100%; border: none; background: transparent; color: var(--text-muted); }
+
+        @media (max-width: 768px) {
+            .search-container-desktop { display: none; }
+            .search-trigger-mobile { display: flex; }
+            th:first-child, td:first-child { width: 50px !important; min-width: 50px !important; max-width: 50px !important; } 
+            .mobile-toggle-btn { display: flex; justify-content: center; align-items: center; cursor: pointer; } 
+            .actions-wrapper { display: none; } 
+        }
     </style>
 </head>
 <body>
@@ -117,8 +189,12 @@
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h1 class="fw-bold m-0"><i class="bi bi-kanban-fill me-2"></i>Smartsheet Pro</h1>
             <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleTheme()"><i class="bi bi-moon-stars-fill" id="themeIcon"></i></button>
-                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="openSettings()"><i class="bi bi-gear-fill"></i></button>
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="toggleTheme()">
+                    <i class="bi bi-moon-stars-fill" id="themeIcon"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light rounded-pill px-3" onclick="openSettings()">
+                    <i class="bi bi-gear-fill"></i>
+                </button>
             </div>
         </div>
         <div class="bg-white p-1 rounded-pill shadow-lg d-flex">
@@ -129,7 +205,9 @@
     <div class="container mt-5">
         <h6 class="text-uppercase text-muted fw-bold small mb-3 ls-1">Library</h6>
         <div id="libraryGrid" class="row g-3"></div>
-        <div id="emptyLib" class="text-center text-muted py-5" style="display:none;"><i class="bi bi-journal-album fs-1 d-block mb-3 opacity-25"></i> No recent sheets found.</div>
+        <div id="emptyLib" class="text-center text-muted py-5" style="display:none;">
+            <i class="bi bi-journal-album fs-1 d-block mb-3 opacity-25"></i> No recent sheets found.
+        </div>
     </div>
 </div>
 
@@ -138,7 +216,10 @@
     <div class="glass-header">
         <div class="d-flex align-items-center gap-3 overflow-hidden">
             <button class="btn btn-light rounded-circle shadow-sm border" onclick="toDash()"><i class="bi bi-chevron-left"></i></button>
-            <div class="text-truncate"><div class="fw-bold text-truncate" id="sheetName">Loading...</div><div class="small text-muted font-monospace" id="sheetIdDisplay">...</div></div>
+            <div class="text-truncate">
+                <div class="fw-bold text-truncate" id="sheetName">Loading...</div>
+                <div class="small text-muted font-monospace" id="sheetIdDisplay">...</div>
+            </div>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-white border shadow-sm" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
@@ -146,13 +227,15 @@
             <button class="btn btn-white border shadow-sm fw-bold" onclick="openSetup(true)"><i class="bi bi-sliders"></i> Setup</button>
         </div>
     </div>
+    
     <div class="toolbar">
         <div class="d-flex align-items-center gap-2">
-            <div class="input-group input-group-sm shadow-sm">
-                <span class="input-group-text border-0 bg-white"><i class="bi bi-search text-muted"></i></span>
-                <input type="text" id="desktopSearch" class="form-control border-0" placeholder="Filter current view..." onkeyup="debounceSearch(this.value)">
+            <div class="search-container-desktop">
+                <div class="input-group input-group-sm shadow-sm">
+                    <span class="input-group-text border-0 bg-white"><i class="bi bi-search text-muted"></i></span>
+                    <input type="text" id="desktopSearch" class="form-control border-0" placeholder="Filter current view..." onkeyup="debounceSearch(this.value)">
+                </div>
             </div>
-            <div id="autoSyncIndicator" style="display:none;" class="ms-2"><span class="badge bg-light text-primary border"><i class="bi bi-arrow-repeat spin"></i> Auto-Sync</span></div>
         </div>
         <div class="d-flex align-items-center gap-2 ms-2">
             <div class="d-flex gap-3 small text-muted counter-group">
@@ -170,8 +253,8 @@
     <div class="views-bar" id="viewsContainer"></div>
     <input type="hidden" id="search">
     <div class="table-container" id="tableScroller" onclick="deselectColumn(event)">
-        <div style="position: relative; width: 100%; height: var(--total-height, 0px);">
-             <table id="mainTable" style="position: absolute; top: 0; left: 0; width: 100%;">
+        <div id="virtualContainer" style="position: relative; width: 100%;">
+            <table id="mainTable">
                 <thead id="tHead"></thead>
                 <tbody id="tBody"></tbody>
             </table>
@@ -179,45 +262,28 @@
     </div>
 </div>
 
-<!-- ALL MODALS AND UTILITY DIVS -->
-<div class="modal fade" id="viewConfigModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Edit View</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label small fw-bold text-muted">VIEW NAME</label><input type="text" id="viewNameInput" class="form-control"></div><div class="alert alert-light border small text-muted"><i class="bi bi-info-circle me-1"></i> Column visibility is managed via "Setup".</div></div><div class="modal-footer border-0"><button class="btn btn-danger me-auto" onclick="deleteCurrentView()"><i class="bi bi-trash"></i> Delete View</button><button class="btn btn-primary rounded-pill px-4" onclick="saveViewConfig()">Save Changes</button></div></div></div></div>
-<div class="modal fade" id="setupModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-scrollable modal-lg"><div class="modal-content" style="height: 80vh;"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Sheet Setup</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body pt-2 d-flex flex-column h-100"><ul class="nav nav-pills nav-fill mb-3 bg-light rounded-pill p-1"><li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tabCols">Columns <span class="badge bg-white text-dark ms-1 rounded-pill" id="badgeCols">0</span></a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabRows">Rows (Selection)</a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabSync">Settings</a></li></ul><div class="tab-content flex-grow-1"><div class="tab-pane fade show active" id="tabCols"><div id="setupColList" class="d-flex flex-column gap-2 pb-3"></div></div><div class="tab-pane fade" id="tabRows"><div id="setupRowTree" class="border rounded p-2"></div></div><div class="tab-pane fade" id="tabSync"><div class="p-3 bg-light border rounded"><h6 class="fw-bold mb-3">Auto-Sync</h6><div class="form-check form-switch mb-3"><input class="form-check-input" type="checkbox" id="setupAutoSyncCheck" onchange="toggleAutoRefresh(this.checked)"><label class="form-check-label" for="setupAutoSyncCheck">Enable Auto-Sync</label></div><input type="number" id="setupSyncInterval" class="form-control" value="60" min="10" onchange="updateSyncInterval(this.value)"></div></div></div></div><div class="modal-footer border-0"><button class="btn btn-primary w-100 py-2 rounded-pill fw-bold" onclick="applySetup()">Apply to View</button></div></div></div></div>
+<!-- MODALS AND UTILS -->
+<div class="modal fade" id="viewConfigModal" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Edit View</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="mb-3"><label class="form-label small fw-bold text-muted">VIEW NAME</label><input type="text" id="viewNameInput" class="form-control"></div><div class="alert alert-light border small text-muted"><i class="bi bi-info-circle me-1"></i> Column visibility is managed via "Setup".</div></div><div class="modal-footer border-0"><button class="btn btn-danger me-auto" onclick="deleteCurrentView()"><i class="bi bi-trash"></i> Delete</button><button class="btn btn-primary rounded-pill px-4" onclick="saveViewConfig()">Save</button></div></div></div></div>
+<div class="modal fade" id="setupModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog modal-dialog-scrollable modal-lg"><div class="modal-content" style="height: 80vh;"><div class="modal-header border-0 pb-0"><h5 class="modal-title fw-bold">Sheet Setup</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body pt-2 d-flex flex-column h-100"><ul class="nav nav-pills nav-fill mb-3 bg-light rounded-pill p-1"><li class="nav-item"><a class="nav-link active" data-bs-toggle="pill" href="#tabCols">Columns <span class="badge bg-white text-dark ms-1 rounded-pill" id="badgeCols">0</span></a></li><li class="nav-item"><a class="nav-link" data-bs-toggle="pill" href="#tabRows">Rows</a></li></ul><div class="tab-content flex-grow-1"><div class="tab-pane fade show active" id="tabCols"><div class="d-flex justify-content-between mb-2 px-1"><span class="small text-muted fw-bold">Visible columns for current view</span><div><button class="btn btn-sm btn-link text-decoration-none" onclick="toggleAllCols(true)">All</button><button class="btn btn-sm btn-link text-decoration-none" onclick="toggleAllCols(false)">None</button></div></div><div id="setupColList" class="d-flex flex-column gap-2 pb-3"></div></div><div class="tab-pane fade" id="tabRows"><div class="alert alert-info small"><i class="bi bi-info-circle"></i> Select which rows are loaded from the server.</div><div class="d-flex gap-2 mb-2 align-items-center"><input type="text" id="setupRowSearch" class="form-control form-control-sm" placeholder="Search tree..." onkeyup="renderSetupTree()"></div><div id="setupRowTree" class="border rounded p-2"></div></div></div></div><div class="modal-footer border-0"><button class="btn btn-primary w-100 py-2 rounded-pill fw-bold" onclick="applySetup()">Apply to View</button></div></div></div></div>
 <div class="modal fade" id="settingsModal" tabindex="-1"><div class="modal-dialog"><div class="modal-content rounded-4 border-0 p-4"><h5 class="fw-bold mb-3">Configuration</h5><label class="form-label small fw-bold text-muted">ACCESS TOKEN</label><input type="password" id="apiToken" class="form-control form-control-lg bg-light border-0 mb-3" placeholder="Token..."><button class="btn btn-primary w-100 rounded-pill" onclick="saveSettings()">Save</button></div></div></div>
-<div class="modal fade" id="conflictModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger-subtle"><h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Sync Conflict Detected</h5></div><div class="modal-body"><p class="small text-muted mb-3">Remote changes conflict with your unsaved edits. Please resolve:</p><div id="conflictList"></div></div><div class="modal-footer"><button class="btn btn-outline-secondary" onclick="resolveAll('MINE')">Keep All Mine</button><button class="btn btn-danger" onclick="resolveAll('THEIRS')">Accept All Theirs</button></div></div></div></div>
-<div class="modal fade" id="logsModal" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content bg-dark text-light"><div class="modal-header border-secondary"><h5 class="modal-title">System Logs</h5><button class="btn-close btn-close-white" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 bg-black" id="logContent" style="min-height:300px;"></div></div></div></div>
-<div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-lg-down"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data Inspector</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
-<div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
+<div class="modal fade" id="conflictModal" tabindex="-1" data-bs-backdrop="static"><div class="modal-dialog"><div class="modal-content"><div class="modal-header bg-danger-subtle"><h5 class="modal-title text-danger fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Sync Conflict</h5></div><div class="modal-body"><p class="small text-muted mb-3">Remote changes conflict with your edits:</p><div id="conflictList"></div></div><div class="modal-footer"><button class="btn btn-outline-secondary" onclick="resolveAll('MINE')">Keep All Mine</button><button class="btn btn-danger" onclick="resolveAll('THEIRS')">Accept All Theirs</button></div></div></div></div>
+<div class="modal fade" id="rawDataModal" tabindex="-1"><div class="modal-dialog modal-xl modal-dialog-scrollable"><div class="modal-content"><div class="modal-header bg-light border-bottom"><h5 class="modal-title font-monospace fw-bold"><i class="bi bi-database me-2 text-primary"></i>Raw Data</h5><button class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body p-0 position-relative"><div class="table-container" style="height: 100%;"><table id="rawTable" style="width:100%"><thead id="rawHead"></thead><tbody id="rawBody"></tbody></table></div></div></div></div></div>
+<div id="loader" style="display:none; position:fixed; inset:0; background:rgba(255,255,255,0.9); z-index:9999; flex-direction:column; align-items:center; justify-content:center;"><div class="spinner-border text-primary mb-3"></div><h6 class="fw-bold text-dark">Processing...</h6></div>
 <div class="toast-container position-fixed top-0 end-0 p-3" id="toastArea"></div>
-<div id="multiPopover"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
+<div id="multiPopover" style="display:none"><div class="popover-content" id="multiOptions"></div><div class="popover-footer"><button class="btn btn-primary btn-sm w-100" onclick="saveMultiFromPopover()">Apply</button></div></div>
 <div id="columnFilterPopover"><div class="p-3"><div class="d-flex justify-content-between align-items-center mb-2"><h6 class="fw-bold m-0">Filter Column</h6><button class="btn-close small" onclick="closeColumnFilterPopover()"></button></div><div class="d-flex gap-2"><select id="filterOpSelect" class="form-select form-select-sm" style="width:40%"><option value="contains">Contains</option><option value="eq">Equals</option><option value="empty">Is Empty</option><option value="notempty">Not Empty</option></select><div><input type="text" id="filterValInput" class="form-control form-control-sm" placeholder="Value..."></div></div></div><div class="modal-footer border-0 pt-0"><button class="btn btn-sm btn-outline-secondary me-auto" onclick="clearColumnFilter()">Clear</button><button class="btn btn-sm btn-primary" onclick="applyColumnFilter()">Apply</button></div></div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
 <script>
-// --- CONFIG & CONSTANTS ---
 const CONFIG = { proxy: "https://cors-anywhere.herokuapp.com/", api: "https://api.smartsheet.com/2.0", ROW_HEIGHT: 48, VIRTUAL_BUFFER: 10 };
 const SMARTSHEET_PALETTE = ["none","transparent","#000000","#0B347D","#1061C3","#237F2E","#40B14B","#592C00","#5FB3F9","#61058B","#757575","#7ED085","#9210AD","#974C00","#991310","#B9DDFC","#BDBDBD","#C6E7C8","#D0AF8F","#D190DA","#E2F2FE","#E5E5E5","#E7F5E9","#EA352E","#EA5000","#EBC700","#EBC7EF","#EEDCCA","#F2E8DE","#F4E4F5","#F87E7D","#FEFF00","#FEFF85","#FF8D00","#FFCCD2","#FFCD7A","#FFE1AF","#FFEBEE","#FFED00","#FFF3DF","#FFFEE6","#FFFFFF"];
 
-// --- GLOBAL STATE ---
-let STATE = {};
-let sortableInstance, refreshInterval, searchDebounceTimer;
+let STATE = { sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(), adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), depth: {} }, tempMulti: null, tempFilterCol: null, logs: [], lastModifiedAt: null, conflicts: [], views: [], currentViewId: null, flatRenderList: [] };
+let sortableInstance = null, searchDebounceTimer = null;
 
-function initializeState() {
-    STATE = {
-        sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(),
-        adds: [], dels: new Set(), edits: {}, hierarchyChanges: {},
-        meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), depth: {} },
-        tempMulti: null, tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false,
-        autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
-        flatRenderList: [], // For virtualization: array of {id, depth}
-        rowMap: new Map() // For O(1) lookups
-    };
-}
-
-// --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
-    initializeState();
-    if (!localStorage.getItem('smToken')) new bootstrap.Modal('#settingsModal').show();
+    if(!localStorage.getItem('smToken')) new bootstrap.Modal('#settingsModal').show();
     document.body.setAttribute('data-theme', localStorage.getItem('smTheme') || 'light');
     updateThemeIcon();
     renderLibrary();
@@ -229,165 +295,172 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-// --- DATA LOADING & PREPARATION ---
-async function loadSheet(id) {
-    if (!id) return;
-    showLoader(true);
-    initializeState();
-    STATE.sheetId = id;
-    document.getElementById('dashboardView').classList.remove('active');
-    document.getElementById('editorView').classList.add('active');
-    try {
-        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue`);
-        STATE.serverRows = JSON.parse(JSON.stringify(d.rows));
-        STATE.allRows = d.rows;
-        STATE.cols = d.columns;
-        STATE.lastModifiedAt = d.modifiedAt;
-        document.getElementById('sheetName').innerText = d.name;
-        document.getElementById('sheetIdDisplay').innerText = d.id;
-        addToLib(d.id, d.name);
-        STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id));
-        rebuildRowMapAndDepth();
-        loadViews();
-        renderTable(true);
-    } catch (e) {
-        showToast(e.message || e, 'danger');
-        toDash();
-    } finally {
-        showLoader(false);
-    }
-}
+function toggleTheme() { const next = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'; document.body.setAttribute('data-theme', next); localStorage.setItem('smTheme', next); updateThemeIcon(); }
+function updateThemeIcon() { document.getElementById('themeIcon').className = document.body.getAttribute('data-theme') === 'dark' ? "bi bi-sun-fill" : "bi bi-moon-stars-fill"; }
 
-function rebuildRowMapAndDepth() {
-    const allCurrentRows = [...STATE.allRows, ...STATE.adds];
-    STATE.rowMap.clear();
-    allCurrentRows.forEach(r => STATE.rowMap.set(r.id, r));
-    allCurrentRows.forEach(r => {
-        let d = 0, curr = r;
-        while (curr && curr.parentId && STATE.rowMap.has(curr.parentId)) {
-            d++;
-            curr = STATE.rowMap.get(curr.parentId);
-        }
-        STATE.meta.depth[r.id] = d;
-    });
-}
+function getDefaultView() { return { id: 'default', name: 'Main View', visibleCols: STATE.cols.map(c => c.id), colWidths: {}, filters: [] }; }
+function loadViews() { const stored = localStorage.getItem(`smViews_${STATE.sheetId}`); STATE.views = stored ? JSON.parse(stored) : [getDefaultView()]; if (!STATE.currentViewId || !STATE.views.find(v => v.id === STATE.currentViewId)) { STATE.currentViewId = STATE.views[0].id; } renderViewsBar(); }
+function saveViewsToStorage() { if(STATE.sheetId) localStorage.setItem(`smViews_${STATE.sheetId}`, JSON.stringify(STATE.views)); }
+function renderViewsBar() { const container = document.getElementById('viewsContainer'); let html = STATE.views.map(v => `<div class="view-tab ${v.id === STATE.currentViewId ? 'active' : ''}" onclick="switchView('${v.id}')">${v.name} ${v.id === STATE.currentViewId ? `<i class="bi bi-caret-down-fill small ms-1" onclick="event.stopPropagation(); editViewConfig('${v.id}')"></i>` : ''}</div>`).join(''); html += `<div class="view-add-btn" onclick="addNewView()" title="New View"><i class="bi bi-plus-lg"></i></div>`; container.innerHTML = html; }
+function switchView(id) { if (STATE.currentViewId === id) return; STATE.currentViewId = id; renderViewsBar(); renderSetupCols(); renderTable(true); }
+function addNewView() { const newView = { id: 'view_' + Date.now(), name: 'New View', visibleCols: STATE.cols.map(c => c.id), colWidths: {}, filters: [] }; STATE.views.push(newView); saveViewsToStorage(); switchView(newView.id); }
+function editViewConfig(id) { const v = STATE.views.find(x => x.id === id); if (!v) return; document.getElementById('viewNameInput').value = v.name; new bootstrap.Modal('#viewConfigModal').show(); }
+function saveViewConfig() { const v = STATE.views.find(x => x.id === STATE.currentViewId); if(!v) return; v.name = document.getElementById('viewNameInput').value.trim() || "Untitled"; saveViewsToStorage(); bootstrap.Modal.getInstance('#viewConfigModal').hide(); renderViewsBar(); }
+function deleteCurrentView() { if(STATE.views.length <= 1) return alert("Cannot delete the only view."); if(!confirm("Delete this view?")) return; STATE.views = STATE.views.filter(v => v.id !== STATE.currentViewId); STATE.currentViewId = STATE.views[0].id; saveViewsToStorage(); bootstrap.Modal.getInstance('#viewConfigModal').hide(); renderViewsBar(); renderTable(true); }
 
-// --- VIRTUALIZED RENDERING ENGINE ---
-function renderTable(fullRefresh = false) {
-    if (fullRefresh) renderTableHeader();
-    recalcFlatListAndRender();
-}
+async function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts); if(res.status === 403) { if(confirm("Proxy Locked. Open unlock page?")) window.open('https://cors-anywhere.herokuapp.com/corsdemo', '_blank'); throw 'PROXY_LOCK'; } const json = await res.json(); if(!res.ok) throw (json.message || `Error ${res.status}`); return json; }
+async function loadSheet(id) { if(!id) return; STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); await fetchData(); loadViews(); renderTable(true); }
+function resetState() { Object.assign(STATE, { serverRows: [], allRows: [], adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, selectedRowIds: new Set(), meta: { collapsed: new Set(), setupCollapsed: new Set(), depth: {} }, lastModifiedAt: null, conflicts: [] }); updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; }
+async function fetchData() { showLoader(true); try { const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue`); STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); STATE.allRows = JSON.parse(JSON.stringify(d.rows)); STATE.cols = d.columns; STATE.lastModifiedAt = d.modifiedAt; document.getElementById('sheetName').innerText = d.name; document.getElementById('sheetIdDisplay').innerText = d.id; addToLib(d.id, d.name); STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); calcAllDepth(); } catch(e) { showToast(e, 'danger'); } finally { showLoader(false); } }
+function calcAllDepth() { STATE.meta.depth = {}; const map = new Map([...STATE.allRows, ...STATE.adds].map(r => [r.id, r])); [...STATE.allRows, ...STATE.adds].forEach(r => { let d=0, curr=r; while(curr && curr.parentId && map.has(curr.parentId)) { d++; curr=map.get(curr.parentId); } STATE.meta.depth[r.id]=d; }); }
+function toDash() { if(Object.keys(STATE.edits).length > 0 && !confirm("Unsaved changes. Exit?")) return; document.getElementById('editorView').classList.remove('active'); document.getElementById('dashboardView').classList.add('active'); renderLibrary(); }
 
+function renderTable(fullRefresh = true) { if (fullRefresh) renderTableHeader(); recalcFlatListAndRender(); }
 function renderTableHeader() {
     const th = document.getElementById('tHead');
     const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
     const visibleSet = new Set(curView.visibleCols);
-    let h = '<tr><th class="text-center">Actions</th>';
+    const colWidths = curView.colWidths || {};
+    const filters = curView.filters || [];
+    const primColId = STATE.cols.find(c => c.primary)?.id;
+    let h = `<tr><th class="text-center">Actions</th>`;
     STATE.cols.forEach(c => {
         if (visibleSet.has(c.id)) {
-            const w = (curView.colWidths || {})[c.id] ? `${curView.colWidths[c.id]}px` : (c.primary ? '250px' : '150px');
-            const isPrimary = c.primary;
-            h += `<th style="width:${w}" class="${isPrimary ? 'primary-header-cell' : ''} ${STATE.selectedCol === c.id ? 'selected' : ''}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})"><div class="col-title-wrap"><span>${c.title}</span><button class="col-filter-btn ${(curView.filters || []).some(f=>f.colId===c.id)?'active':''}" onclick="openColumnFilterPopover(event, ${c.id})"><i class="bi bi-funnel-fill"></i></button></div>${isPrimary ? generateOutlineButtonsHTML('MAIN') : ''}<div class="resizer" onmousedown="startResize(event, this)"></div></th>`;
+            const w = colWidths[c.id] ? `${colWidths[c.id]}px` : (c.id === primColId ? '250px' : '150px');
+            const isPrimary = c.id === primColId;
+            const isFiltered = filters.some(f => f.colId === c.id);
+            h += `<th style="width:${w}" class="${isPrimary ? 'primary-header-cell' : ''}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})"><div class="col-title-wrap"><span>${c.title}</span><button class="col-filter-btn ${isFiltered ? 'active' : ''}" onclick="openColumnFilterPopover(event, ${c.id})"><i class="bi bi-funnel-fill"></i></button></div>${isPrimary ? generateOutlineButtonsHTML('MAIN') : ''}</th>`;
         }
     });
-    h += '</tr>';
+    h += `</tr>`;
     th.innerHTML = h;
     initSortable();
 }
-
 function recalcFlatListAndRender() {
     const allVisibleRows = getFilteredAndSearchedRows();
     const flatList = [];
     const rowMap = new Map(allVisibleRows.map(r => [r.id, r]));
-
-    function traverse(row, depth) {
-        if (STATE.dels.has(row.id)) return;
-        flatList.push({ id: row.id, depth });
-        if (!STATE.meta.collapsed.has(row.id)) {
-            const children = allVisibleRows.filter(r => r.parentId === row.id);
-            children.forEach(child => traverse(child, depth + 1));
-        }
-    }
+    function traverse(row, depth) { if (STATE.dels.has(row.id)) return; flatList.push({ id: row.id, depth }); if (!STATE.meta.collapsed.has(row.id)) { const children = allVisibleRows.filter(r => r.parentId === row.id); children.forEach(child => traverse(child, depth + 1)); } }
     const rootRows = allVisibleRows.filter(r => !r.parentId || !rowMap.has(r.parentId));
     rootRows.forEach(r => traverse(r, 0));
-
     STATE.flatRenderList = flatList;
     document.getElementById('tableScroller').scrollTop = 0;
     renderVirtualRows();
 }
-
 function renderVirtualRows() {
     const scroller = document.getElementById('tableScroller');
+    const container = document.getElementById('virtualContainer');
     const tbody = document.getElementById('tBody');
     const { scrollTop, clientHeight } = scroller;
-
     const totalHeight = STATE.flatRenderList.length * CONFIG.ROW_HEIGHT;
-    scroller.firstElementChild.style.height = `${totalHeight}px`;
-
+    container.style.height = `${totalHeight}px`;
     const startIndex = Math.max(0, Math.floor(scrollTop / CONFIG.ROW_HEIGHT) - CONFIG.VIRTUAL_BUFFER);
     const endIndex = Math.min(STATE.flatRenderList.length, Math.ceil((scrollTop + clientHeight) / CONFIG.ROW_HEIGHT) + CONFIG.VIRTUAL_BUFFER);
-    
-    tbody.style.transform = `translateY(${startIndex * CONFIG.ROW_HEIGHT}px)`;
-
     const visibleItems = STATE.flatRenderList.slice(startIndex, endIndex);
     const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
     const visibleSet = new Set(curView.visibleCols);
-
-    let html = '';
-    visibleItems.forEach(item => {
-        const r = STATE.rowMap.get(item.id);
-        if (!r) return;
+    let html = visibleItems.map(item => {
+        const r = [...STATE.allRows, ...STATE.adds].find(row => row.id === item.id);
+        if (!r) return '';
         let rowClass = '';
-        if (STATE.dels.has(r.id)) rowClass = 'row-deleted';
-        else if (String(r.id).startsWith('NEW')) rowClass = 'row-new';
-        else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass = 'row-modified';
-        
+        if (STATE.dels.has(r.id)) rowClass += 'row-deleted ';
+        else if (String(r.id).startsWith('NEW')) rowClass += 'row-new ';
+        else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass += 'row-modified ';
         const fmtInfo = getFormatInfo(r.format);
-        html += `<tr data-id="${r.id}" class="${rowClass}" style="${fmtInfo.bg ? `--row-bg-override: ${fmtInfo.bg};` : ''} ${fmtInfo.style}">`;
-        html += `<td class="text-center p-0">${STATE.dels.has(r.id) ? `<button class="btn btn-sm text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>` : `<div class="actions-wrapper"><button class="action-btn drag-handle"><i class="bi bi-grip-vertical"></i></button><button class="action-btn" onclick="indentRow('${r.id}')"><i class="bi bi-text-indent-left"></i></button><button class="action-btn" onclick="outdentRow('${r.id}')"><i class="bi bi-text-indent-right"></i></button><div class="add-btn-group"><button class="add-btn-part" onclick="addNewRowAbove('${r.id}')"><i class="bi bi-chevron-up"></i></button><button class="add-btn-part" onclick="addNewRowBelow('${r.id}')"><i class="bi bi-chevron-down"></i></button></div><button class="action-btn btn-del" onclick="delRow('${r.id}')"><i class="bi bi-trash"></i></button></div>`}</td>`;
-        
+        const rowBgStyle = fmtInfo.bg ? `--row-bg-override: ${fmtInfo.bg};` : '';
+        let rowHtml = `<tr data-id="${r.id}" style="position: absolute; top: ${STATE.flatRenderList.indexOf(item) * CONFIG.ROW_HEIGHT}px; width: 100%; ${rowBgStyle}">`;
+        rowHtml += `<td class="text-center border-end p-0">${STATE.dels.has(r.id) ? `<button class="btn btn-sm text-secondary" onclick="restoreRow('${r.id}')"><i class="bi bi-arrow-counterclockwise"></i></button>` : `<div class="actions-wrapper"><button class="action-btn drag-handle"><i class="bi bi-grip-vertical"></i></button><button class="action-btn" onclick="indentRow('${r.id}')"><i class="bi bi-text-indent-left"></i></button><button class="action-btn" onclick="outdentRow('${r.id}')"><i class="bi bi-text-indent-right"></i></button><div class="add-btn-group"><button class="add-btn-part" onclick="addNewRowAbove('${r.id}')"><i class="bi bi-chevron-up"></i></button><button class="add-btn-part" onclick="addNewRowBelow('${r.id}')"><i class="bi bi-chevron-down"></i></button></div><button class="action-btn btn-del" onclick="delRow('${r.id}')"><i class="bi bi-trash"></i></button></div>`}</td>`;
         STATE.cols.forEach(c => {
             if (!visibleSet.has(c.id)) return;
-            const cell = (r.cells || []).find(x => x.columnId === c.id);
-            const val = STATE.edits[r.id]?.[c.id] ?? (cell?.displayValue ?? cell?.value ?? '');
-            
-            html += `<td>`;
+            let val = STATE.edits[r.id]?.[c.id];
+            let cellFormat = null;
+            if (val === undefined) { const cell = (r.cells || []).find(x => x.columnId === c.id); val = cell ? (cell.displayValue ?? cell.value ?? '') : ''; if(cell) cellFormat = cell.format; }
+            rowHtml += `<td>`;
             if (c.primary) {
-                html += `<div class="tree-wrap">`;
-                for (let i = 0; i < item.depth; i++) html += `<div class="tree-indent"></div>`;
+                rowHtml += `<div class="tree-wrap">`;
+                for (let i = 0; i < item.depth; i++) rowHtml += `<div class="tree-indent"></div>`;
                 const hasChild = [...STATE.allRows, ...STATE.adds].some(x => x.parentId === r.id && !STATE.dels.has(x.id));
-                html += hasChild ? `<div class="tree-toggle ${STATE.meta.collapsed.has(r.id) ? '' : 'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px;flex-shrink:0;"></div>`;
+                rowHtml += hasChild ? `<div class="tree-toggle ${STATE.meta.collapsed.has(r.id) ? '' : 'expanded'}" onclick="toggle('${r.id}')"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px; flex-shrink: 0;"></div>`;
             }
-            html += getCellHtml(r.id, c, val, cell?.format);
-            if (c.primary) html += `</div>`;
-            html += `</td>`;
+            rowHtml += getCellHtml(r.id, c, val, cellFormat);
+            if (c.primary) rowHtml += `</div>`;
+            rowHtml += `</td>`;
         });
-        html += `</tr>`;
-    });
+        rowHtml += `</tr>`;
+        return rowHtml;
+    }).join('');
     tbody.innerHTML = html;
 }
-
-// --- INTERACTIONS & LOGIC (Complete Functions) ---
-// All your original functions are here, unmodified unless they trigger a re-render.
-function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); return fetch(CONFIG.proxy + CONFIG.api + ep, opts).then(async res => { if(!res.ok) throw (await res.json()); return res.json(); }); }
+function getFilteredAndSearchedRows() {
+    let rows = [...STATE.allRows, ...STATE.adds].filter(r => STATE.selectedRowIds.has(r.id) || String(r.id).startsWith('NEW'));
+    const currentView = STATE.views.find(v => v.id === STATE.currentViewId);
+    if (currentView?.filters?.length > 0) {
+        rows = rows.filter(r => {
+            for (const f of currentView.filters) {
+                const cell = r.cells.find(c => c.columnId === f.colId);
+                let val = String(STATE.edits[r.id]?.[f.colId] ?? cell?.displayValue ?? cell?.value ?? '').toLowerCase();
+                const filterVal = (f.value || '').toLowerCase();
+                if (f.operator === 'contains' && !val.includes(filterVal)) return false;
+                if (f.operator === 'eq' && val !== filterVal) return false;
+                if (f.operator === 'empty' && val !== '') return false;
+                if (f.operator === 'notempty' && val === '') return false;
+            }
+            return true;
+        });
+    }
+    const term = document.getElementById('search').value.toLowerCase();
+    if (term) {
+        const searchIds = new Set(rows.filter(r => (r.cells || []).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase().includes(term)).map(r => r.id));
+        const rowMap = new Map([...STATE.allRows, ...STATE.adds].map(r => [r.id, r]));
+        const finalSearchIds = new Set();
+        searchIds.forEach(id => { let curr = rowMap.get(id); while(curr) { finalSearchIds.add(curr.id); curr = rowMap.get(curr.parentId); } });
+        rows = [...STATE.allRows, ...STATE.adds].filter(r => finalSearchIds.has(r.id));
+    }
+    return rows;
+}
 function toggle(id) { if (STATE.meta.collapsed.has(id)) STATE.meta.collapsed.delete(id); else STATE.meta.collapsed.add(id); recalcFlatListAndRender(); }
-function debounceSearch(val) { clearTimeout(searchDebounceTimer); document.getElementById('search').value = val; searchDebounceTimer = setTimeout(() => renderTable(false), 300); }
-function getFilteredAndSearchedRows() { let rows = [...STATE.allRows, ...STATE.adds].filter(r => STATE.selectedRowIds.has(r.id) || String(r.id).startsWith('NEW')); const currentView = STATE.views.find(v => v.id === STATE.currentViewId); if (currentView?.filters?.length) { rows = rows.filter(r => currentView.filters.every(f => { let val = String(STATE.edits[r.id]?.[f.colId] ?? r.cells?.find(c=>c.columnId===f.colId)?.displayValue ?? '').toLowerCase(); const filterVal = (f.value || '').toLowerCase(); if (f.operator==='contains') return val.includes(filterVal); if (f.operator==='eq') return val===filterVal; if (f.operator==='empty') return val===''; if (f.operator==='notempty') return val!==''; return true; })); } const term = document.getElementById('search').value.toLowerCase(); if (term) { const searchIds = new Set(rows.filter(r => (r.cells||[]).map(c=>c.displayValue||c.value||'').join(' ').toLowerCase().includes(term)).map(r => r.id)); const rowMap = new Map([...STATE.allRows, ...STATE.adds].map(r => [r.id, r])); const finalIds = new Set(); searchIds.forEach(id => { let curr = rowMap.get(id); while(curr) { finalIds.add(curr.id); curr = rowMap.get(curr.parentId); } }); rows = rows.filter(r => finalIds.has(r.id)); } return rows; }
-function initSortable() { if(sortableInstance) sortableInstance.destroy(); const tbody = document.getElementById('tBody'); sortableInstance = new Sortable(tbody, { handle: '.drag-handle', animation: 150, onEnd: function (evt) { const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); const prevEl = evt.item.previousElementSibling; const siblingId = prevEl ? (isNaN(prevEl.dataset.id) ? prevEl.dataset.id : parseInt(prevEl.dataset.id)) : null; const rowToUpdate = STATE.rowMap.get(rid); const siblingRow = siblingId ? STATE.rowMap.get(siblingId) : null; const newParentId = siblingRow ? siblingRow.parentId : null; if(rowToUpdate) rowToUpdate.parentId = newParentId; STATE.hierarchyChanges[rid] = { parentId: newParentId, siblingId: siblingId }; rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); } }); }
-function indentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const idx = STATE.flatRenderList.findIndex(r => r.id === rid); if(idx <= 0) return; const prevRowMeta = STATE.flatRenderList[idx-1]; const rowToUpdate = STATE.rowMap.get(rid); if(rowToUpdate) rowToUpdate.parentId = prevRowMeta.id; STATE.hierarchyChanges[rid] = { parentId: prevRowMeta.id }; rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); }
-function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const row = STATE.rowMap.get(rid); if(!row || !row.parentId) return; const parent = STATE.rowMap.get(row.parentId); const newPid = parent ? parent.parentId : undefined; row.parentId = newPid; STATE.hierarchyChanges[rid] = { parentId: newPid, siblingId: parent.id }; rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); }
-function delRow(id) { if(String(id).startsWith('NEW')) { STATE.adds = STATE.adds.filter(r => r.id !== id); STATE.rowMap.delete(id); } else STATE.dels.add(parseInt(id)); renderTable(false); updateSyncUI(); }
+function debounceSearch(val) { clearTimeout(searchDebounceTimer); document.getElementById('search').value = val; document.getElementById('desktopSearch').value = val; searchDebounceTimer = setTimeout(() => renderTable(false), 300); }
+function initSortable() { if(sortableInstance) sortableInstance.destroy(); const tbody = document.getElementById('tBody'); sortableInstance = new Sortable(tbody, { handle: '.drag-handle', animation: 150, onEnd: function (evt) { const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); const prevEl = evt.item.previousElementSibling; const siblingId = prevEl ? (isNaN(prevEl.dataset.id) ? prevEl.dataset.id : parseInt(prevEl.dataset.id)) : null; const allRows = [...STATE.allRows, ...STATE.adds]; const rowToUpdate = allRows.find(r=>r.id===rid); const siblingRow = siblingId ? allRows.find(r=>r.id===siblingId) : null; const newParentId = siblingRow ? siblingRow.parentId : null; if(rowToUpdate) rowToUpdate.parentId = newParentId; STATE.hierarchyChanges[rid] = { parentId: newParentId, siblingId: siblingId }; calcAllDepth(); renderTable(false); updateSyncUI(); } }); }
+function updateSyncUI() { const modCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size; document.getElementById('cntMod').innerText = modCount; document.getElementById('cntAdd').innerText = STATE.adds.length; document.getElementById('cntDel').innerText = STATE.dels.size; const hasChanges = (modCount + STATE.adds.length + STATE.dels.size) > 0; document.getElementById('btnSync').disabled = !hasChanges; document.getElementById('btnDiscard').disabled = !hasChanges; }
+function discard() { if(confirm('Discard all unsaved changes?')) { resetState(); fetchData().then(() => renderTable(true)); } }
+async function sync() { showLoader(true); try { if(STATE.dels.size > 0) await api(`/sheets/${STATE.sheetId}/rows?ids=${Array.from(STATE.dels).join(',')}&ignoreRowsNotFound=true`, 'DELETE'); if (STATE.adds.length > 0) { const payload = STATE.adds.map(r => { const edits = STATE.edits[r.id] || {}; const cells = Object.keys(edits).map(cid => ({ columnId: parseInt(cid), value: edits[cid] })); return { cells, parentId: r.parentId, siblingId: r.siblingId }; }); await api(`/sheets/${STATE.sheetId}/rows`, 'POST', payload); } const updateIds = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]); if(updateIds.size > 0) { const updates = Array.from(updateIds).filter(rid => !String(rid).startsWith("NEW")).map(rid => { const payload = { id: parseInt(rid) }; if(STATE.edits[rid]) payload.cells = Object.keys(STATE.edits[rid]).map(cid => ({ columnId: parseInt(cid), value: STATE.edits[rid][cid] })); if(STATE.hierarchyChanges[rid]) Object.assign(payload, STATE.hierarchyChanges[rid]); return payload; }); if (updates.length > 0) await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); } resetState(); await fetchData(); renderTable(true); showToast('Sync Successful!', 'success'); } catch(e) { showToast('Sync Failed: ' + e, 'danger'); } finally { showLoader(false); } }
+function indentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const idx = STATE.flatRenderList.findIndex(r => r.id === rid); if(idx <= 0) return; const prevId = STATE.flatRenderList[idx-1].id; const allRows = [...STATE.allRows, ...STATE.adds]; const rowToUpdate = allRows.find(r => r.id === rid); if(rowToUpdate) rowToUpdate.parentId = prevId; STATE.hierarchyChanges[rid] = { parentId: prevId }; calcAllDepth(); renderTable(false); updateSyncUI(); }
+function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const allRows = [...STATE.allRows, ...STATE.adds]; const row = allRows.find(r => r.id === rid); if(!row?.parentId) return; const parent = allRows.find(p => p.id === row.parentId); const newPid = parent?.parentId; row.parentId = newPid; STATE.hierarchyChanges[rid] = { parentId: newPid, siblingId: parent.id }; calcAllDepth(); renderTable(false); updateSyncUI(); }
+function delRow(id) { if(String(id).startsWith('NEW')) STATE.adds = STATE.adds.filter(r => r.id !== id); else STATE.dels.add(parseInt(id)); renderTable(false); updateSyncUI(); }
 function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(false); updateSyncUI(); }
-function addNewRow(relativeId, above = false) { const relativeRow = STATE.rowMap.get(relativeId); if (!relativeRow) return; const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId: relativeRow.parentId, rowNumber: 9999 }; STATE.adds.push(newRow); STATE.rowMap.set(tempId, newRow); STATE.selectedRowIds.add(tempId); if(above){ const siblings = [...STATE.allRows,...STATE.adds].filter(r=>r.parentId===relativeRow.parentId); const idx = siblings.findIndex(r=>r.id===relativeId); newRow.siblingId = idx > 0 ? siblings[idx-1].id : null; } else { newRow.siblingId = relativeId; } rebuildRowMapAndDepth(); renderTable(false); updateSyncUI(); }
-function addNewRowAbove(id) { addNewRow(id, true); }
-function addNewRowBelow(id) { addNewRow(id, false); }
-function updateSyncUI() { const modCount = new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)]).size; document.getElementById('cntMod').innerText = modCount; document.getElementById('cntAdd').innerText = STATE.adds.length; document.getElementById('cntDel').innerText = STATE.dels.size; const hasChanges = modCount + STATE.adds.length + STATE.dels.size > 0; document.getElementById('btnSync').disabled = !hasChanges; document.getElementById('btnDiscard').disabled = !hasChanges; }
-function discard() { if (confirm('Discard changes?')) loadSheet(STATE.sheetId); }
-async function sync() { showLoader(true); try { if (STATE.dels.size > 0) await api(`/sheets/${STATE.sheetId}/rows?ids=${[...STATE.dels].join(',')}&ignoreRowsNotFound=true`, 'DELETE'); if (STATE.adds.length > 0) { const newRows = STATE.adds.map(r => { const edits = STATE.edits[r.id] || {}; const cells = STATE.cols.map(c => ({ columnId: c.id, value: edits[c.id] })); return { toTop: !r.siblingId, siblingId: r.siblingId, parentId: r.parentId, cells }; }); await api(`/sheets/${STATE.sheetId}/rows`, 'POST', newRows); } const updates = []; [...new Set([...Object.keys(STATE.edits), ...Object.keys(STATE.hierarchyChanges)])].forEach(rid => { if (String(rid).startsWith('NEW')) return; const p = { id: parseInt(rid) }; if (STATE.edits[rid]) p.cells = Object.entries(STATE.edits[rid]).map(([cid, val]) => ({ columnId: parseInt(cid), value: val })); if (STATE.hierarchyChanges[rid]) Object.assign(p, STATE.hierarchyChanges[rid]); updates.push(p); }); if (updates.length > 0) await api(`/sheets/${STATE.sheetId}/rows`, 'PUT', updates); showToast('Sync Successful!', 'success'); await loadSheet(STATE.sheetId); } catch(e) { showToast('Sync Failed: ' + e.message, 'danger'); } finally { showLoader(false); } }
-function getCellHtml(rid, col, val, fmt) { const safeVal = String(val||'').replace(/</g,"&lt;"); const fmtInfo = getFormatInfo(fmt); let s = fmtInfo.style; if (fmtInfo.bg) s += `background-color:${fmtInfo.bg}!important;`; if(col.type === 'CHECKBOX') return `<div class="d-flex justify-content-center align-items-center h-100" style="${s}"><input type="checkbox" class="form-check-input" ${val?'checked':''} onchange="edit('${rid}',${col.id},this.checked)"></div>`; if(col.options?.length){ if(col.type.includes('MULTI')){ let arr = String(val).split(',').map(s=>s.trim()).filter(Boolean); let badges = arr.length ? arr.map(t=>`<span class="badge-pill">${t}</span>`).join('') : `<span class="text-muted small fst-italic">Select...</span>`; return `<div class="badge-cell" onclick="openMultiPopover(event,'${rid}',${col.id},'${encodeURIComponent(JSON.stringify(arr))}')" style="${s}">${badges}</div>`; } else { return `<select class="cell-textarea form-select" style="${s}" onchange="edit('${rid}',${col.id},this.value)">${['', ...col.options].map(o=>`<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('')}</select>`; } } return `<textarea class="cell-textarea" style="${s}" onchange="edit('${rid}',${col.id},this.value)">${safeVal}</textarea>`; }
-function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); document.querySelector(`tr[data-id="${rid}"]`)?.classList.add('row-modified'); }
-// All other utility functions follow...
-function loadFromDash(){const id=document.getElementById('dashSheetId').value.trim();if(id)loadSheet(id)}function toDash(){if(Object.keys(STATE.edits).length>0&&!confirm("Unsaved changes. Exit?"))return;stopAutoRefresh();document.getElementById('editorView').classList.remove('active');document.getElementById('dashboardView').classList.add('active');renderLibrary()}function toggleTheme(){const n=document.body.getAttribute('data-theme')==='dark'?'light':'dark';document.body.setAttribute('data-theme',n);localStorage.setItem('smTheme',n);updateThemeIcon()}function updateThemeIcon(){const t=document.body.getAttribute('data-theme')==='dark';document.getElementById('themeIcon').className=t?"bi bi-sun-fill":"bi bi-moon-stars-fill"}function renderLibrary(){const t=JSON.parse(localStorage.getItem('smLib')||'[]');const e=document.getElementById('libraryGrid');e.innerHTML='';document.getElementById('emptyLib').style.display=t.length?'none':'block';t.forEach(t=>{const n=document.createElement('div');n.className='col-12 col-md-6';n.innerHTML=`<div class=sheet-card onclick="loadSheet('${t.id}')"><div class=fw-bold>${t.name}</div><div class="small text-muted font-monospace">${t.id}</div></div>`;e.appendChild(n)})}function addToLib(t,e){let n=JSON.parse(localStorage.getItem('smLib')||'[]');n=n.filter(e=>e.id!==t);n.unshift({id:t,name:e});localStorage.setItem('smLib',JSON.stringify(n.slice(0,10)))}function openMultiPopover(e,t,n,i){e.stopPropagation();const o=document.getElementById('multiPopover');if(STATE.tempMulti?.rid===t&&STATE.tempMulti?.cid===n&&o.style.display!=='none'){closeMultiPopover();return}const l=e.currentTarget;const a=JSON.parse(decodeURIComponent(i));const s=STATE.cols.find(e=>e.id===n);STATE.tempMulti={rid:t,cid:n,cell:l};const d=document.getElementById('multiOptions');d.innerHTML='';[...new Set([...s.options||[],...a])].forEach((e,t)=>{if(!e)return;const n=a.includes(e)?'checked':'';d.innerHTML+=`<div class=form-check><input class=form-check-input type=checkbox value="${e.replace(/"/g,'&quot;')}" id="opt_${t}" ${n}><label class="form-check-label w-100 ps-2" for="opt_${t}">${e}</label></div>`});repositionPopover(o,l);o.style.display='flex'}function closeMultiPopover(){document.getElementById('multiPopover').style.display='none';STATE.tempMulti=null}function saveMultiFromPopover(){if(!STATE.tempMulti)return;const{rid:e,cid:t}=STATE.tempMulti;const n=Array.from(document.querySelectorAll('#multiOptions input:checked')).map(e=>e.value);edit(e,t,n.join(', '));const i=STATE.tempMulti.cell;const o=STATE.cols.find(e=>e.id===t);i.innerHTML=getCellHtml(e,o,n.join(', ')).match(/<div class="badge-cell"[^>]*>([\s\S]*?)<\/div>/)[1];closeMultiPopover()}function repositionPopover(e,t){if(!t)return;const n=t.getBoundingClientRect();e.style.width=`${n.width}px`;e.style.top=`${n.bottom}px`;e.style.left=`${n.left}px`}function handleClickOutside(e){const t=document.getElementById('multiPopover');if(t.style.display!=='none'&&!t.contains(e.target)&&!e.target.closest('.badge-cell'))closeMultiPopover();const n=document.getElementById('columnFilterPopover');if(n.style.display!=='none'&&!n.contains(e.target)&&!e.target.closest('.col-filter-btn'))closeColumnFilterPopover()}function selectColumn(e,t){if(e.target.closest('.col-filter-btn')||e.target.closest('.resizer'))return;e.stopPropagation();STATE.selectedCol=STATE.selectedCol===t?null:t;renderTableHeader()}function deselectColumn(e){if(!e.target.closest('th')&&STATE.selectedCol!==null){STATE.selectedCol=null;renderTableHeader()}}function openColumnFilterPopover(e,t){e.stopPropagation();const n=document.getElementById('columnFilterPopover');if(STATE.tempFilterCol?.id===t&&n.style.display!=='none'){closeColumnFilterPopover();return}STATE.tempFilterCol={id:t,btn:e.currentTarget};const i=STATE.views.find(e=>e.id===STATE.currentViewId)?.filters?.find(e=>e.colId===t);document.getElementById('filterOpSelect').value=i?.operator||'contains';document.getElementById('filterValInput').value=i?.value||'';repositionPopover(n,e.currentTarget);n.style.display='block'}function closeColumnFilterPopover(){document.getElementById('columnFilterPopover').style.display='none';STATE.tempFilterCol=null}function applyColumnFilter(){if(!STATE.tempFilterCol)return;const{id:e}=STATE.tempFilterCol;const t=document.getElementById('filterOpSelect').value;const n=document.getElementById('filterValInput').value;const i=STATE.views.find(e=>e.id===STATE.currentViewId);if(!i.filters)i.filters=[];i.filters=i.filters.filter(t=>t.colId!==e);if(n||t==='empty'||t==='notempty')i.filters.push({colId:e,operator:t,value:n});saveViewsToStorage();renderTable(false);closeColumnFilterPopover()}function clearColumnFilter(){if(!STATE.tempFilterCol)return;const{id:e}=STATE.tempFilterCol;const t=STATE.views.find(e=>e.id===STATE.currentViewId);t.filters=t.filters.filter(t=>t.colId!==e);saveViewsToStorage();renderTable(false);closeColumnFilterPopover()}function showLoader(e){document.getElementById('loader').style.display=e?'flex':'none'}function showToast(e,t='primary'){const n=document.createElement('div');n.className=`toast align-items-center text-white bg-${t} border-0 show`;n.innerHTML=`<div class=d-flex><div class=toast-body>${e}</div><button class=btn-close data-bs-dismiss=toast></button></div>`;document.getElementById('toastArea').appendChild(n);setTimeout(()=>n.remove(),4e3)}function openSettings(){document.getElementById('apiToken').value=localStorage.getItem('smToken')||'';new bootstrap.Modal('#settingsModal').show()}function saveSettings(){localStorage.setItem('smToken',document.getElementById('apiToken').value);bootstrap.Modal.getInstance('#settingsModal').hide()}function getFormatInfo(e){if(!e)return{style:'',bg:null};const t=e.split(',');let n='',i=null;if(t.length>9){const e=parseInt(t[9]);!isNaN(e)&&SMARTSHEET_PALETTE[e]&&e>1&&(i=SMARTSHEET_PALETTE[e])}if(t.length>8){const e=parseInt(t[8]);!isNaN(e)&&SMARTSHEET_PALETTE[e]&&e>1&&(n+=`color:${SMARTSHEET_PALETTE[e]}!important;`)}if(t[2]==='1')n+='font-weight:bold;';if(t[3]==='1')n+='font-style:italic;';return{style:n,bg:i}}function generateOutlineButtonsHTML(e){let t=0;Object.values(STATE.meta.depth).forEach(e=>{t=Math.max(t,e)});let n='';for(let i=1;i<=t+1;i++)n+=`<button class=btn onclick="setOutline(${i},'${e}')">${i}</button>`;n+='<button class=btn onclick="setOutline(99,\''+e+"')\">All</button>";return`<div class=header-outline-btns>${n}</div>`}function setOutline(e,t){const n=t==='SETUP'?STATE.meta.setupCollapsed:STATE.meta.collapsed;n.clear();e<99&&STATE.allRows.forEach(t=>{const i=STATE.meta.depth[t.id]||0;i>=e-1&&n.add(t.id)});if(t==='SETUP')renderSetupTree();else renderTable(false)}function renderSetupTree(){const e=document.getElementById('setupRowSearch').value.toLowerCase();const t=document.getElementById('setupRowTree');const n=STATE.cols.find(e=>e.primary)?.id;const i=new Map(STATE.allRows.map(e=>[e.id,e]));let o='';STATE.allRows.forEach(t=>{if(isSetupHidden(t,i))return;const l=t.cells.find(e=>e.columnId===n)?.displayValue||`Row ${t.rowNumber}`;if(e&&!String(l).toLowerCase().includes(e))return;const a=STATE.meta.depth[t.id]||0;const s=STATE.selectedRowIds.has(t.id)?'checked':'';const d=a*20;const r=STATE.allRows.some(e=>e.parentId===t.id);const c=STATE.meta.setupCollapsed.has(t.id);let u=r?`<div class="tree-toggle ${c?'':'expanded'}" onclick="toggleSetup(${t.id})"><i class="bi bi-caret-right-fill"></i></div>`:'<div style=width:28px></div>';o+=`<div style="display:flex;align-items:center;padding-left:${d}px">${u}<input type=checkbox class=form-check-input onchange="toggleSetupRow(${t.id},this.checked)" ${s}><span>${l}</span></div>`});t.innerHTML=o}function openSetup(){renderSetupTree();renderSetupCols();new bootstrap.Modal('#setupModal').show()}function isSetupHidden(e,t){if(!e.parentId)return false;if(STATE.meta.setupCollapsed.has(e.parentId))return true;const n=t.get(e.parentId);return!!n&&isSetupHidden(n,t)}function toggleSetup(e){if(STATE.meta.setupCollapsed.has(e))STATE.meta.setupCollapsed.delete(e);else STATE.meta.setupCollapsed.add(e);renderSetupTree()}function toggleSetupRow(e,t){if(t)STATE.selectedRowIds.add(e);else STATE.selectedRowIds.delete(e);const n=STATE.allRows.filter(t=>t.parentId===e);n.forEach(e=>toggleSetupRow(e.id,t));renderSetupTree()}function renderSetupCols(){const e=document.getElementById('setupColList');if(!e)return;const t=STATE.views.find(e=>e.id===STATE.currentViewId);const n=new Set(t?t.visibleCols:STATE.cols.map(e=>e.id));const i=STATE.cols.find(e=>e.primary)?.id;let o='';STATE.cols.forEach(t=>{const e=t.id===i;const l=n.has(t.id)||e?'checked':'';const a=e?'disabled':'';o+=`<div class=form-check><input class=form-check-input type=checkbox value=${t.id} id="col_${t.id}" ${l} ${a}><label class=form-check-label for="col_${t.id}">${t.title}</label></div>`});e.innerHTML=o;document.getElementById('badgeCols').innerText=n.size}function applySetup(){const e=STATE.views.find(e=>e.id===STATE.currentViewId);if(!e)return;let t=Array.from(document.querySelectorAll('#setupColList input:checked')).map(e=>parseInt(e.value));const n=STATE.cols.find(e=>e.primary)?.id;n&&!t.includes(n)&&t.unshift(n);e.visibleCols=t;saveViewsToStorage();bootstrap.Modal.getInstance('#setupModal').hide();renderTable(true)}function startResize(e,t){e.preventDefault();e.stopPropagation();let n=e.clientX;let i=t.parentElement;let o=i.getBoundingClientRect().width;const l=t=>{t.preventDefault();const e=t.clientX;const l=Math.max(50,o+(e-n));i.style.width=`${l}px`};const a=()=>{document.removeEventListener('mousemove',l);document.removeEventListener('mouseup',a);if(i.dataset.colId)updateViewColState(parseInt(i.dataset.colId),parseInt(i.style.width))};document.addEventListener('mousemove',l);document.addEventListener('mouseup',a)}function saveViewConfig(){const e=STATE.views.find(e=>e.id===STATE.currentViewId);if(!e)return;e.name=document.getElementById('viewNameInput').value.trim()||"Untitled";saveViewsToStorage();bootstrap.Modal.getInstance('#viewConfigModal').hide();renderViewsBar();renderTable(true)}function deleteCurrentView(){if(STATE.views.length<=1)return;if(!confirm("Delete this view?"))return;STATE.views=STATE.views.filter(e=>e.id!==STATE.currentViewId);STATE.currentViewId=STATE.views[0].id;saveViewsToStorage();bootstrap.Modal.getInstance('#viewConfigModal').hide();renderViewsBar();renderTable(true)}
+function _createAndInsertRow(parentId, siblingId = null) { const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId, siblingId }; STATE.adds.push(newRow); STATE.selectedRowIds.add(tempId); calcAllDepth(); renderTable(false); updateSyncUI(); }
+function addNewRowAbove(id) { const row = [...STATE.allRows, ...STATE.adds].find(r=>r.id===id); if(!row) return; const siblings = [...STATE.allRows, ...STATE.adds].filter(r=>r.parentId === row.parentId); const idx = siblings.findIndex(r=>r.id===id); const prevId = idx > 0 ? siblings[idx-1].id : null; _createAndInsertRow(row.parentId, prevId); }
+function addNewRowBelow(id) { const row = [...STATE.allRows, ...STATE.adds].find(r=>r.id===id); if(!row) return; _createAndInsertRow(row.parentId, row.id); }
+function getCellHtml(rid, col, val, fmt) { const safeVal = String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;"); const fmtInfo = getFormatInfo(fmt); let inlineStyle = fmtInfo.style; if (fmtInfo.bg) inlineStyle += `background-color: ${fmtInfo.bg} !important;`; if(col.type === 'CHECKBOX') return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}"><input type="checkbox" class="form-check-input" ${val === true || val === 'true' ?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)"></div>`; const isMulti = col.type.includes('MULTI'); if(isMulti) { const arr = String(val).split(',').map(s=>s.trim()).filter(Boolean); const badges = arr.length ? arr.map(t => `<span class="badge-pill">${t}</span>`).join('') : `<span class="text-muted small fst-italic">Select...</span>`; return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${encodeURIComponent(JSON.stringify(arr))}')" style="${inlineStyle}">${badges}</div>`; } if(col.options?.length > 0) { const opts = col.options.map(o => `<option value="${o}" ${String(val) === String(o) ? 'selected' : ''}>${o}</option>`).join(''); return `<select class="cell-textarea form-select" style="${inlineStyle}" onchange="edit('${rid}', ${col.id}, this.value)"><option value=""></option>${opts}</select>`; } return `<textarea class="cell-textarea" style="${inlineStyle}" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`; }
+function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !String(rid).startsWith('NEW')) row.classList.add('row-modified'); }
+function openMultiPopover(event, rid, cid, encoded) { event.stopPropagation(); const popover = document.getElementById('multiPopover'); if (STATE.tempMulti?.rid === rid && STATE.tempMulti?.cid === cid) { closeMultiPopover(); return; } const cell = event.currentTarget; const vals = JSON.parse(decodeURIComponent(encoded)); const col = STATE.cols.find(c => c.id === cid); STATE.tempMulti = { rid, cid, cell }; const box = document.getElementById('multiOptions'); const opts = Array.from(new Set([...(col.options || []), ...vals])); box.innerHTML = opts.map((o, i) => o ? `<div class="form-check"><input class="form-check-input" type="checkbox" value="${String(o).replace(/"/g, '&quot;')}" id="opt_${i}" ${vals.includes(o) ? 'checked' : ''}><label class="form-check-label w-100 ps-2" for="opt_${i}">${o}</label></div>` : '').join(''); repositionPopover(popover, cell); popover.style.display = 'flex'; }
+function repositionPopover(popover, triggerEl) { if (!triggerEl) return; const rect = triggerEl.getBoundingClientRect(); popover.style.width = `${rect.width}px`; popover.style.top = `${rect.bottom}px`; popover.style.left = `${rect.left}px`; }
+function closeMultiPopover() { document.getElementById('multiPopover').style.display = 'none'; STATE.tempMulti = null; }
+function saveMultiFromPopover() { if (!STATE.tempMulti) return; const { rid, cid, cell } = STATE.tempMulti; const selected = Array.from(document.querySelectorAll('#multiOptions input:checked')).map(cb => cb.value); edit(rid, cid, selected.join(', ')); const col = STATE.cols.find(c => c.id === cid); cell.innerHTML = getCellHtml(rid, col, selected.join(', ')).match(/<div class="badge-cell"[^>]*>([\s\S]*?)<\/div>/)[1]; closeMultiPopover(); }
+function handleClickOutside(event) { if (!event.target.closest('.badge-cell') && !event.target.closest('#multiPopover')) closeMultiPopover(); if (!event.target.closest('.col-filter-btn') && !event.target.closest('#columnFilterPopover')) closeColumnFilterPopover(); }
+function selectColumn(e, colId) { if(e.target.closest('.col-filter-btn')) return; e.stopPropagation(); STATE.selectedCol = STATE.selectedCol === colId ? null : colId; renderTableHeader(); }
+function deselectColumn(e) { if (!e.target.closest('th')) { STATE.selectedCol = null; renderTableHeader(); } }
+function openColumnFilterPopover(event, colId) { event.stopPropagation(); const popover = document.getElementById('columnFilterPopover'); if (STATE.tempFilterCol?.id === colId) { closeColumnFilterPopover(); return; } STATE.tempFilterCol = { id: colId, btn: event.currentTarget }; const curView = STATE.views.find(v => v.id === STATE.currentViewId); const filter = curView.filters.find(f => f.colId === colId); document.getElementById('filterOpSelect').value = filter?.operator || 'contains'; document.getElementById('filterValInput').value = filter?.value || ''; repositionPopover(popover, event.currentTarget); popover.style.display = 'block'; }
+function closeColumnFilterPopover() { document.getElementById('columnFilterPopover').style.display = 'none'; STATE.tempFilterCol = null; }
+function applyColumnFilter() { if (!STATE.tempFilterCol) return; const { id } = STATE.tempFilterCol; const op = document.getElementById('filterOpSelect').value; const val = document.getElementById('filterValInput').value; const curView = STATE.views.find(v => v.id === STATE.currentViewId); curView.filters = curView.filters.filter(f => f.colId !== id); if(val || op === 'empty' || op === 'notempty') curView.filters.push({ colId: id, operator: op, value: val }); saveViewsToStorage(); renderTable(false); closeColumnFilterPopover(); }
+function clearColumnFilter() { if (!STATE.tempFilterCol) return; const { id } = STATE.tempFilterCol; const curView = STATE.views.find(v => v.id === STATE.currentViewId); curView.filters = curView.filters.filter(f => f.colId !== id); saveViewsToStorage(); renderTable(false); closeColumnFilterPopover(); }
+function showLoader(s) { document.getElementById('loader').style.display=s?'flex':'none'; }
+function showToast(msg, type='primary') { const t = document.createElement('div'); t.className = `toast align-items-center text-white bg-${type} border-0 show mb-2 shadow`; t.innerHTML = `<div class="d-flex"><div class="toast-body">${msg}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`; document.getElementById('toastArea').appendChild(t); setTimeout(() => t.remove(), 4000); }
+function openSettings() { document.getElementById('apiToken').value = localStorage.getItem('smToken') || ''; new bootstrap.Modal('#settingsModal').show(); }
+function saveSettings() { localStorage.setItem('smToken', document.getElementById('apiToken').value); bootstrap.Modal.getInstance('#settingsModal').hide(); }
+function renderLibrary() { const lib = JSON.parse(localStorage.getItem('smLib') || '[]'); const grid = document.getElementById('libraryGrid'); grid.innerHTML = lib.map(s => `<div class="col-12 col-md-6"><div class="sheet-card" onclick="loadSheet('${s.id}')"><div class="fw-bold text-truncate">${s.name}</div><div class="small text-muted font-monospace">${s.id}</div></div></div>`).join(''); document.getElementById('emptyLib').style.display = lib.length ? 'none' : 'block'; }
+function addToLib(id, name) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]').filter(s => s.id !== id); lib.unshift({ id, name }); localStorage.setItem('smLib', JSON.stringify(lib.slice(0,10))); }
+function generateOutlineButtonsHTML(context) { let max = Math.max(0, ...Object.values(STATE.meta.depth)); let html = ''; for(let i = 1; i <= max + 1; i++) html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`; return `<div class="header-outline-btns">${html}</div>`; }
+function setOutline(level, context) { const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; targetSet.clear(); if(level < 99) STATE.allRows.forEach(r => { if((STATE.meta.depth[r.id] || 0) >= level - 1) targetSet.add(r.id); }); if(context === 'SETUP') renderSetupTree(); else renderTable(false); }
+function renderSetupTree() { const term = document.getElementById('setupRowSearch').value.toLowerCase(); const tree = document.getElementById('setupRowTree'); const primId = STATE.cols.find(c => c.primary)?.id; const rowMap = new Map(STATE.allRows.map(r => [r.id, r])); tree.innerHTML = STATE.allRows.map(r => { if(isSetupHidden(r, rowMap)) return ''; const txt = r.cells.find(c => c.columnId === primId)?.displayValue || `Row ${r.rowNumber}`; if(term && !String(txt).toLowerCase().includes(term)) return ''; const d = STATE.meta.depth[r.id] || 0; const hasChild = STATE.allRows.some(x => x.parentId === r.id); const isCollapsed = STATE.meta.setupCollapsed.has(r.id); return `<div style="display:flex; align-items:center; padding-left:${d * 20}px">${hasChild ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px"></div>`}<input type="checkbox" class="form-check-input me-2" onchange="toggleSetupRow(${r.id}, this.checked)" ${STATE.selectedRowIds.has(r.id) ? 'checked' : ''}><span class="text-truncate small">${txt}</span></div>`; }).join(''); }
+function openSetup() { renderSetupTree(); renderSetupCols(); new bootstrap.Modal('#setupModal').show(); }
+function isSetupHidden(r, map) { if(!r.parentId) return false; if(STATE.meta.setupCollapsed.has(r.parentId)) return true; const p = map.get(r.parentId); return p ? isSetupHidden(p, map) : false; }
+function toggleSetup(id) { if(STATE.meta.setupCollapsed.has(id)) STATE.meta.setupCollapsed.delete(id); else STATE.meta.setupCollapsed.add(id); renderSetupTree(); }
+function toggleSetupRow(id, status) { const process = (rowId, checked) => { if(checked) STATE.selectedRowIds.add(rowId); else STATE.selectedRowIds.delete(rowId); STATE.allRows.filter(r => r.parentId === rowId).forEach(c => process(c.id, checked)); }; process(id, status); renderSetupTree(); }
+function renderSetupCols() { const list = document.getElementById('setupColList'); const curView = STATE.views.find(v => v.id === STATE.currentViewId); const visibleSet = new Set(curView?.visibleCols || STATE.cols.map(c=>c.id)); const primId = STATE.cols.find(c => c.primary)?.id; list.innerHTML = STATE.cols.map(c => `<div class="d-flex align-items-center p-2 border rounded bg-white mb-1"><input class="form-check-input m-0" type="checkbox" value="${c.id}" id="col_${c.id}" ${visibleSet.has(c.id) || c.id === primId ? 'checked' : ''} ${c.id === primId ? 'disabled' : ''}><label class="form-check-label flex-grow-1 ms-3 fw-bold small" for="col_${c.id}">${c.title}${c.id === primId ? '<span class="badge bg-primary-subtle text-primary border ms-2">Primary</span>' : ''}</label></div>`).join(''); document.getElementById('badgeCols').innerText = visibleSet.size; }
+function applySetup() { const curView = STATE.views.find(v => v.id === STATE.currentViewId); if (!curView) return; const checked = Array.from(document.querySelectorAll('#setupColList input:checked')).map(cb => parseInt(cb.value)); const primId = STATE.cols.find(c => c.primary)?.id; if (primId && !checked.includes(primId)) checked.unshift(primId); curView.visibleCols = checked; saveViewsToStorage(); bootstrap.Modal.getInstance('#setupModal').hide(); renderTable(true); }
+function viewRawData() { renderRawTable(); new bootstrap.Modal('#rawDataModal').show(); }
+function renderRawTable() { const th = document.getElementById('rawHead'); const tb = document.getElementById('rawBody'); th.innerHTML = `<tr><th>ID</th><th>Parent</th><th>#</th>${STATE.cols.map(c => `<th>${c.title}</th>`).join('')}</tr>`; tb.innerHTML = STATE.allRows.map(r => `<tr><td>${r.id}</td><td>${r.parentId||'-'}</td><td>${r.rowNumber}</td>${STATE.cols.map(c => `<td>${r.cells.find(x => x.columnId === c.id)?.value ?? ''}</td>`).join('')}</tr>`).join(''); }
 </script>
 </body>
 </html>
