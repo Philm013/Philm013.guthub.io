@@ -611,10 +611,10 @@ function setOutline(level, context) {
     targetSet.clear(); 
     if(level < 99) { 
         indexAllData();
-        const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
-        const rowMap = new Map(allRowsAndAdds.map(r => [r.id, r]));
+        // Use allRows because it now contains everything
+        const rowMap = new Map(STATE.allRows.map(r => [r.id, r]));
         const getDepth = (id) => { let d = 0; let curr = rowMap.get(id); while(curr && curr.parentId) { d++; curr = rowMap.get(curr.parentId); } return d; };
-        allRowsAndAdds.forEach(r => { const d = getDepth(r.id); if(d >= level - 1) targetSet.add(r.id); }); 
+        STATE.allRows.forEach(r => { const d = getDepth(r.id); if(d >= level - 1) targetSet.add(r.id); }); 
     } 
     if(context === 'SETUP') renderSetupTree(); 
     else renderTable(); 
@@ -646,8 +646,8 @@ function applySetup() { const curView = STATE.views.find(v => v.id === STATE.cur
 // --- DATA INDEXING & HIERARCHY ---
 function indexAllData() {
     STATE.rowMap.clear(); STATE.childMap.clear();
-    const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
-    allRowsAndAdds.forEach(r => {
+    // FIX: Do not concatenate adds here. Adds are already spliced into allRows.
+    STATE.allRows.forEach(r => {
         STATE.rowMap.set(r.id, r);
         if (r.parentId) {
             if (!STATE.childMap.has(r.parentId)) STATE.childMap.set(r.parentId, []);
@@ -700,8 +700,7 @@ function getVisibleIds() {
 function flattenTree() {
     const visibleIds = getVisibleIds();
     const flatList = [];
-    const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
-    const rootNodes = allRowsAndAdds.filter(r => !r.parentId);
+    const rootNodes = STATE.allRows.filter(r => !r.parentId);
     let maxGlobalDepth = 0;
 
     function traverse(nodeId, depth) {
@@ -938,9 +937,41 @@ function getCellHtml(rid, col, val, fmt) {
 }
 
 function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { row.classList.add('row-modified'); } }
-function _createAndInsertRow(parentId, siblingId = null, toTop = false) { const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId, siblingId, toTop, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", }; STATE.adds.push(newRow); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
-function addNewRowAbove(id) { const relativeId = String(id).startsWith('NEW') ? id : parseInt(id); const relativeRow = STATE.rowMap.get(relativeId); if (!relativeRow) return; _createAndInsertRow(relativeRow.parentId, relativeRow.id); }
-function addNewRowBelow(id) { const relativeId = String(id).startsWith('NEW') ? id : parseInt(id); const relativeRow = STATE.rowMap.get(relativeId); if (!relativeRow) return; const lastDescendantId = findLastDescendant(relativeId); _createAndInsertRow(relativeRow.parentId, lastDescendantId); }
+
+// NEW ADD ROW LOGIC
+function addNewRowAbove(id) {
+    const rid = String(id).startsWith('NEW') ? id : parseInt(id);
+    const idx = STATE.allRows.findIndex(r => r.id === rid);
+    if (idx === -1) return;
+    const target = STATE.allRows[idx];
+    const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false };
+    STATE.allRows.splice(idx, 0, newRow);
+    STATE.adds.push(newRow);
+    renderTable(); updateSyncUI();
+    setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100);
+}
+
+function addNewRowBelow(id) {
+    const rid = String(id).startsWith('NEW') ? id : parseInt(id);
+    const idx = STATE.allRows.findIndex(r => r.id === rid);
+    if (idx === -1) return;
+    const target = STATE.allRows[idx];
+    
+    // Find where the block ends (target + all its descendants)
+    const descendants = getAllDescendants(rid);
+    let insertIdx = idx + 1;
+    if(descendants.length > 0) {
+        const lastId = descendants[descendants.length - 1];
+        insertIdx = STATE.allRows.findIndex(r => r.id === lastId) + 1;
+    }
+
+    const newRow = { id: 'NEW_' + Date.now(), cells: [], parentId: target.parentId, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", siblingId: undefined, toTop: false };
+    STATE.allRows.splice(insertIdx, 0, newRow);
+    STATE.adds.push(newRow);
+    renderTable(); updateSyncUI();
+    setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${newRow.id}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100);
+}
+
 function findLastDescendant(parentId) { let lastId = parentId; const children = STATE.childMap.get(parentId); if (children && children.length > 0) { const lastChildId = children[children.length - 1]; return findLastDescendant(lastChildId); } return lastId; }
 
 // --- POPOVERS & UTILS ---
