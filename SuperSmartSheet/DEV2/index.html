@@ -30,7 +30,7 @@
             --row-bg-override: transparent;
             --th-bg: #f8fafc;
             --th-border: #e2e8f0;
-            --row-height: 50px; /* VIRTUALIZATION: Fixed row height */
+            --virtual-row-base-height: 50px;
         }
 
         /* DARK MODE VARS */
@@ -103,41 +103,32 @@
             contain: strict;
         }
         
-        #virtualScroller {
-            position: relative;
-            width: 100%;
-            overflow: hidden;
-        }
-
         table { border-collapse: separate; border-spacing: 0; width: max-content; min-width: 100%; font-size: 0.9rem; table-layout: fixed; color: var(--text-main); }
         thead th { background: var(--th-bg); color: var(--text-muted); font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 12px 8px; border-bottom: 1px solid var(--border); border-right: 1px solid var(--border); position: sticky; top: 0; z-index: 10; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; user-select: none; cursor: pointer; transition: background-color 0.2s; box-sizing: border-box; }
         
         thead th.primary-header-cell { position: sticky; padding-bottom: 22px; overflow: visible; z-index: 12; }
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
+        /* FIX: Remove absolute positioning from TRs to allow natural growth and alignment */
         #mainTable tbody tr {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: var(--row-height);
-            display: table;
-            table-layout: fixed;
-            width: 100%;
+            position: relative; 
+            height: auto;
+            min-height: var(--virtual-row-base-height);
         }
 
         #mainTable td {
             border-bottom: 1px solid var(--border); 
             border-right: 1px solid var(--border); 
             padding: 0;
-            background-color: var(--row-bg-override, var(--surface)) !important; /* Use row color by default */
+            background-color: var(--row-bg-override, var(--surface)) !important; 
             white-space: nowrap; 
-            height: var(--row-height);
+            height: auto; /* Allow cells to grow */
             vertical-align: top;
         }
 
         th:first-child, #mainTable td:first-child { 
             position: sticky; left: 0; z-index: 20; 
-            background-color: inherit !important; /* Let the TD's explicit bg take precedence */
+            background-color: inherit !important;
             border-right: 2px solid var(--border); 
             width: 170px; min-width: 170px; max-width: 170px; 
             box-shadow: 2px 0 5px rgba(0,0,0,0.05); overflow: visible; 
@@ -173,7 +164,6 @@
         .form-select.cell-textarea { background-color: transparent !important; border: none; }
 
         [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: var(--surface); border-color: var(--border); color: var(--text-main); }
-        /* FIX: Ensure dropdown arrow is light in dark mode */
         [data-theme="dark"] .form-select {
             background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f8fafc' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
         }
@@ -221,6 +211,13 @@
         .mobile-toggle-btn { display: none; width: 100%; height: 100%; border: none; background: transparent; color: var(--text-muted); }
 
         .d-none { display: none !important; }
+
+        /* VIRTUALIZATION SPACERS */
+        .virtual-spacer {
+            pointer-events: none;
+            visibility: hidden;
+            border: none;
+        }
 
         @media (max-width: 768px) {
             .glass-header { padding: 0.5rem; }
@@ -327,12 +324,10 @@
     </div>
 
     <div class="table-container" id="tableContainer">
-        <div id="virtualScroller">
-            <table id="mainTable">
-                <thead id="tHead"></thead>
-                <tbody id="tBody"></tbody>
-            </table>
-        </div>
+        <table id="mainTable">
+            <thead id="tHead"></thead>
+            <tbody id="tBody"></tbody>
+        </table>
     </div>
 </div>
 
@@ -453,7 +448,7 @@ const CONFIG = {
     api: "https://api.smartsheet.com/2.0",
     virtualScroll: {
         rowHeight: 50,
-        buffer: 10 // Number of rows to render above/below viewport
+        buffer: 10 
     }
 };
 
@@ -462,7 +457,7 @@ const SMARTSHEET_PALETTE = ["none","transparent","#000000","#0B347D","#1061C3","
 // GLOBAL STATE
 let STATE = { 
     sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(), adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, 
-    meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set() }, 
+    meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set(), maxDepth: 0 }, 
     tempMulti: null, tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false, autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
     rowMap: new Map(), childMap: new Map(), flatRenderList: [], isRendering: false,
 };
@@ -515,7 +510,7 @@ function removeSheet(e, id) { e.stopPropagation(); if(confirm('Remove?')) { let 
 async function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); sysLog(`REQ ${method} ${ep}`, body); const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts); if(res.status === 403) { if(confirm("Proxy Locked. Open unlock page?")) window.open('https://cors-anywhere.herokuapp.com/corsdemo', '_blank'); throw 'PROXY_LOCK'; } const json = await res.json(); if(!res.ok) { sysLog(`ERR ${res.status}`, json); throw (json.message || `Error ${res.status}`); } return json; }
 function loadFromDash() { const id = document.getElementById('dashSheetId').value.trim(); if(id) loadSheet(id); }
 function loadSheet(id) { STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); fetchData().then(() => { loadViews(); if(STATE.autoRefresh) startAutoRefresh(); openSetup(false); }); }
-function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.adds=[]; STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; STATE.selectedRowIds.clear(); STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear(); STATE.lastModifiedAt = null; STATE.conflicts = []; STATE.rowMap.clear(); STATE.childMap.clear(); STATE.flatRenderList = []; updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; stopAutoRefresh(); }
+function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.adds=[]; STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; STATE.selectedRowIds.clear(); STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear(); STATE.meta.maxDepth = 0; STATE.lastModifiedAt = null; STATE.conflicts = []; STATE.rowMap.clear(); STATE.childMap.clear(); STATE.flatRenderList = []; updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; stopAutoRefresh(); }
 
 async function fetchData() { 
     showLoader(true); 
@@ -529,6 +524,8 @@ async function fetchData() {
         document.getElementById('sheetIdDisplay').innerText = d.id; 
         addToLib(d.id, d.name); 
         STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); 
+        indexAllData();
+        flattenTree(); // Calculate depth initially
     } catch(e) { 
         if(e!=='PROXY_LOCK') showToast(e, 'danger'); 
     } finally { 
@@ -572,8 +569,49 @@ function getFormatInfo(fmt) {
 }
 
 // --- SETUP MODAL ---
-function generateOutlineButtonsHTML(context) { let max = 0; STATE.flatRenderList.forEach(item => max = Math.max(max, item.depth)); const maxLevel = max + 1; let html = ''; for(let i = 1; i <= maxLevel; i++) { html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; } html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`; return `<div class="header-outline-btns">${html}</div>`; };
-function setOutline(level, context) { const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; targetSet.clear(); if(level < 99) { STATE.allRows.forEach(r => { const item = STATE.flatRenderList.find(i => i.id === r.id); if(item && item.depth >= level - 1) targetSet.add(r.id); }); } if(context === 'SETUP') renderSetupTree(); else renderTable(); }
+function generateOutlineButtonsHTML(context) { 
+    // FIX: Use STATE.meta.maxDepth which is calculated from ALL rows, not just visible ones
+    const maxLevel = STATE.meta.maxDepth + 1; 
+    let html = ''; 
+    for(let i = 1; i <= maxLevel; i++) { 
+        html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; 
+    } 
+    html += `<button class="btn" onclick="setOutline(99, '${context}')">All</button>`; 
+    return `<div class="header-outline-btns">${html}</div>`; 
+};
+
+function setOutline(level, context) { 
+    const targetSet = context === 'SETUP' ? STATE.meta.setupCollapsed : STATE.meta.collapsed; 
+    targetSet.clear(); 
+    if(level < 99) { 
+        // We need to re-traverse or check depths. Since we calculate depth in flattenTree/indexing,
+        // we can iterate all rows and check their cached depth if we stored it, or re-calculate.
+        // For efficiency, let's assume we can determine depth easily.
+        // Re-index to be safe and get depths.
+        indexAllData();
+        const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
+        const rowMap = new Map(allRowsAndAdds.map(r => [r.id, r]));
+        
+        // Helper to get depth
+        const getDepth = (id) => {
+            let d = 0;
+            let curr = rowMap.get(id);
+            while(curr && curr.parentId) {
+                d++;
+                curr = rowMap.get(curr.parentId);
+            }
+            return d;
+        };
+
+        allRowsAndAdds.forEach(r => { 
+            const d = getDepth(r.id);
+            if(d >= level - 1) targetSet.add(r.id); 
+        }); 
+    } 
+    if(context === 'SETUP') renderSetupTree(); 
+    else renderTable(); 
+}
+
 function renderSetupTree() { const term = document.getElementById('setupRowSearch').value.toLowerCase(); const tree = document.getElementById('setupRowTree'); const primId = STATE.cols.find(c => c.primary)?.id; const rowMap = new Map(STATE.allRows.map(r => [r.id, r])); let mainHTML = ''; STATE.allRows.forEach(r => { if(isSetupHidden(r, rowMap)) return; const txt = (r.cells.find(c => c.columnId === primId)?.displayValue || `Row ${r.rowNumber}`); if(term && !String(txt).toLowerCase().includes(term)) return; const d = STATE.flatRenderList.find(i => i.id === r.id)?.depth || 0; const checked = STATE.selectedRowIds.has(r.id) ? 'checked' : ''; const padding = d * 20; const hasChild = STATE.allRows.some(x => x.parentId === r.id); const isCollapsed = STATE.meta.setupCollapsed.has(r.id); let toggleIcon = hasChild ? `<div class="tree-toggle ${isCollapsed ? '' : 'expanded'}" onclick="toggleSetup(${r.id})"><i class="bi bi-caret-right-fill"></i></div>` : `<div style="width:28px"></div>`; mainHTML += `<div style="display:flex; align-items-center; padding:4px 0; border-bottom:1px solid var(--border); padding-left:${padding}px">${toggleIcon}<input type="checkbox" class="form-check-input me-2" onchange="toggleSetupRow(${r.id}, this.checked)" ${checked}><span class="text-truncate small">${txt}</span></div>`; }); tree.innerHTML = mainHTML; }
 function openSetup(isEdit = false) { renderSetupTree(); renderSetupCols(); new bootstrap.Modal('#setupModal').show(); }
 function isSetupHidden(r, map) { if(!r.parentId) return false; if(STATE.meta.setupCollapsed.has(r.parentId)) return true; const p = map.get(r.parentId); if(p) return isSetupHidden(p, map); return false; }
@@ -656,7 +694,10 @@ function flattenTree() {
     const flatList = [];
     const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
     const rootNodes = allRowsAndAdds.filter(r => !r.parentId);
+    let maxGlobalDepth = 0;
+
     function traverse(nodeId, depth) {
+        if(depth > maxGlobalDepth) maxGlobalDepth = depth;
         if (!visibleIds.has(nodeId)) return;
         flatList.push({ id: nodeId, depth });
         if (!STATE.meta.collapsed.has(nodeId)) {
@@ -666,6 +707,7 @@ function flattenTree() {
     }
     rootNodes.forEach(node => traverse(node.id, 0));
     STATE.flatRenderList = flatList;
+    STATE.meta.maxDepth = maxGlobalDepth; // Store for buttons
 }
 
 // --- TABLE RENDERING (VIRTUALIZED) ---
@@ -675,8 +717,10 @@ function renderTable() {
     indexAllData();
     renderHeader();
     flattenTree();
-    const scroller = document.getElementById('virtualScroller');
-    scroller.style.height = `${STATE.flatRenderList.length * CONFIG.virtualScroll.rowHeight}px`;
+    
+    // We do NOT set explicit scroller height here anymore because we are using spacer rows
+    // which push the container scroll naturally.
+    
     renderVisibleRows();
     initSortable();
     STATE.isRendering = false;
@@ -710,21 +754,36 @@ function renderVisibleRows() {
         const container = document.getElementById('tableContainer');
         const tbody = document.getElementById('tBody');
         const { scrollTop, clientHeight } = container;
+        
+        const totalRows = STATE.flatRenderList.length;
         const startIndex = Math.max(0, Math.floor(scrollTop / CONFIG.virtualScroll.rowHeight) - CONFIG.virtualScroll.buffer);
-        const endIndex = Math.min(STATE.flatRenderList.length, Math.ceil((scrollTop + clientHeight) / CONFIG.virtualScroll.rowHeight) + CONFIG.virtualScroll.buffer);
+        const endIndex = Math.min(totalRows, Math.ceil((scrollTop + clientHeight) / CONFIG.virtualScroll.rowHeight) + CONFIG.virtualScroll.buffer);
+        
         let html = [];
+        
+        // FIX: Spacer Row Top
+        if (startIndex > 0) {
+            html.push(`<tr class="virtual-spacer" style="height: ${startIndex * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
+        }
+
         for (let i = startIndex; i < endIndex; i++) {
             const item = STATE.flatRenderList[i];
             const r = STATE.rowMap.get(item.id);
             if (!r) continue;
-            const top = i * CONFIG.virtualScroll.rowHeight;
-            html.push(generateRowHtml(r, item.depth, top));
+            // No top position calculation needed for static rows
+            html.push(generateRowHtml(r, item.depth));
         }
+
+        // FIX: Spacer Row Bottom
+        if (endIndex < totalRows) {
+            html.push(`<tr class="virtual-spacer" style="height: ${(totalRows - endIndex) * CONFIG.virtualScroll.rowHeight}px"><td colspan="100%"></td></tr>`);
+        }
+
         tbody.innerHTML = html.join('');
     });
 }
 
-function generateRowHtml(r, depth, topPosition) {
+function generateRowHtml(r, depth) {
     const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
     const visibleSet = new Set(curView.visibleCols);
     let rowClass = '';
@@ -735,9 +794,9 @@ function generateRowHtml(r, depth, topPosition) {
     const rowFmtInfo = getFormatInfo(r.format);
     const rowBgStyle = rowFmtInfo.bg ? `--row-bg-override: ${rowFmtInfo.bg};` : '';
     const rowTextStyle = rowFmtInfo.style;
-    const positionStyle = `transform: translateY(${topPosition}px);`;
-
-    let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${positionStyle} ${rowBgStyle} ${rowTextStyle}">`;
+    // FIX: Removed position style
+    
+    let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${rowBgStyle} ${rowTextStyle}">`;
     
     rowHtml += `<td class="text-center border-end p-0">`;
     if (STATE.dels.has(r.id)) {
@@ -757,7 +816,6 @@ function generateRowHtml(r, depth, topPosition) {
             val = cell ? (cell.displayValue ?? cell.value ?? '') : '';
         }
 
-        // FIX: Apply cell background to TD, not the input.
         const cellFmtInfo = getFormatInfo(cellFormat);
         let tdStyle = '';
         if (cellFmtInfo.bg) {
@@ -860,7 +918,6 @@ function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds
 function getCellHtml(rid, col, val, fmt) { 
     const safeVal = String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const fmtInfo = getFormatInfo(fmt);
-    // FIX: Background color is now handled by the parent TD. This inlineStyle only handles text styles.
     let inlineStyle = fmtInfo.style;
 
     if(col.type === 'CHECKBOX') { 
@@ -878,7 +935,6 @@ function getCellHtml(rid, col, val, fmt) {
         let opts = `<option value=""></option>`; 
         col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); 
 
-        // FIX: Check for light text color and swap dropdown arrow if needed
         const hasLightText = inlineStyle.toLowerCase().includes('color: #f') || inlineStyle.includes('color: white');
         if (hasLightText) {
             const whiteArrowSvg = `background-image: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23FFFFFF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e\");`;
