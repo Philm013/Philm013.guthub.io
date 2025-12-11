@@ -94,17 +94,15 @@
         .counter-badge { display: flex; align-items: center; gap: 4px; font-size: 0.85rem; color: var(--text-muted); }
         .counter-badge b { color: var(--text-main); }
         
-        /* VIRTUALIZATION: Container must have position relative and overflow */
         .table-container { 
             background: var(--surface); 
             flex: 1 1 auto; 
             overflow: auto; 
             position: relative; 
             width: 100%; 
-            contain: strict; /* Perf: Hint to browser */
+            contain: strict;
         }
         
-        /* VIRTUALIZATION: Inner scroller div sets total height */
         #virtualScroller {
             position: relative;
             width: 100%;
@@ -117,7 +115,6 @@
         thead th.primary-header-cell { position: sticky; padding-bottom: 22px; overflow: visible; z-index: 12; }
         thead th.selected { background-color: var(--primary-soft) !important; color: var(--primary-dark); border-bottom: 2px solid var(--primary); }
         
-        /* VIRTUALIZATION: Rows are positioned absolutely */
         #mainTable tbody tr {
             position: absolute;
             left: 0;
@@ -132,7 +129,7 @@
             border-bottom: 1px solid var(--border); 
             border-right: 1px solid var(--border); 
             padding: 0;
-            background-color: var(--row-bg-override, transparent) !important;
+            background-color: var(--row-bg-override, var(--surface)) !important; /* Use row color by default */
             white-space: nowrap; 
             height: var(--row-height);
             vertical-align: top;
@@ -140,7 +137,7 @@
 
         th:first-child, #mainTable td:first-child { 
             position: sticky; left: 0; z-index: 20; 
-            background-color: var(--row-bg-override, var(--surface)) !important;
+            background-color: inherit !important; /* Let the TD's explicit bg take precedence */
             border-right: 2px solid var(--border); 
             width: 170px; min-width: 170px; max-width: 170px; 
             box-shadow: 2px 0 5px rgba(0,0,0,0.05); overflow: visible; 
@@ -176,6 +173,10 @@
         .form-select.cell-textarea { background-color: transparent !important; border: none; }
 
         [data-theme="dark"] .form-control, [data-theme="dark"] .form-select { background-color: var(--surface); border-color: var(--border); color: var(--text-main); }
+        /* FIX: Ensure dropdown arrow is light in dark mode */
+        [data-theme="dark"] .form-select {
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f8fafc' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+        }
         [data-theme="dark"] .modal-content { background-color: var(--surface); border: 1px solid var(--border); color: var(--text-main); }
         [data-theme="dark"] .btn-white { background-color: var(--surface); color: var(--text-main); border-color: var(--border); }
         [data-theme="dark"] .btn-light { background-color: #334155; color: var(--text-main); border-color: #475569; }
@@ -456,75 +457,35 @@ const CONFIG = {
     }
 };
 
-const SMARTSHEET_PALETTE = ["none","#transparent","#000000","#0B347D","#1061C3","#237F2E","#40B14B","#592C00","#5FB3F9","#61058B","#757575","#7ED085","#9210AD","#974C00","#991310","#B9DDFC","#BDBDBD","#C6E7C8","#D0AF8F","#D190DA","#E2F2FE","#E5E5E5","#E7F5E9","#EA352E","#EA5000","#EBC700","#EBC7EF","#EEDCCA","#F2E8DE","#F4E4F5","#F87E7D","#FEFF00","#FEFF85","#FF8D00","#FFCCD2","#FFCD7A","#FFE1AF","#FFEBEE","#FFED00","#FFF3DF","#FFFEE6","#FFFFFF"];
+const SMARTSHEET_PALETTE = ["none","transparent","#000000","#0B347D","#1061C3","#237F2E","#40B14B","#592C00","#5FB3F9","#61058B","#757575","#7ED085","#9210AD","#974C00","#991310","#B9DDFC","#BDBDBD","#C6E7C8","#D0AF8F","#D190DA","#E2F2FE","#E5E5E5","#E7F5E9","#EA352E","#EA5000","#EBC700","#EBC7EF","#EEDCCA","#F2E8DE","#F4E4F5","#F87E7D","#FEFF00","#FEFF85","#FF8D00","#FFCCD2","#FFCD7A","#FFE1AF","#FFEBEE","#FFED00","#FFF3DF","#FFFEE6","#FFFFFF"];
 
 // GLOBAL STATE
 let STATE = { 
-    sheetId: null, 
-    serverRows: [], 
-    allRows: [], 
-    cols: [], 
-    selectedCol: null, 
-    selectedRowIds: new Set(), 
-    adds: [], 
-    dels: new Set(), 
-    edits: {}, 
-    hierarchyChanges: {}, 
+    sheetId: null, serverRows: [], allRows: [], cols: [], selectedCol: null, selectedRowIds: new Set(), adds: [], dels: new Set(), edits: {}, hierarchyChanges: {}, 
     meta: { collapsed: new Set(), setupCollapsed: new Set(), rawCollapsed: new Set() }, 
-    tempMulti: null, 
-    tempFilterCol: null, 
-    logs: [],
-    lastModifiedAt: null, 
-    autoRefresh: false, 
-    autoRefreshInterval: 60, 
-    conflicts: [],
-    views: [],
-    currentViewId: null,
-    // --- OPTIMIZATION STATE ---
-    rowMap: new Map(),
-    childMap: new Map(),
-    flatRenderList: [], // The source of truth for rendering
-    isRendering: false,
+    tempMulti: null, tempFilterCol: null, logs: [], lastModifiedAt: null, autoRefresh: false, autoRefreshInterval: 60, conflicts: [], views: [], currentViewId: null,
+    rowMap: new Map(), childMap: new Map(), flatRenderList: [], isRendering: false,
 };
 
 let sortableInstance = null;
 let refreshInterval = null;
 
 // --- UTILITY FUNCTIONS ---
-function debounce(func, delay) {
-    let timeout;
-    return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-}
+function debounce(func, delay) { let timeout; return function(...args) { const context = this; clearTimeout(timeout); timeout = setTimeout(() => func.apply(context, args), delay); }; }
 const debouncedSyncSearch = debounce((value) => syncSearch(value), 300);
-
 
 // --- INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => { 
-    const t = localStorage.getItem('smToken'); 
-    if(!t) new bootstrap.Modal('#settingsModal').show(); 
-
-    const savedTheme = localStorage.getItem('smTheme') || 'light';
-    document.body.setAttribute('data-theme', savedTheme);
-    updateThemeIcon();
-
-    const ar = localStorage.getItem('smAutoRefresh') === 'true';
-    const arInt = parseInt(localStorage.getItem('smAutoRefreshInterval') || '60');
-    STATE.autoRefresh = ar;
-    STATE.autoRefreshInterval = arInt;
-    document.getElementById('setupAutoSyncCheck').checked = ar;
-    document.getElementById('setupSyncInterval').value = arInt;
-
+    const t = localStorage.getItem('smToken'); if(!t) new bootstrap.Modal('#settingsModal').show(); 
+    const savedTheme = localStorage.getItem('smTheme') || 'light'; document.body.setAttribute('data-theme', savedTheme); updateThemeIcon();
+    const ar = localStorage.getItem('smAutoRefresh') === 'true'; const arInt = parseInt(localStorage.getItem('smAutoRefreshInterval') || '60');
+    STATE.autoRefresh = ar; STATE.autoRefreshInterval = arInt; document.getElementById('setupAutoSyncCheck').checked = ar; document.getElementById('setupSyncInterval').value = arInt;
     renderLibrary(); 
     document.addEventListener('click', handleClickOutside);
-    
     const tableContainer = document.getElementById('tableContainer');
     if (tableContainer) {
         tableContainer.addEventListener('scroll', () => {
-            renderVisibleRows(); // VIRTUALIZATION: Render on scroll
+            renderVisibleRows(); 
             if (STATE.tempMulti) repositionPopover(document.getElementById('multiPopover'), STATE.tempMulti.cell);
             if (STATE.tempFilterCol) repositionPopover(document.getElementById('columnFilterPopover'), STATE.tempFilterCol.btn);
         });
@@ -638,8 +599,7 @@ function applySetup() { const curView = STATE.views.find(v => v.id === STATE.cur
 
 // --- DATA INDEXING & HIERARCHY ---
 function indexAllData() {
-    STATE.rowMap.clear();
-    STATE.childMap.clear();
+    STATE.rowMap.clear(); STATE.childMap.clear();
     const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
     allRowsAndAdds.forEach(r => {
         STATE.rowMap.set(r.id, r);
@@ -655,50 +615,38 @@ function getVisibleIds() {
     let visibleIds = new Set(STATE.allRows.filter(r => STATE.selectedRowIds.has(r.id)).map(r => r.id));
     STATE.adds.forEach(r => visibleIds.add(r.id));
 
-    // Apply column filters
-    if (currentView && currentView.filters && currentView.filters.length > 0) {
+    if (currentView?.filters?.length > 0) {
         const filteredIds = new Set();
         for (const id of visibleIds) {
-            const r = STATE.rowMap.get(id);
-            if (!r) continue;
+            const r = STATE.rowMap.get(id); if (!r) continue;
             let pass = true;
             for (const f of currentView.filters) {
                 const cell = r.cells.find(c => c.columnId === f.colId);
                 let val = (STATE.edits[r.id]?.[f.colId] !== undefined) ? String(STATE.edits[r.id][f.colId]) : (cell ? String(cell.displayValue || cell.value || '') : '');
                 val = val.toLowerCase();
                 const filterVal = (f.value || '').toLowerCase();
-                if ((f.operator === 'contains' && !val.includes(filterVal)) || (f.operator === 'eq' && val !== filterVal) || (f.operator === 'empty' && val !== '') || (f.operator === 'notempty' && val === '')) {
-                    pass = false; break;
-                }
+                if ((f.operator === 'contains' && !val.includes(filterVal)) || (f.operator === 'eq' && val !== filterVal) || (f.operator === 'empty' && val !== '') || (f.operator === 'notempty' && val === '')) { pass = false; break; }
             }
             if (pass) filteredIds.add(r.id);
         }
         visibleIds = filteredIds;
     }
 
-    // Apply search term
     const term = document.getElementById('desktopSearch').value.toLowerCase();
     if (term) {
         const searchIds = new Set();
         for (const id of visibleIds) {
-            const r = STATE.rowMap.get(id);
-            if (!r) continue;
-            if ((r.cells || []).map(c => c.displayValue || c.value || '').join(' ').toLowerCase().includes(term)) {
-                searchIds.add(r.id);
-            }
+            const r = STATE.rowMap.get(id); if (!r) continue;
+            if ((r.cells || []).map(c => c.displayValue || c.value || '').join(' ').toLowerCase().includes(term)) searchIds.add(r.id);
         }
         visibleIds = searchIds;
     }
     
-    // Ensure parents of visible children are also visible
     const finalIds = new Set();
     for(const id of visibleIds) {
         finalIds.add(id);
         let curr = STATE.rowMap.get(id);
-        while(curr && curr.parentId) {
-            finalIds.add(curr.parentId);
-            curr = STATE.rowMap.get(curr.parentId);
-        }
+        while(curr && curr.parentId) { finalIds.add(curr.parentId); curr = STATE.rowMap.get(curr.parentId); }
     }
     return finalIds;
 }
@@ -708,12 +656,9 @@ function flattenTree() {
     const flatList = [];
     const allRowsAndAdds = [...STATE.allRows, ...STATE.adds];
     const rootNodes = allRowsAndAdds.filter(r => !r.parentId);
-
     function traverse(nodeId, depth) {
         if (!visibleIds.has(nodeId)) return;
-        
         flatList.push({ id: nodeId, depth });
-        
         if (!STATE.meta.collapsed.has(nodeId)) {
             const children = STATE.childMap.get(nodeId) || [];
             children.forEach(childId => traverse(childId, depth + 1));
@@ -727,38 +672,23 @@ function flattenTree() {
 function renderTable() {
     if (STATE.isRendering) return;
     STATE.isRendering = true;
-    
-    // 1. Index data for fast lookups
     indexAllData();
-
-    // 2. Render header (static)
     renderHeader();
-
-    // 3. Flatten tree to create the render list
     flattenTree();
-
-    // 4. Setup virtual scroller
     const scroller = document.getElementById('virtualScroller');
     scroller.style.height = `${STATE.flatRenderList.length * CONFIG.virtualScroll.rowHeight}px`;
-
-    // 5. Render the initial visible rows
     renderVisibleRows();
-    
-    // 6. Init SortableJS
     initSortable();
-
     STATE.isRendering = false;
 }
 
 function renderHeader() {
-    const th = document.getElementById('tHead');
-    th.innerHTML = '';
+    const th = document.getElementById('tHead'); th.innerHTML = '';
     const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
     const visibleSet = new Set(curView.visibleCols);
     const colWidths = curView.colWidths || {};
     const filters = curView.filters || [];
     const primColId = STATE.cols.find(c => c.primary)?.id;
-
     let h = `<tr><th class="text-center">Actions</th>`;
     STATE.cols.forEach(c => {
         if (visibleSet.has(c.id)) {
@@ -772,8 +702,7 @@ function renderHeader() {
             h += `<th style="width:${w}" class="${selClass} ${primaryClass}" data-col-id="${c.id}" onclick="selectColumn(event, ${c.id})"><div class="col-title-wrap"><span>${c.title}</span>${filterBtn}</div>${outlineBtns}<div class="resizer" onmousedown="startResize(event, this)" ontouchstart="startResize(event, this)"></div></th>`;
         }
     });
-    h += `</tr>`;
-    th.innerHTML = h;
+    h += `</tr>`; th.innerHTML = h;
 }
 
 function renderVisibleRows() {
@@ -781,16 +710,13 @@ function renderVisibleRows() {
         const container = document.getElementById('tableContainer');
         const tbody = document.getElementById('tBody');
         const { scrollTop, clientHeight } = container;
-
         const startIndex = Math.max(0, Math.floor(scrollTop / CONFIG.virtualScroll.rowHeight) - CONFIG.virtualScroll.buffer);
         const endIndex = Math.min(STATE.flatRenderList.length, Math.ceil((scrollTop + clientHeight) / CONFIG.virtualScroll.rowHeight) + CONFIG.virtualScroll.buffer);
-
         let html = [];
         for (let i = startIndex; i < endIndex; i++) {
             const item = STATE.flatRenderList[i];
             const r = STATE.rowMap.get(item.id);
             if (!r) continue;
-
             const top = i * CONFIG.virtualScroll.rowHeight;
             html.push(generateRowHtml(r, item.depth, top));
         }
@@ -801,15 +727,14 @@ function renderVisibleRows() {
 function generateRowHtml(r, depth, topPosition) {
     const curView = STATE.views.find(v => v.id === STATE.currentViewId) || getDefaultView();
     const visibleSet = new Set(curView.visibleCols);
-    
     let rowClass = '';
     if (STATE.dels.has(r.id)) rowClass += 'row-deleted ';
     else if (String(r.id).startsWith('NEW')) rowClass += 'row-new ';
     else if (STATE.edits[r.id] || STATE.hierarchyChanges[r.id]) rowClass += 'row-modified ';
     
-    const fmtInfo = getFormatInfo(r.format);
-    const rowBgStyle = fmtInfo.bg ? `--row-bg-override: ${fmtInfo.bg};` : '';
-    const rowTextStyle = fmtInfo.style;
+    const rowFmtInfo = getFormatInfo(r.format);
+    const rowBgStyle = rowFmtInfo.bg ? `--row-bg-override: ${rowFmtInfo.bg};` : '';
+    const rowTextStyle = rowFmtInfo.style;
     const positionStyle = `transform: translateY(${topPosition}px);`;
 
     let rowHtml = `<tr data-id="${r.id}" ${r.parentId ? `data-parent-id="${r.parentId}"` : ''} class="${rowClass}" style="${positionStyle} ${rowBgStyle} ${rowTextStyle}">`;
@@ -824,16 +749,22 @@ function generateRowHtml(r, depth, topPosition) {
     
     STATE.cols.forEach(c => {
         if (!visibleSet.has(c.id)) return;
-        const cid = c.id;
-        let val = STATE.edits[r.id]?.[cid];
-        let cellFormat = null;
+        
+        let val = STATE.edits[r.id]?.[c.id];
+        const cell = (r.cells || []).find(x => x.columnId === c.id);
+        let cellFormat = cell ? cell.format : null;
         if (val === undefined) {
-            const cell = (r.cells || []).find(x => x.columnId === cid);
             val = cell ? (cell.displayValue ?? cell.value ?? '') : '';
-            if(cell && cell.format) cellFormat = cell.format;
+        }
+
+        // FIX: Apply cell background to TD, not the input.
+        const cellFmtInfo = getFormatInfo(cellFormat);
+        let tdStyle = '';
+        if (cellFmtInfo.bg) {
+            tdStyle = `style="background-color: ${cellFmtInfo.bg} !important;"`;
         }
         
-        rowHtml += `<td>`;
+        rowHtml += `<td ${tdStyle}>`;
         if (c.primary) {
             rowHtml += `<div class="tree-wrap">`;
             for (let i = 0; i < depth; i++) rowHtml += `<div class="tree-indent"></div>`;
@@ -870,71 +801,39 @@ function toggle(id) {
 function toggleMobileActions(btn) { const wrap = btn.nextElementSibling; if (wrap.classList.contains('show')) wrap.classList.remove('show'); else { document.querySelectorAll('.actions-wrapper.show').forEach(el => el.classList.remove('show')); wrap.classList.add('show'); } }
 function startResize(e, resizer) { e.preventDefault(); e.stopPropagation(); let x = e.touches ? e.touches[0].clientX : e.clientX; let th = resizer.parentElement; let w = th.getBoundingClientRect().width; resizer.classList.add('resizing'); const onMove = (evt) => { if(evt.cancelable) evt.preventDefault(); const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX; const newWidth = Math.max(50, w + (clientX - x)); th.style.width = `${newWidth}px`; }; const onUp = () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); document.removeEventListener('touchmove', onMove); document.removeEventListener('touchend', onUp); if(th.dataset.colId) updateViewColState(parseInt(th.dataset.colId), parseInt(th.style.width)); resizer.classList.remove('resizing'); }; document.addEventListener('mousemove', onMove); document.addEventListener('mouseup', onUp); document.addEventListener('touchmove', onMove, { passive: false }); document.addEventListener('touchend', onUp); }
 
-
 // --- ROW OPERATIONS ---
-function getAllDescendants(parentId) {
-    const results = [];
-    const children = STATE.childMap.get(parentId) || [];
-    for (const childId of children) {
-        results.push(childId);
-        results.push(...getAllDescendants(childId));
-    }
-    return results;
-}
-
+function getAllDescendants(parentId) { const results = []; const children = STATE.childMap.get(parentId) || []; for (const childId of children) { results.push(childId); results.push(...getAllDescendants(childId)); } return results; }
 function initSortable() { 
     if(sortableInstance) sortableInstance.destroy(); 
     const tbody = document.getElementById('tBody'); 
     sortableInstance = new Sortable(tbody, { 
-        handle: '.drag-handle', 
-        animation: 150, 
-        ghostClass: 'sortable-ghost', 
+        handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', 
         onStart: function(evt) { 
             const rid = isNaN(evt.item.dataset.id) ? evt.item.dataset.id : parseInt(evt.item.dataset.id); 
             const descendants = getAllDescendants(rid);
-            descendants.forEach(dId => { 
-                const row = document.querySelector(`tr[data-id="${dId}"]`); 
-                if(row) row.style.display = 'none'; 
-            }); 
+            descendants.forEach(dId => { const row = document.querySelector(`tr[data-id="${dId}"]`); if(row) row.style.display = 'none'; }); 
             if(descendants.length > 0) { 
                 evt.item.classList.add('dragging-parent'); 
                 const cell = evt.item.querySelector('.tree-wrap'); 
                 if(cell) { 
-                    const badge = document.createElement('span'); 
-                    badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; 
-                    badge.innerText = `+ ${descendants.length} sub-rows`; 
-                    badge.id = "dragBadge"; 
-                    cell.appendChild(badge); 
+                    const badge = document.createElement('span'); badge.className = "badge bg-primary rounded-pill ms-2 fw-normal"; 
+                    badge.innerText = `+ ${descendants.length} sub-rows`; badge.id = "dragBadge"; cell.appendChild(badge); 
                 } 
             } 
         }, 
         onEnd: function (evt) {
-            const item = evt.item;
-            const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id);
-            item.classList.remove('dragging-parent');
-            const badge = document.getElementById('dragBadge');
-            if (badge) badge.remove();
-
-            if (evt.oldIndex === evt.newIndex) {
-                renderTable(); return;
-            }
-
-            const prevEl = item.previousElementSibling;
-            const nextEl = item.nextElementSibling;
-
+            const item = evt.item; const rid = isNaN(item.dataset.id) ? item.dataset.id : parseInt(item.dataset.id);
+            item.classList.remove('dragging-parent'); const badge = document.getElementById('dragBadge'); if (badge) badge.remove();
+            if (evt.oldIndex === evt.newIndex) { renderTable(); return; }
+            const prevEl = item.previousElementSibling; const nextEl = item.nextElementSibling;
             let newParentId = undefined; let siblingId = undefined; let toTop = false;
-
             if (prevEl) {
                 const prevRowId = isNaN(prevEl.dataset.id) ? prevEl.dataset.id : parseInt(prevEl.dataset.id);
                 const prevRowObj = STATE.rowMap.get(prevRowId);
                 const nextRowId = nextEl ? (isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id)) : null;
                 const nextRowObj = nextRowId ? STATE.rowMap.get(nextRowId) : null;
-                
-                if (nextRowObj && nextRowObj.parentId === prevRowObj.id) {
-                    newParentId = prevRowObj.id; toTop = true;
-                } else {
-                    newParentId = prevRowObj.parentId; siblingId = prevRowObj.id;
-                }
+                if (nextRowObj && nextRowObj.parentId === prevRowObj.id) { newParentId = prevRowObj.id; toTop = true; } 
+                else { newParentId = prevRowObj.parentId; siblingId = prevRowObj.id; }
             } else {
                 if (nextEl) {
                     const nextRowId = isNaN(nextEl.dataset.id) ? nextEl.dataset.id : parseInt(nextEl.dataset.id);
@@ -943,14 +842,9 @@ function initSortable() {
                 }
                 toTop = true;
             }
-
-            const rowToUpdate = STATE.rowMap.get(rid);
-            if (rowToUpdate) rowToUpdate.parentId = newParentId;
-            
+            const rowToUpdate = STATE.rowMap.get(rid); if (rowToUpdate) rowToUpdate.parentId = newParentId;
             STATE.hierarchyChanges[rid] = { type: 'MOVE', parentId: newParentId, siblingId: toTop ? undefined : siblingId, toTop: toTop };
-            
-            renderTable();
-            updateSyncUI();
+            renderTable(); updateSyncUI();
         }
     }); 
 }
@@ -962,18 +856,39 @@ function outdentRow(id) { const rid = isNaN(id) ? id : parseInt(id); const row =
 function delRow(id) { if(String(id).startsWith('NEW')) { STATE.adds = STATE.adds.filter(r => r.id !== id); } else STATE.dels.add(parseInt(id)); renderTable(); updateSyncUI(); }
 function restoreRow(id) { STATE.dels.delete(parseInt(id)); renderTable(); updateSyncUI(); }
 function hasChanges() { return Object.keys(STATE.edits).length > 0 || STATE.adds.length > 0 || STATE.dels.size > 0 || Object.keys(STATE.hierarchyChanges).length > 0; }
+
 function getCellHtml(rid, col, val, fmt) { 
     const safeVal = String(val || '').replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const fmtInfo = getFormatInfo(fmt);
+    // FIX: Background color is now handled by the parent TD. This inlineStyle only handles text styles.
     let inlineStyle = fmtInfo.style;
-    if (fmtInfo.bg) inlineStyle += `background-color: ${fmtInfo.bg} !important;`;
 
-    if(col.type === 'CHECKBOX') { const checked = (val === true || val === 'true'); return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; } 
+    if(col.type === 'CHECKBOX') { 
+        const checked = (val === true || val === 'true'); 
+        return `<div class="d-flex justify-content-center align-items-center h-100" style="${inlineStyle}"><input type="checkbox" class="form-check-input" ${checked?'checked':''} onchange="edit('${rid}', ${col.id}, this.checked)" style="transform:scale(1.2); cursor:pointer;"></div>`; 
+    } 
     const isMulti = col.type.includes('MULTI') || (col.type === 'TEXT_NUMBER' && col.options && col.options.length > 0); 
-    if(isMulti) { let arr = (Array.isArray(val)) ? val : (val ? String(val).split(',').map(s=>s.trim()).filter(s=>s!=='') : []); let badges = (arr.length === 0) ? `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>` : arr.map(t => `<span class="badge-pill">${t}</span>`).join(''); const safeArr = encodeURIComponent(JSON.stringify(arr)); return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeArr}')" style="${inlineStyle}">${badges}</div>`; } 
-    if(col.options && col.options.length > 0) { let opts = `<option value=""></option>`; col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); return `<select class="cell-textarea form-select" style="${inlineStyle}" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; } 
+    if(isMulti) { 
+        let arr = (Array.isArray(val)) ? val : (val ? String(val).split(',').map(s=>s.trim()).filter(s=>s!=='') : []); 
+        let badges = (arr.length === 0) ? `<span class="text-muted small ps-1 opacity-50 fst-italic">Select...</span>` : arr.map(t => `<span class="badge-pill">${t}</span>`).join(''); 
+        const safeArr = encodeURIComponent(JSON.stringify(arr)); 
+        return `<div class="badge-cell" onclick="openMultiPopover(event, '${rid}', ${col.id}, '${safeArr}')" style="${inlineStyle}">${badges}</div>`; 
+    } 
+    if(col.options && col.options.length > 0) { 
+        let opts = `<option value=""></option>`; 
+        col.options.forEach(o => { const sel = String(val) === String(o) ? 'selected' : ''; opts += `<option value="${o}" ${sel}>${o}</option>`; }); 
+
+        // FIX: Check for light text color and swap dropdown arrow if needed
+        const hasLightText = inlineStyle.toLowerCase().includes('color: #f') || inlineStyle.includes('color: white');
+        if (hasLightText) {
+            const whiteArrowSvg = `background-image: url(\"data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23FFFFFF' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e\");`;
+            inlineStyle += whiteArrowSvg;
+        }
+        return `<select class="cell-textarea form-select" style="${inlineStyle}" onchange="edit('${rid}', ${col.id}, this.value)">${opts}</select>`; 
+    } 
     return `<textarea class="cell-textarea" style="${inlineStyle}" onfocus="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" oninput="this.style.height='auto';this.style.height=(this.scrollHeight)+'px';" onchange="edit('${rid}', ${col.id}, this.value)">${safeVal}</textarea>`;
 }
+
 function edit(rid, cid, val) { if(!STATE.edits[rid]) STATE.edits[rid] = {}; STATE.edits[rid][cid] = val; updateSyncUI(); const row = document.querySelector(`tr[data-id="${rid}"]`); if(row && !row.classList.contains('row-modified') && !String(rid).startsWith('NEW')) { row.classList.add('row-modified'); } }
 function _createAndInsertRow(parentId, siblingId = null, toTop = false) { const tempId = 'NEW_' + Date.now(); const newRow = { id: tempId, cells: [], parentId, siblingId, toTop, rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", }; STATE.adds.push(newRow); renderTable(); updateSyncUI(); setTimeout(() => { const newRowEl = document.querySelector(`tr[data-id="${tempId}"]`); if (newRowEl) { newRowEl.scrollIntoView({ behavior: 'smooth', block: 'center' }); const firstInput = newRowEl.querySelector('textarea, select'); if (firstInput) firstInput.focus(); } }, 100); }
 function addNewRowAbove(id) { const relativeId = String(id).startsWith('NEW') ? id : parseInt(id); const relativeRow = STATE.rowMap.get(relativeId); if (!relativeRow) return; _createAndInsertRow(relativeRow.parentId, relativeRow.id); }
