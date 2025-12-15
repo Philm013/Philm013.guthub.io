@@ -109,6 +109,10 @@
                   {
                      "code":"AQDP-H8",
                      "text":"Define a design problem that involves the development of a process or system with interacting components and criteria and constraints that may include social, technical, and/or environmental considerations."
+                  },
+                  {
+                     "code":"AQDP-H9",
+                     "text":"Analyze complex real-world problems by specifying criteria and constraints for successful solutions."
                   }
                ]
             }
@@ -3474,6 +3478,10 @@
             "progressions":{
                "primary":[
                   {
+                     "code":"INTER-P1",
+                     "text":"People encounter questions about the natural world every day."
+                  },
+                  {
                      "code":"INTER-P2",
                      "text":"Science and engineering involve the use of tools to observe and measure things."
                   }
@@ -3486,6 +3494,14 @@
                   {
                      "code":"INTER-E2",
                      "text":"Tools and instruments are used to answer scientific questions, while scientific discoveries lead to the development of new technologies."
+                  },
+                  {
+                     "code":"INTER-E3",
+                     "text":"Scientific discoveries about the natural world can often lead to new and improved technologies, which are develpped through the engineering design process."
+                  },
+                  {
+                     "code":"INTER-E4",
+                     "text":"Knowledge of relevant scientific concepts and research findings is important in engineering."
                   }
                ],
                "middle":[
@@ -3496,6 +3512,10 @@
                   {
                      "code":"INTER-M2",
                      "text":"Science and technology drive each other forward."
+                  },
+                  {
+                     "code":"INTER-M3",
+                     "text":"Technologies extend the measurement, exploration, modeling, and computational capacity of scientific investigations."
                   }
                ],
                "high":[
@@ -3521,6 +3541,10 @@
                   {
                      "code":"INFLU-P2",
                      "text":"Taking natural materials to make things impacts the environment."
+                  },
+                  {
+                     "code":"INFLU-P3",
+                     "text":"People depend on various technologies in their lives; human life would be very different without technology."
                   }
                ],
                "elementary":[
