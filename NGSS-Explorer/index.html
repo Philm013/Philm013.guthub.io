@@ -1240,16 +1240,10 @@
             const esBtn = (pe.details.evidenceStatements && pe.details.evidenceStatements.length) ? `<button class="filter-btn view-evidence-btn" data-pe-id="${pe.id}">View Evidence Statements</button>` : '';
             const analyzeBtn = inBundle ? '' : `<div class="ai-controls"><button class="filter-btn active analyze-pe-desc-btn" data-pe-id="${pe.id}">Analyze with Full Context</button><button class="filter-btn reset-btn reset-analysis-btn">Reset</button></div>`;
 
-            // MODIFIED LAYOUT STRUCTURE HERE
+            // MODIFIED LAYOUT STRUCTURE: Removed pe-description-header (ID, Description, Buttons)
             return `<div class="pe-details-wrapper">
-                <div class="pe-description-header">
-                    <div class="pe-header-content">
-                        <h3 class="copyable">${inBundle ? '' : pe.id + ':'}</h3>
-                        <div class="pe-description-text ai-editable-content copyable" data-pe-id="${pe.id}" data-part="description">${savedDesc}</div>
-                    </div>
-                    ${analyzeBtn}
-                </div>
-                <div style="margin-top:1rem;">${clarification}${boundary}</div>
+                
+                <div style="margin-top:0;">${clarification}${boundary}</div>
                 <div class="pe-details-container" style="margin-top:1rem;">
                     ${createCol('sep', 'Science & Engineering Practices')}
                     ${createCol('dci', 'Disciplinary Core Ideas')}
@@ -1759,10 +1753,16 @@ The JSON object must contain:
                 if (link) { const peId = e.target.closest('[data-pe-id]').dataset.peId; const compCode = link?.dataset.componentCode; const specCode = link?.dataset.specificCode; activePeFilter = link?.closest('.pe-details-connections') ? null : peId; switchView('3d', { component: compCode, specific: specCode }, true); }
             };
             
-            document.body.addEventListener('click', e => {
-                const editableContent = e.target.closest('.ai-editable-content');
+			document.body.addEventListener('click', e => {
                 const isToolbar = e.target.closest('#ai-edit-toolbar');
-                if (!editableContent && !isToolbar) { hideToolbar(); hideHandles(); }
+                
+                // FIX: Hide toolbar if we click anywhere (including inside text) and there is no text selected
+                const selection = window.getSelection();
+                if (!isToolbar && (selection.isCollapsed || selection.rangeCount === 0)) {
+                    hideToolbar(); 
+                    hideHandles(); 
+                }
+
                 const span = e.target.closest('.ai-editable-content span');
                 if(span && !isToolbar) {
                     document.querySelectorAll('.is-active-target').forEach(el => el.classList.remove('is-active-target'));
@@ -2107,6 +2107,23 @@ The JSON object must contain:
                 }
             }
         });
+		
+		// --- NEW STEP HERE ---
+        tour.addStep({
+            id: 'explain-3d-filters',
+            title: '3D Filters',
+            text: 'Before exploring the list, use these filters to narrow down elements by Dimension (SEP, DCI, CCC) or specific sub-categories.',
+            attachTo: { element: '#threed-filters-all', on: 'right' },
+            buttons: [{ action() { return this.back(); }, classes: 'shepherd-button-secondary', text: 'Back' }, { action() { return this.next(); }, text: 'Next' }],
+            beforeShowPromise: function() {
+                return new Promise(resolve => {
+                    // Ensure the view is actually switched before showing this bubble
+                    if(currentView !== '3d') switchView('3d');
+                    setTimeout(resolve, 300);
+                });
+            }
+        });
+        // ---------------------
 
         // 11. Click 3D Item
         tour.addStep({
