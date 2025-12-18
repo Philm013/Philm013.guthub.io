@@ -293,10 +293,13 @@
     <div class="glass-header">
         <div class="d-flex align-items-center gap-3 overflow-hidden">
             <button class="btn btn-light rounded-circle shadow-sm border" onclick="toDash()"><i class="bi bi-chevron-left"></i></button>
-            <div class="text-truncate">
-                <div class="fw-bold text-truncate" id="sheetName">Loading...</div>
-                <div class="small text-muted font-monospace" id="sheetIdDisplay">...</div>
-            </div>
+            <!-- ADDED LINK HERE -->
+            <a id="sheetLink" href="#" target="_blank" class="text-decoration-none text-reset d-block overflow-hidden">
+                <div class="text-truncate">
+                    <div class="fw-bold text-truncate" id="sheetName" style="cursor: pointer;">Loading...</div>
+                    <div class="small text-muted font-monospace" id="sheetIdDisplay">...</div>
+                </div>
+            </a>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-white border shadow-sm" onclick="viewRawData()" title="View Raw Data Table"><i class="bi bi-table"></i></button>
@@ -530,7 +533,20 @@ function renderLibrary() { const lib = JSON.parse(localStorage.getItem('smLib') 
 function addToLib(id, name) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); lib = lib.filter(s => s.id !== id); lib.unshift({ id, name, date: Date.now() }); localStorage.setItem('smLib', JSON.stringify(lib.slice(0,10))); }
 function removeSheet(e, id) { e.stopPropagation(); if(confirm('Remove?')) { let lib = JSON.parse(localStorage.getItem('smLib') || '[]'); localStorage.setItem('smLib', JSON.stringify(lib.filter(s => s.id !== id))); renderLibrary(); } }
 async function api(ep, method='GET', body=null) { const t = localStorage.getItem('smToken'); const opts = { method, headers: { 'Authorization': `Bearer ${t}`, 'Content-Type': 'application/json' } }; if(body) opts.body = JSON.stringify(body); sysLog(`REQ ${method} ${ep}`, body); const res = await fetch(CONFIG.proxy + CONFIG.api + ep, opts); if(res.status === 403) { if(confirm("Proxy Locked. Open unlock page?")) window.open('https://cors-anywhere.herokuapp.com/corsdemo', '_blank'); throw 'PROXY_LOCK'; } const json = await res.json(); if(!res.ok) { sysLog(`ERR ${res.status}`, json); throw (json.message || `Error ${res.status}`); } return json; }
-function loadFromDash() { const id = document.getElementById('dashSheetId').value.trim(); if(id) loadSheet(id); }
+function loadFromDash() {
+    let input = document.getElementById('dashSheetId').value.trim();
+    if (!input) return;
+
+    // Extract ID if the user pasted a full URL
+    // Handles format: https://app.smartsheet.com/sheets/ID_HERE?query...
+    if (input.includes('/sheets/')) {
+        const parts = input.split('/sheets/');
+        // Get the part after /sheets/ and split by '?' in case there are parameters
+        input = parts[1].split('?')[0];
+    }
+    
+    loadSheet(input);
+}
 function loadSheet(id) { STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); fetchData().then(() => { loadViews(); if(STATE.autoRefresh) startAutoRefresh(); openSetup(false); }); }
 function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.adds=[]; STATE.dels=new Set(); STATE.edits={}; STATE.hierarchyChanges={}; STATE.selectedRowIds.clear(); STATE.meta.collapsed.clear(); STATE.meta.setupCollapsed.clear(); STATE.meta.rawCollapsed.clear(); STATE.meta.maxDepth = 0; STATE.lastModifiedAt = null; STATE.conflicts = []; STATE.rowMap.clear(); STATE.childMap.clear(); STATE.flatRenderList = []; updateSyncUI(); document.getElementById('tBody').innerHTML=''; document.getElementById('sheetName').innerText='Loading...'; stopAutoRefresh(); }
 
