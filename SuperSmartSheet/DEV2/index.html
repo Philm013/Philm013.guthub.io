@@ -545,14 +545,14 @@ function loadFromDash() {
     let input = document.getElementById('dashSheetId').value.trim();
     if (!input) return;
 
-    // Extract ID if the user pasted a full URL
-    // Handles format: https://app.smartsheet.com/sheets/ID_HERE?query...
+    // Check if it's a full URL
     if (input.includes('/sheets/')) {
         const parts = input.split('/sheets/');
-        // Get the part after /sheets/ and split by '?' in case there are parameters
+        // Extract the ID/Slug (the part after /sheets/ and before any ?)
         input = parts[1].split('?')[0];
     }
     
+    // Now 'input' is either 'G2gvgr4f5W3qg88cXMrc...' or '1968568015998852'
     loadSheet(input);
 }
 function loadSheet(id) { STATE.sheetId = id; document.getElementById('dashboardView').classList.remove('active'); document.getElementById('editorView').classList.add('active'); resetState(); fetchData().then(() => { loadViews(); if(STATE.autoRefresh) startAutoRefresh(); openSetup(false); }); }
@@ -561,19 +561,23 @@ function resetState() { STATE.serverRows = []; STATE.allRows=[]; STATE.adds=[]; 
 async function fetchData() { 
     showLoader(true); 
     try { 
-        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue,writerInfo,attachments,discussions`); 
+        // We call the API using whatever ID was provided (Numeric or Slug both work)
+        const d = await api(`/sheets/${STATE.sheetId}?include=format,objectValue`); 
+        
         STATE.serverRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.allRows = JSON.parse(JSON.stringify(d.rows)); 
         STATE.cols = d.columns; 
         STATE.lastModifiedAt = d.modifiedAt; 
         
-        // UI UPDATES
+        // Update UI Text
         document.getElementById('sheetName').innerText = d.name; 
-        document.getElementById('sheetIdDisplay').innerText = d.id; 
+        document.getElementById('sheetIdDisplay').innerText = d.id; // Keep Numeric ID for display
         
-        // UPDATE THE LINK HERE
+        // FIX: Use the official permalink returned by Smartsheet
         const sheetLink = document.getElementById('sheetLink');
-        if(sheetLink) sheetLink.href = `https://app.smartsheet.com/sheets/${d.id}`;
+        if(sheetLink && d.permalink) {
+            sheetLink.href = d.permalink; 
+        }
 
         addToLib(d.id, d.name); 
         STATE.selectedRowIds = new Set(STATE.allRows.map(r => r.id)); 
