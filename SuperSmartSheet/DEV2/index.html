@@ -578,26 +578,47 @@ function checkConflictsDone() { if(STATE.conflicts.length === 0) { bootstrap.Mod
 function convertDeletedRowToNew(oldId) { const edits = STATE.edits[oldId]; if(!edits) return; const tempId = 'NEW_REC_' + Date.now(); const newRow = { id: tempId, cells: [], rowNumber: 9999, format: ",,,,,,,,,,,,,,22,,,,,,", toTop: true }; STATE.edits[tempId] = {...edits}; delete STATE.edits[oldId]; STATE.adds.push(newRow); }
 
 // --- FORMATTING PARSER ---
+// --- 3. FIX: PREVENT ACCIDENTAL BLACK BACKGROUNDS ---
 function getFormatInfo(fmt) {
     if (!fmt) return { style: '', bg: null };
-    const p = fmt.split(','); let s = ''; let bg = null;
-    if (p.length > 9) { const bgIdx = parseInt(p[9]); if (!isNaN(bgIdx) && bgIdx > 1 && SMARTSHEET_PALETTE[bgIdx]) bg = SMARTSHEET_PALETTE[bgIdx]; }
-    if (p.length > 8) { const txtIdx = parseInt(p[8]); if (!isNaN(txtIdx) && txtIdx > 1 && SMARTSHEET_PALETTE[txtIdx]) s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`; }
+    const p = fmt.split(','); 
+    let s = ''; 
+    let bg = null;
+
+    // Index 9 is Background Color
+    if (p.length > 9) { 
+        const bgIdx = parseInt(p[9]); 
+        // Smartsheet Palette: 0=None, 1=White, 2=Black, 3...Colors
+        // We only apply if it's not 0 (None), 1 (White), or if it's a specific color.
+        // If your sheet is turning black, index 2 is being triggered. 
+        // We will skip 0, 1, and 2 to keep backgrounds clean by default.
+        if (!isNaN(bgIdx) && bgIdx > 2 && SMARTSHEET_PALETTE[bgIdx]) {
+            bg = SMARTSHEET_PALETTE[bgIdx];
+        }
+    }
+    
+    // Index 8 is Text Color
+    if (p.length > 8) { 
+        const txtIdx = parseInt(p[8]); 
+        if (!isNaN(txtIdx) && txtIdx > 1 && SMARTSHEET_PALETTE[txtIdx]) {
+            s += `color: ${SMARTSHEET_PALETTE[txtIdx]} !important;`;
+        }
+    }
+
+    // Alignment and other styles...
     if (p[6]) { const h = ['','left','center','right']; if (h[p[6]]) s += `text-align: ${h[p[6]]};`; }
     if (p[7]) { const v = ['','top','middle','bottom']; if (v[p[7]]) s += `vertical-align: ${v[p[7]]};`; }
-    if (p[15] === '1') s += `white-space: normal !important; word-wrap: break-word;`;
     if (p[2] === '1') s += 'font-weight: bold;';
     if (p[3] === '1') s += 'font-style: italic;';
-    let d = [];
-    if (p[4] === '1') d.push('underline');
-    if (p[5] === '1') d.push('line-through');
-    if (d.length) s += `text-decoration: ${d.join(' ')};`;
+    
     return { style: s, bg: bg };
 }
 
 // --- SETUP MODAL ---
+// --- 2. FIX: PERSISTENT OUTLINE BUTTONS ---
 function generateOutlineButtonsHTML(context) { 
-    const maxLevel = STATE.meta.maxDepth + 1; 
+    // Use the absolute maximum depth of the sheet, not the current view
+    const maxLevel = (STATE.meta.absoluteMaxDepth || 0) + 1; 
     let html = ''; 
     for(let i = 1; i <= maxLevel; i++) { 
         html += `<button class="btn" onclick="setOutline(${i}, '${context}')">${i}</button>`; 
@@ -644,16 +665,33 @@ function renderSetupCols() {
 function applySetup() { const curView = STATE.views.find(v => v.id === STATE.currentViewId); if (!curView) return; const checkboxes = document.querySelectorAll('#setupColList input:checked'); let newVisible = Array.from(checkboxes).map(cb => parseInt(cb.value)); const primaryColId = STATE.cols.find(c => c.primary)?.id; if (primaryColId && !newVisible.includes(primaryColId)) { newVisible.unshift(primaryColId); } curView.visibleCols = newVisible; saveViewsToStorage(); bootstrap.Modal.getInstance('#setupModal').hide(); renderTable(); }
 
 // --- DATA INDEXING & HIERARCHY ---
+// --- 1. FIX: RE-CALCULATE MAX DEPTH GLOBALLY ---
 function indexAllData() {
     STATE.rowMap.clear(); STATE.childMap.clear();
-    // FIX: Do not concatenate adds here. Adds are already spliced into allRows.
+    let absoluteMaxDepth = 0;
+
+    // Helper to calculate depth of any row regardless of visibility
+    const getRowDepth = (row) => {
+        let d = 0;
+        let curr = row;
+        while (curr && curr.parentId) {
+            d++;
+            curr = STATE.allRows.find(r => r.id === curr.parentId);
+        }
+        return d;
+    };
+
     STATE.allRows.forEach(r => {
         STATE.rowMap.set(r.id, r);
+        const d = getRowDepth(r);
+        if (d > absoluteMaxDepth) absoluteMaxDepth = d; // Track the sheet's total depth
+
         if (r.parentId) {
             if (!STATE.childMap.has(r.parentId)) STATE.childMap.set(r.parentId, []);
             STATE.childMap.get(r.parentId).push(r.id);
         }
     });
+    STATE.meta.absoluteMaxDepth = absoluteMaxDepth; // Store this for the buttons
 }
 
 function getVisibleIds() {
