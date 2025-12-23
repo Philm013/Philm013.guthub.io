@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v5.2.4</title>
+    <title>Bank Explorer Pro v5.3.0</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -903,7 +903,7 @@
                 t.isRecurring = !t.isRecurring;
                 let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
                 if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                if(ui.state.drillCat) ui.renderDrillDown(ui.state.drillCat); else if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(document.getElementById('drillTitle').innerText);
+                if(ui.state.drillCat) ui.renderDrillDown(ui.state.drillCat); else if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
                 ui.refresh(); 
             }
         },
@@ -924,15 +924,25 @@
             let count = 0;
             const all = [...this.data.transactions];
             for(let key in this.data.subData) all.push(...this.data.subData[key]);
-            for(const t of all) {
-                if(app.cleanSubDesc(t.desc) === descGroup) {
+            
+            // Fuzzy match the group name to find targets
+            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+            const matchingItems = fuse.search(descGroup).map(r => r.item);
+            // Also include exact matches if fuse missed any (unlikely with low threshold, but safe)
+            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
+            
+            // Combine unique items
+            const targets = new Set([...matchingItems, ...exactMatches]);
+            
+            for(const t of targets) {
+                if(t.isRecurring !== state) {
                     t.isRecurring = state;
                     const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
                     if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
                     count++;
                 }
             }
-            if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup);
+            if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup, true);
             ui.refresh();
             ui.toast(state ? `Marked all (${count})` : `Unmarked all (${count})`);
         },
@@ -1050,7 +1060,45 @@
             const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
         },
-        cleanSubDesc(desc) { return desc.toUpperCase().replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,'').replace(/[\d#*-]{4,}/g,'').trim(); },
+        cleanSubDesc(desc) { 
+            return desc.toUpperCase()
+                .replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,' ')
+                .replace(/[\d#*-]+/g,' ') 
+                .replace(/\s+/g, ' ')
+                .trim(); 
+        },
+        getFuzzyGroups(txList) {
+            const strictMap = {};
+            txList.forEach(t => {
+                const k = this.cleanSubDesc(t.desc);
+                if (!strictMap[k]) strictMap[k] = [];
+                strictMap[k].push(t);
+            });
+            const groupNames = Object.keys(strictMap);
+            const fuse = new Fuse(groupNames.map(n => ({ name: n })), { keys: ['name'], threshold: 0.25 });
+            const merged = {};
+            const visited = new Set();
+            groupNames.sort((a,b) => a.length - b.length); 
+            for (const name of groupNames) {
+                if (visited.has(name)) continue;
+                const matches = fuse.search(name);
+                merged[name] = [];
+                let hasSelf = false;
+                matches.forEach(m => {
+                    const matchedName = m.item.name;
+                    if (!visited.has(matchedName)) {
+                        merged[name].push(...strictMap[matchedName]);
+                        visited.add(matchedName);
+                    }
+                    if(matchedName === name) hasSelf = true;
+                });
+                if(!hasSelf && !visited.has(name)) {
+                    merged[name].push(...strictMap[name]);
+                    visited.add(name);
+                }
+            }
+            return merged;
+        },
         getHistory(desc) {
             const clean = this.cleanSubDesc(desc); let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
             const matches = all.filter(t => this.cleanSubDesc(t.desc) === clean && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
@@ -1058,10 +1106,12 @@
         },
         getPotentialRecurring() {
             let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
-            const groups = {}; const rejectedSet = new Set(this.data.rejected.map(r => r.id));
-            all.forEach(t => { if(t.amount >= 0 || t.isRecurring || t.isIgnored) return; const key = this.cleanSubDesc(t.desc); if(rejectedSet.has(key)) return; if(!groups[key]) groups[key] = []; groups[key].push(t); });
+            const candidates = all.filter(t => t.amount < 0 && !t.isRecurring && !t.isIgnored);
+            const groups = this.getFuzzyGroups(candidates);
+            const rejectedSet = new Set(this.data.rejected.map(r => r.id));
             const potentials = [];
             for(const [key, items] of Object.entries(groups)) {
+                if(rejectedSet.has(key)) continue;
                 if(items.length < this.settings.minCount) continue; 
                 items.sort((a,b) => new Date(b.date) - new Date(a.date)); 
                 const dates = items.map(i => new Date(i.date).getTime()); const intervals = [];
@@ -1325,11 +1375,16 @@
             
             // Rec List
             const recList = document.getElementById('recurringList'); let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
-            const recurringGroups = {}; allTx.filter(t => t.isRecurring && !t.isIgnored).forEach(t => { const k = app.cleanSubDesc(t.desc); if(!recurringGroups[k]) recurringGroups[k] = { tot:0, cnt:0, name: k }; recurringGroups[k].tot += Math.abs(t.amount); recurringGroups[k].cnt++; });
-            const recEntries = Object.values(recurringGroups);
+            const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
+            const fGroups = app.getFuzzyGroups(recurringCandidates);
+            const recEntries = Object.entries(fGroups).map(([name, items]) => {
+                const tot = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                return { name: name, tot: tot, cnt: items.length };
+            });
+
             if(recEntries.length > 0) {
                 recList.innerHTML = ''; let totalMonthly = 0;
-                recEntries.forEach(g => { const avgAmt = g.tot / g.cnt; totalMonthly += avgAmt; recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(avgAmt)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; });
+                recEntries.forEach(g => { const avgAmt = g.tot / g.cnt; totalMonthly += avgAmt; recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(avgAmt)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; });
                 document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
             } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; document.getElementById('recurringSum').innerText = "$0.00"; }
             
@@ -1337,15 +1392,22 @@
             const potList = document.getElementById('potentialList'); const potentials = app.getPotentialRecurring();
             if(potentials.length > 0) {
                 document.getElementById('potentialCard').classList.remove('hidden');
-                potList.innerHTML = potentials.map(p => `<div class="potential-row"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${p.name.replace(/'/g, "\\'")}')"><div style="font-weight:600; color:var(--text-main)">${p.name}</div><div style="font-size:0.75rem; color:var(--text-sub)">~${p.days} days • ${this.fmt(Math.abs(p.avgAmt))}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-success-soft" onclick="app.confirmPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger-soft" onclick="app.rejectPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button></div></div>`).join('');
+                potList.innerHTML = potentials.map(p => `<div class="potential-row"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${p.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600; color:var(--text-main)">${p.name}</div><div style="font-size:0.75rem; color:var(--text-sub)">~${p.days} days • ${this.fmt(Math.abs(p.avgAmt))}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-success-soft" onclick="app.confirmPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger-soft" onclick="app.rejectPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button></div></div>`).join('');
             } else { document.getElementById('potentialCard').classList.add('hidden'); }
         },
 
         openDrill(cat) { this.state.drillCat = cat; document.getElementById('drillTitle').innerText = cat; this.renderDrillDown(cat); this.switchDrillTab('list'); this.toggleModal('drillModal'); },
-        openPatternDrill(name) {
+        openPatternDrill(name, useFuzzy = false) {
             this.state.drillCat = null; document.getElementById('drillTitle').innerText = name; document.getElementById('drill-actions').style.display = 'flex';
             let all = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => all = all.concat(items));
-            const items = all.filter(t => app.cleanSubDesc(t.desc) === name).sort((a,b) => new Date(b.date) - new Date(a.date));
+            let items = [];
+            if (useFuzzy) {
+                const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+                items = fuse.search(name).map(r => r.item);
+            } else {
+                items = all.filter(t => app.cleanSubDesc(t.desc) === name);
+            }
+            items.sort((a,b) => new Date(b.date) - new Date(a.date));
             document.getElementById('drillSubtitle').innerText = "Pattern History";
             document.getElementById('drillList').innerHTML = items.map(t => `<div class="tx-row" style="${t.isIgnored ? 'opacity:0.5;' : ''}"><div style="display:flex; align-items:center; gap:10px; flex:1"><label class="check-group" style="padding:5px; margin:0; border:none;"><input type="checkbox" style="transform:scale(1.3)" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"></label><div onclick="ui.showDetail('${t.id}')" style="cursor:pointer; flex:1"><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.isIgnored ? '(Ignored)' : ''}</div></div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700">${this.fmt(t.amount)}</div></div>`).join('');
             document.getElementById('drillAnalysisList').innerHTML = `<div style="padding:10px;text-align:center;color:var(--text-sub)">${items.length} items found</div>`;
