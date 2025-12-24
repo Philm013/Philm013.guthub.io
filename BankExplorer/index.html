@@ -1,9 +1,11 @@
+--- START OF FILE finances.html ---
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v6.0.1 (AI Edition)</title>
+    <title>Bank Explorer Pro v6.0.2 (AI Edition)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -1310,34 +1312,31 @@
                 
                 const ai = new GoogleGenAI({ apiKey: app.settings.apiKey });
                 
-                // Prepare context: Send summary of visible transactions (limited to save tokens)
+                // Prepare context
                 const txData = app.data.viewTx.slice(0, 50).map(t => ({ id: t.id, date: t.rawDateStr, desc: t.desc, amt: t.amount, tags: t.tags }));
                 const context = `User has ${app.data.viewTx.length} visible transactions. Here are the first 50: ${JSON.stringify(txData)}.`;
                 
-                const model = ai.getGenerativeModel({
-                    model: "gemini-2.0-flash",
-                    systemInstruction: `You are a helpful financial assistant inside 'Bank Explorer'. 
+                const systemInstruction = `You are a helpful financial assistant inside 'Bank Explorer'. 
                     You can analyze spending, identify trends, and categorize transactions using tags.
                     If asked to tag items, use the 'add_tags_to_transaction' tool.
-                    Always format monetary values as $X.XX.
-                    Current Data Context: ${context}`
+                    Always format monetary values as $X.XX.`;
+
+                const response = await ai.models.generateContent({
+                    model: "gemini-2.0-flash",
+                    config: {
+                        systemInstruction: systemInstruction,
+                        tools: [{ functionDeclarations: [this.addTagTool] }]
+                    },
+                    contents: [
+                        { role: 'user', parts: [{ text: `Current Data Context: ${context}` }] },
+                        { role: 'user', parts: [{ text: txt }] }
+                    ]
                 });
 
-                const tools = [
-                    { functionDeclarations: [this.addTagTool] }
-                ];
-                
-                const result = await model.generateContent({
-                    contents: { role: 'user', parts: [{ text: txt }] },
-                    config: { tools: { functionDeclarations: [this.addTagTool] } }
-                });
-
-                const response = result.response;
-                const calls = response.functionCalls();
-                
                 // Remove loading message
                 document.querySelector('.chat-messages .msg-ai:last-child').remove();
 
+                const calls = response.functionCalls;
                 if (calls && calls.length > 0) {
                     this.appendMsg(`Executing ${calls.length} updates...`, 'ai');
                     for (const call of calls) {
@@ -1345,7 +1344,6 @@
                             await app.addTag(call.args.transactionId, call.args.tag);
                         }
                     }
-                    // Recursively call model with function result (simplified here to just confirmation)
                     this.appendMsg(`Successfully tagged ${calls.length} items.`, 'ai');
                 } else {
                     this.appendMsg(response.text(), 'ai');
@@ -1353,6 +1351,7 @@
 
             } catch(e) {
                 document.querySelector('.chat-messages .msg-ai:last-child').innerHTML = "Error: " + e.message;
+                console.error(e);
             }
         },
 
@@ -1562,7 +1561,7 @@
                 const grp={}; tx.forEach(t=>{ if(!grp[t.cleanName]) grp[t.cleanName]={tot:0,cnt:0}; grp[t.cleanName].tot += t.amount; grp[t.cleanName].cnt++; });
                 Object.entries(grp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([name,d]) => { const hasSub = app.data.subData[name] && app.data.subData[name].length > 0; const div = document.createElement('div'); div.className = 'tx-row'; div.onclick = () => this.openDrill(name); div.innerHTML = `<div><div style="font-weight:600">${name} ${hasSub?'<i class="fas fa-check-circle" style="color:var(--accent);font-size:0.8rem"></i>':''}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div>`; list.appendChild(div); });
                 
-                // Rec List & Potentials (Existing logic)
+                // Rec List & Potentials (Restored Original Logic)
                 const recList = document.getElementById('recurringList'); let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
                 const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
                 const fGroups = app.getFuzzyGroups(recurringCandidates);
