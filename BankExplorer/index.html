@@ -1,27 +1,15 @@
-I apologize for the oversight. I have restored the recurring calculation toggle functionality.
-
-I added a **toggle button** next to the "Monthly Estimate" label in the Recurring Expenses card. It allows you to switch between:
-1.  **`/ Tx`**: Average per transaction (Total / Count).
-2.  **`/ 12`**: Annualized monthly average (Total / 12).
-
-Here is the complete, fixed file.
-
---- START OF FILE finances.html ---
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Bank Explorer Pro v6.0.3 (AI Edition)</title>
+    <title>Bank Explorer Pro v6.0 (AI Edition)</title>
     
     <!-- Libraries -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/fuse.js@6.6.2/dist/fuse.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
-    <!-- Markdown parser for AI responses -->
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
@@ -38,12 +26,12 @@ Here is the complete, fixed file.
             --success: #10b981;
             --danger: #ef4444;
             --warning: #f59e0b;
-            --ai-color: #8b5cf6;
             --card-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             --safe-bottom: env(safe-area-inset-bottom, 20px);
             --header-height: 50px;
             --search-height: 60px;
             --nav-height: 65px;
+            --ai-chat-width: 380px;
         }
 
         body.dark-mode {
@@ -120,7 +108,7 @@ Here is the complete, fixed file.
             padding-top: 10px;
             padding-bottom: var(--safe-bottom);
             height: calc(var(--nav-height) + var(--safe-bottom));
-            z-index: 200; 
+            z-index: 100; 
             box-shadow: 0 -4px 15px rgba(0,0,0,0.05);
         }
         .nav-item { 
@@ -195,14 +183,18 @@ Here is the complete, fixed file.
         .potential-row:last-child { border-bottom: none; }
 
         /* TAGS */
-        .tag-container { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 10px; }
-        .tag-chip { 
-            background: var(--bg); border: 1px solid var(--border); color: var(--text-main);
-            padding: 4px 10px; border-radius: 12px; font-size: 0.75rem; display: inline-flex; align-items: center; gap: 5px;
+        .tag-badge {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 2px 8px; border-radius: 12px; font-size: 0.7rem;
+            background: var(--bg); border: 1px solid var(--border); color: var(--text-sub);
+            margin-right: 4px;
         }
-        .tag-chip i.fa-times { cursor: pointer; color: var(--text-sub); }
-        .tag-chip:hover i.fa-times { color: var(--danger); }
-        .tag-input-wrapper { display: flex; gap: 5px; margin-top: 10px; }
+        .tag-badge i { font-size: 0.65rem; cursor: pointer; }
+        .tag-badge i:hover { color: var(--danger); }
+        
+        .tag-input-container {
+            display: flex; gap: 5px; margin-top: 10px;
+        }
 
         /* MODALS */
         .modal-overlay {
@@ -239,6 +231,44 @@ Here is the complete, fixed file.
         }
         .full-screen-modal .modal-header { border-radius: 0; }
 
+        /* CHAT / AI WIDGET */
+        .chat-fab {
+            position: fixed; bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px); right: 20px;
+            width: 56px; height: 56px; border-radius: 50%;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6);
+            color: white; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.5rem; cursor: pointer; z-index: 150;
+            transition: transform 0.2s;
+        }
+        .chat-fab:active { transform: scale(0.95); }
+
+        .chat-window {
+            position: fixed; bottom: 0; right: 0; width: 100%; max-width: 500px; height: 80vh;
+            background: var(--surface); border-top-left-radius: 20px; border-top-right-radius: 20px;
+            box-shadow: 0 -5px 20px rgba(0,0,0,0.1); z-index: 160;
+            display: flex; flex-direction: column; transform: translateY(110%);
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid var(--border);
+        }
+        @media (min-width: 768px) {
+            .chat-window { bottom: 20px; right: 20px; width: var(--ai-chat-width); height: 600px; border-radius: 20px; }
+        }
+        .chat-window.open { transform: translateY(0); }
+        
+        .chat-header {
+            padding: 15px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center;
+            background: var(--surface); border-radius: 20px 20px 0 0;
+        }
+        .chat-messages { flex: 1; padding: 15px; overflow-y: auto; background: var(--bg); display: flex; flex-direction: column; gap: 10px; }
+        
+        .msg { max-width: 80%; padding: 10px 14px; border-radius: 16px; font-size: 0.9rem; line-height: 1.4; position: relative; }
+        .msg.user { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 4px; }
+        .msg.ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); color: var(--text-main); border-bottom-left-radius: 4px; }
+        .msg.system { align-self: center; font-size: 0.75rem; color: var(--text-sub); background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 10px; }
+        
+        .chat-input-area { padding: 10px; border-top: 1px solid var(--border); background: var(--surface); display: flex; gap: 8px; }
+
         /* PDF CANVAS STYLES */
         #pdfContainer {
             width: 100%; height: 100%; overflow-y: auto; background: #525659;
@@ -268,50 +298,12 @@ Here is the complete, fixed file.
         }
         .check-group input[type="checkbox"] { transform: scale(1.2); }
 
-        /* AI CHAT */
-        .chat-widget {
-            position: fixed; bottom: calc(var(--nav-height) + var(--safe-bottom) + 20px); right: 20px;
-            width: 60px; height: 60px; border-radius: 30px;
-            background: var(--ai-color); color: white;
-            display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 10px rgba(139, 92, 246, 0.4);
-            cursor: pointer; z-index: 900;
-            transition: transform 0.2s;
-        }
-        .chat-widget:active { transform: scale(0.95); }
-        
-        .chat-window {
-            position: fixed; bottom: 0; left: 0; right: 0; top: 0;
-            background: var(--surface); z-index: 1050; display: none;
-            flex-direction: column;
-        }
-        .chat-header {
-            padding: 15px; border-bottom: 1px solid var(--border); background: var(--surface);
-            display: flex; justify-content: space-between; align-items: center; font-weight: 700;
-        }
-        .chat-messages {
-            flex: 1; overflow-y: auto; padding: 20px; background: var(--bg);
-            display: flex; flex-direction: column; gap: 15px;
-        }
-        .message {
-            max-width: 85%; padding: 12px 16px; border-radius: 12px; font-size: 0.95rem; line-height: 1.5;
-        }
-        .msg-user { align-self: flex-end; background: var(--accent); color: white; border-bottom-right-radius: 2px; }
-        .msg-ai { align-self: flex-start; background: var(--surface); border: 1px solid var(--border); border-bottom-left-radius: 2px; }
-        .msg-ai p { margin: 0 0 10px 0; } .msg-ai p:last-child { margin: 0; }
-        
-        .chat-input-area {
-            padding: 10px; background: var(--surface); border-top: 1px solid var(--border);
-            display: flex; gap: 10px; padding-bottom: calc(var(--safe-bottom) + 10px);
-        }
-
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
         
         .btn { border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
         .btn-ghost { background: transparent; color: var(--text-sub); }
         .btn-primary { background: var(--accent); color: #fff; }
-        .btn-ai { background: var(--ai-color); color: #fff; }
         .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text-main); }
         .btn-danger-ghost { background: transparent; color: var(--danger); border: 1px solid transparent; }
         .btn-success-soft { background: rgba(16, 185, 129, 0.1); color: var(--success); }
@@ -321,6 +313,17 @@ Here is the complete, fixed file.
         .badge { background: var(--bg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-size: 0.75rem; color: var(--text-sub); }
         
         .profile-card { background: var(--bg); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+        
+        .calc-toggle-btn {
+            background: transparent; border: 1px solid var(--border); color: var(--text-sub);
+            padding: 2px 6px; border-radius: 4px; font-size: 0.65rem; margin-right: 5px; cursor: pointer; width: 35px;
+        }
+        .calc-toggle-btn.active { background: var(--bg); color: var(--accent); border-color: var(--accent); font-weight: bold; }
+
+        .typing-indicator { display: inline-block; width: 6px; height: 6px; background: #ccc; border-radius: 50%; margin: 0 2px; animation: bounce 1s infinite; }
+        .typing-indicator:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
     </style>
 </head>
 <body>
@@ -339,7 +342,7 @@ Here is the complete, fixed file.
 <div class="search-container">
     <div class="search-wrapper">
         <i class="fas fa-search search-icon"></i>
-        <input type="text" id="globalSearch" class="search-input" placeholder="Search merchants, notes, tags..." onkeyup="app.handleSearchInput(event)">
+        <input type="text" id="globalSearch" class="search-input" placeholder="Search merchants, tags, amounts..." onkeyup="app.handleSearchInput(event)">
         <div id="autocompleteList" class="autocomplete-list"></div>
     </div>
     <button class="btn btn-ghost" style="padding: 10px;" onclick="ui.toggleModal('filterModal')" title="Advanced Filters">
@@ -385,8 +388,7 @@ Here is the complete, fixed file.
                 <div style="width:1px; background:var(--border); height:20px; margin:0 5px;"></div>
                 <button class="control-btn active" data-group="mode" onclick="ui.setDashMode('flow', this)">Net Flow</button>
                 <button class="control-btn" data-group="mode" onclick="ui.setDashMode('trend', this)">Trend</button>
-                <button class="control-btn" data-group="mode" onclick="ui.setDashMode('composition', this)">By Category</button>
-                <button class="control-btn" data-group="mode" onclick="ui.setDashMode('tags', this)">By Tags</button>
+                <button class="control-btn" data-group="mode" onclick="ui.setDashMode('composition', this)">Composition</button>
             </div>
 
             <div class="chart-container">
@@ -435,47 +437,42 @@ Here is the complete, fixed file.
         <div id="txContainer"></div>
     </div>
 
-    <!-- ANALYSIS & TAGS -->
+    <!-- ANALYSIS -->
     <div id="view-analysis" class="view-section">
-        <!-- Explorer Toggle -->
-        <div class="chart-controls" style="margin-bottom:20px;">
-            <button class="control-btn active" id="explore-cat-btn" onclick="ui.switchAnalysisMode('category')">By Merchant</button>
-            <button class="control-btn" id="explore-tag-btn" onclick="ui.switchAnalysisMode('tag')">By Tag</button>
-        </div>
-
-        <!-- Tag Cloud Area (Only visible in Tag mode) -->
-        <div id="tagCloudArea" class="card hidden">
-            <h3 style="margin-top:0">Tag Explorer</h3>
-            <div id="tagCloud" style="display:flex; flex-wrap:wrap; gap:8px;"></div>
-        </div>
-
-        <div id="categoryArea">
-            <!-- Confirmed Recurring Card -->
-            <div class="card">
-                <h3 style="margin-top:0"><i class="fas fa-rotate" style="color:var(--accent)"></i> Recurring Expenses</h3>
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
-                    <div style="display:flex; gap:10px; align-items:center;">
-                        <span style="color:var(--text-sub)">Monthly Estimate</span>
-                        <button class="btn btn-sm btn-ghost" onclick="ui.toggleRecMode()" title="Toggle Calculation Mode">
-                            <i class="fas fa-exchange-alt"></i> <span id="recModeLabel">/ Tx</span>
-                        </button>
-                    </div>
-                    <span id="recurringSum" style="font-weight:800; font-size:1.2rem;">$0.00</span>
-                </div>
-                <div id="recurringList" style="border-top:1px solid var(--border); padding-top:10px;">
-                    <small style="color:var(--text-sub)">Tag transactions as recurring in details to populate this list.</small>
-                </div>
-            </div>
-
-            <div class="card hidden" id="potentialCard" style="border-left: 4px solid var(--warning);">
-                <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                    <h3 style="margin-top:0; color:var(--warning)"><i class="fas fa-magic"></i> Potential Recurring</h3>
-                </div>
-                <div id="potentialList"></div>
+        
+        <!-- Tags Analysis -->
+        <div class="card">
+            <h3 style="margin-top:0"><i class="fas fa-tags" style="color:var(--accent)"></i> Tag Exploration</h3>
+            <div id="tagsCloud" style="display:flex; flex-wrap:wrap; gap:8px; padding-top:10px;">
+                <small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>
             </div>
         </div>
 
-        <h3 style="margin:0 0 15px 0;">Breakdown</h3>
+        <!-- Potential Recurring Card -->
+        <div class="card hidden" id="potentialCard" style="border-left: 4px solid var(--warning);">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3 style="margin-top:0; color:var(--warning)"><i class="fas fa-magic"></i> Potential Recurring</h3>
+                <button class="btn btn-ghost btn-sm" onclick="ui.toggleModal('settingsModal')"><i class="fas fa-sliders-h"></i></button>
+            </div>
+            <div style="font-size:0.8rem; color:var(--text-sub); margin-bottom:10px;">
+                Found items matching your recurring settings. <br>Tap name to view transactions.
+            </div>
+            <div id="potentialList"></div>
+        </div>
+
+        <!-- Confirmed Recurring Card -->
+        <div class="card">
+            <h3 style="margin-top:0"><i class="fas fa-rotate" style="color:var(--accent)"></i> Recurring Expenses</h3>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+                <span style="color:var(--text-sub)">Monthly Estimate</span>
+                <span id="recurringSum" style="font-weight:800; font-size:1.2rem;">$0.00</span>
+            </div>
+            <div id="recurringList" style="border-top:1px solid var(--border); padding-top:10px;">
+                <small style="color:var(--text-sub)">Tag transactions as recurring in details to populate this list.</small>
+            </div>
+        </div>
+
+        <h3 style="margin:0 0 15px 0;">Expense Breakdown</h3>
         <div id="analysisList"></div>
     </div>
 </main>
@@ -488,23 +485,20 @@ Here is the complete, fixed file.
 </nav>
 
 <!-- AI CHAT WIDGET -->
-<div id="chatWidgetBtn" class="chat-widget" onclick="ui.toggleChat()">
-    <i class="fas fa-robot" style="font-size: 1.5rem;"></i>
-</div>
-
+<button class="chat-fab" onclick="ui.toggleChat()"><i class="fas fa-robot"></i></button>
 <div id="chatWindow" class="chat-window">
     <div class="chat-header">
-        <div style="display:flex; align-items:center; gap:10px;">
-            <i class="fas fa-robot" style="color:var(--ai-color)"></i> Gemini Assistant
+        <div style="display:flex; align-items:center; gap:10px; font-weight:600;">
+            <i class="fas fa-robot" style="color:var(--accent)"></i> Gemini Assistant
         </div>
-        <button class="btn btn-ghost" onclick="ui.toggleChat()"><i class="fas fa-times"></i></button>
+        <button class="btn btn-ghost" onclick="ui.toggleChat()"><i class="fas fa-chevron-down"></i></button>
     </div>
     <div id="chatMessages" class="chat-messages">
-        <div class="message msg-ai">Hello! I'm your financial assistant powered by Gemini. I can help analyze your spending, identify trends, or tag your transactions. Try asking "Analyze my spending" or "Tag grocery items".</div>
+        <div class="msg system">Gemini Assistant Active. I can help analyze spending, tag transactions, and more. Set your API Key in Settings first.</div>
     </div>
     <div class="chat-input-area">
-        <input type="text" id="chatInput" class="form-control" placeholder="Ask something..." onkeypress="if(event.key==='Enter') agent.send()">
-        <button class="btn btn-ai" onclick="agent.send()"><i class="fas fa-paper-plane"></i></button>
+        <input type="text" id="chatInput" class="form-control" placeholder="Ask Gemini..." onkeypress="if(event.key==='Enter') ui.sendChatMessage()">
+        <button class="btn btn-primary" onclick="ui.sendChatMessage()"><i class="fas fa-paper-plane"></i></button>
     </div>
 </div>
 
@@ -531,8 +525,9 @@ Here is the complete, fixed file.
         <div class="modal-body" style="padding:20px;">
             <h4>Configuration</h4>
             <div class="input-group">
-                <label>Gemini API Key (Required for AI)</label>
-                <input type="password" id="apiKeyInput" class="form-control" placeholder="AIzaSy...">
+                <label>Gemini API Key</label>
+                <input type="password" id="apiKeyInput" class="form-control" placeholder="AI Studio Key...">
+                <small style="color:var(--text-sub)">Stored locally in browser.</small>
             </div>
             
             <button class="btn btn-outline" style="width:100%; margin-bottom:15px; text-align:left; justify-content:space-between;" onclick="ui.toggleModal('parserManagerModal')">
@@ -594,6 +589,7 @@ Here is the complete, fixed file.
             <div class="input-group">
                 <label>Regex Pattern (JavaScript)</label>
                 <input type="text" id="peRegex" class="form-control" style="font-family:monospace;" placeholder="^(\d{2}/\d{2})...">
+                <small style="color:var(--text-sub)">Use capture groups ( ) for Date, Desc, Amount.</small>
             </div>
             <div style="display:flex; gap:10px;">
                 <div class="input-group" style="flex:1">
@@ -611,7 +607,7 @@ Here is the complete, fixed file.
             </div>
             <label class="check-group" style="margin-bottom:15px;">
                 <input type="checkbox" id="peInferYear">
-                <span>Infer Year</span>
+                <span>Infer Year (For statements without year in date)</span>
             </label>
 
             <div style="background:var(--bg); padding:15px; border-radius:8px; border:1px solid var(--border); margin-bottom:20px;">
@@ -663,6 +659,10 @@ Here is the complete, fixed file.
                     <option value="exp">Expenses Only</option>
                 </select>
             </div>
+             <div class="input-group">
+                <label>Filter by Tag</label>
+                <input type="text" id="filterTag" class="form-control" placeholder="e.g. Groceries">
+            </div>
             <div style="display:flex; gap:10px; margin-top:20px;">
                 <button class="btn" style="background:var(--bg); color:var(--text-main); flex:1;" onclick="app.clearFilters()">Clear</button>
                 <button class="btn btn-primary" style="flex:2;" onclick="app.applyFilters()">Apply Filters</button>
@@ -672,7 +672,7 @@ Here is the complete, fixed file.
 </div>
 
 <!-- DRILL DOWN MODAL -->
-<div id="drillModal" class="modal-overlay" style="z-index: 100;">
+<div id="drillModal" class="modal-overlay" style="z-index: 1000;">
     <div class="modal-sheet">
         <div class="modal-header">
             <div>
@@ -687,14 +687,14 @@ Here is the complete, fixed file.
             <button class="sub-nav-btn" onclick="ui.switchDrillTab('upload')">Add Data</button>
         </div>
         <div class="modal-body">
-            <div id="drill-tab-list" style="padding:20px;">
+            <div id="drill-tab-list" style="padding:20px 20px 60px 20px;">
                 <div id="drill-actions" style="margin-bottom:15px; display:none; justify-content:flex-end; gap:10px;">
                     <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, true)">Mark All</button>
                     <button class="btn btn-sm btn-outline" onclick="app.toggleAllRecurring(document.getElementById('drillTitle').innerText, false)">Unmark All</button>
                 </div>
                 <div id="drillList"></div>
             </div>
-            <div id="drill-tab-analysis" class="hidden" style="padding:20px;">
+            <div id="drill-tab-analysis" class="hidden" style="padding:20px 20px 60px 20px;">
                 <div class="card"><h4>Monthly Trend</h4><div class="chart-container"><canvas id="chartSubTime"></canvas></div></div>
                 <div class="card"><h4>Sub-Category Distribution</h4><div class="chart-container" style="height:250px;"><canvas id="chartSubCat"></canvas></div></div>
                 <h4>Patterns</h4><div id="drillAnalysisList"></div>
@@ -710,8 +710,8 @@ Here is the complete, fixed file.
     </div>
 </div>
 
-<!-- DETAIL MODAL -->
-<div id="detailModal" class="modal-overlay" style="z-index: 150;">
+<!-- DETAIL MODAL (Higher Z-Index) -->
+<div id="detailModal" class="modal-overlay" style="z-index: 1050;">
     <div class="modal-sheet" style="height:auto" onclick="event.stopPropagation()">
         <div class="modal-header">
             <h3>Details</h3>
@@ -736,11 +736,153 @@ Here is the complete, fixed file.
     </div>
 </div>
 
+<!-- SCRIPTS (MODULE TYPE FOR GEMINI) -->
 <script type="module">
     import { GoogleGenAI, Type } from "https://esm.run/@google/genai";
 
+    // --- AI MANAGER ---
+    const aiManager = {
+        client: null,
+        modelId: "gemini-2.0-flash",
+        history: [],
+
+        init() {
+            const key = localStorage.getItem('geminiKey');
+            if(key) {
+                this.client = new GoogleGenAI({ apiKey: key });
+                this.history = [];
+            }
+            document.getElementById('apiKeyInput').value = key || '';
+        },
+
+        async sendMessage(text) {
+            if(!this.client) {
+                ui.appendChatMessage("Please set your Gemini API Key in settings.", "system");
+                return;
+            }
+
+            ui.appendChatMessage(text, "user");
+            ui.showTypingIndicator();
+
+            try {
+                // Define Tools
+                const tools = [{
+                    functionDeclarations: [
+                        {
+                            name: "get_transactions",
+                            description: "Get recent transactions to analyze. Use before answering questions about spending history.",
+                            parameters: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    limit: { type: Type.NUMBER, description: "Number of transactions to retrieve (max 50)" }
+                                }
+                            }
+                        },
+                        {
+                            name: "add_tag",
+                            description: "Add a tag to a transaction.",
+                            parameters: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    transaction_id: { type: Type.STRING },
+                                    tag: { type: Type.STRING }
+                                },
+                                required: ["transaction_id", "tag"]
+                            }
+                        },
+                        {
+                            name: "remove_tag",
+                            description: "Remove a tag from a transaction.",
+                            parameters: {
+                                type: Type.OBJECT,
+                                properties: {
+                                    transaction_id: { type: Type.STRING },
+                                    tag: { type: Type.STRING }
+                                },
+                                required: ["transaction_id", "tag"]
+                            }
+                        }
+                    ]
+                }];
+
+                // System Instruction
+                const sysInstruct = "You are a financial assistant. You can analyze spending, help categorize transactions with tags, and answer questions. When asked to analyze, retrieve transactions first. Be concise and friendly.";
+
+                let contents = [...this.history, { role: "user", parts: [{ text }] }];
+
+                // Loop for function calling
+                while (true) {
+                    const response = await this.client.models.generateContent({
+                        model: this.modelId,
+                        contents: contents,
+                        config: {
+                            tools: tools,
+                            systemInstruction: sysInstruct
+                        }
+                    });
+
+                    const funcCalls = response.functionCalls;
+                    
+                    if (funcCalls && funcCalls.length > 0) {
+                        // Store model's call in history
+                        contents.push(response.candidates[0].content);
+                        
+                        // Execute tool
+                        const funcCall = funcCalls[0]; // Handle first call
+                        const { name, args } = funcCall;
+                        let result;
+
+                        if (name === 'get_transactions') {
+                            const limit = args.limit || 20;
+                            // Sort by date desc
+                            let tx = app.data.transactions.filter(t => !t.isIgnored).slice(0, limit);
+                            result = JSON.stringify(tx.map(t => ({
+                                id: t.id,
+                                date: t.rawDateStr,
+                                desc: t.desc,
+                                amount: t.amount,
+                                tags: t.tags || []
+                            })));
+                        } else if (name === 'add_tag') {
+                            await app.addTag(args.transaction_id, args.tag);
+                            result = { status: "success", message: `Added tag ${args.tag}` };
+                        } else if (name === 'remove_tag') {
+                            await app.removeTag(args.transaction_id, args.tag);
+                            result = { status: "success", message: `Removed tag ${args.tag}` };
+                        }
+
+                        // Feed result back
+                        contents.push({
+                            role: "user",
+                            parts: [{
+                                functionResponse: {
+                                    name: name,
+                                    response: { result }
+                                }
+                            }]
+                        });
+                    } else {
+                        // Final text response
+                        const text = response.text;
+                        ui.removeTypingIndicator();
+                        ui.appendChatMessage(text, "ai");
+                        this.history.push({ role: "user", parts: [{ text: text }] }); // Simple history tracking
+                        this.history.push(response.candidates[0].content);
+                        break;
+                    }
+                }
+
+            } catch (e) {
+                ui.removeTypingIndicator();
+                ui.appendChatMessage("Error: " + e.message, "system");
+                console.error(e);
+            }
+        }
+    };
+
+
     // --- DATABASE ---
-    const DB_NAME = 'BankExplorerDB'; const DB_VER = 5; // Inc version for new schema
+    const DB_NAME = 'BankExplorerDB'; const DB_VER = 4;
     const db = {
         _db: null,
         async init() {
@@ -748,7 +890,7 @@ Here is the complete, fixed file.
                 const req = indexedDB.open(DB_NAME, DB_VER);
                 req.onupgradeneeded = (e) => {
                     const db = e.target.result;
-                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id', settings:'id' };
+                    const stores = { files:'id', tx:'id', subData:'category', rejected:'id', profiles:'id' };
                     Object.entries(stores).forEach(([name, key]) => {
                         if(!db.objectStoreNames.contains(name)) db.createObjectStore(name, {keyPath: key});
                     });
@@ -798,8 +940,8 @@ Here is the complete, fixed file.
     // --- APP ---
     const app = {
         data: { files: [], transactions: [], subData: {}, viewTx: [], rejected: [], profiles: [] },
-        filters: { text:'', start:'', end:'', min:'', max:'', type:'all' },
-        settings: { minDays: 25, maxDays: 35, minCount: 2, apiKey: '' },
+        filters: { text:'', start:'', end:'', min:'', max:'', type:'all', tag:'' },
+        settings: { minDays: 25, maxDays: 35, minCount: 2 },
         fuse: null,
         
         async init() {
@@ -808,6 +950,7 @@ Here is the complete, fixed file.
             await this.loadData();
             await this.initProfiles();
             this.cleanExistingTransfers();
+            aiManager.init();
             document.addEventListener('click', (e) => {
                 if(!e.target.closest('.search-container')) document.getElementById('autocompleteList').style.display = 'none';
             });
@@ -817,19 +960,14 @@ Here is the complete, fixed file.
         async loadData() {
             this.data.files = await db.getAll('files');
             this.data.transactions = await db.getAll('tx');
+            // Ensure tags array exists
+            this.data.transactions.forEach(t => { if(!t.tags) t.tags = []; });
+            
             const subs = await db.getAll('subData');
             this.data.subData = {};
             subs.forEach(s => this.data.subData[s.category] = s.items);
             this.data.rejected = await db.getAll('rejected');
             
-            const savedSettings = await db.get('settings', 'main');
-            if(savedSettings) this.settings = {...this.settings, ...savedSettings};
-            document.getElementById('apiKeyInput').value = this.settings.apiKey || '';
-
-            // Ensure tags array exists
-            this.data.transactions.forEach(t => { if(!t.tags) t.tags = []; });
-            for(let key in this.data.subData) { this.data.subData[key].forEach(t => { if(!t.tags) t.tags = []; }); }
-
             this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
             this.data.viewTx = [...this.data.transactions];
             this.initFuse();
@@ -868,32 +1006,35 @@ Here is the complete, fixed file.
             this.fuse = new Fuse(allDocs, { keys: ['desc', 'cleanName', 'note', 'amount', 'tags'], threshold: 0.4, ignoreLocation: true });
         },
 
-        // --- TAGS ---
+        // --- TAGGING ---
         async addTag(id, tag) {
+            tag = tag.trim();
+            if(!tag) return;
             let t = this.getTxById(id);
-            if(t && tag) {
+            if(t) {
                 if(!t.tags) t.tags = [];
-                const cleanTag = tag.trim();
-                if(!t.tags.includes(cleanTag)) {
-                    t.tags.push(cleanTag);
+                if(!t.tags.includes(tag)) {
+                    t.tags.push(tag);
                     let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                    if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                    this.initFuse(); // Reindex
-                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id); // Refresh modal
+                    if(store === 'tx') await db.save('tx', t); 
+                    else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                    this.initFuse();
                     ui.refresh();
+                    if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id); // Re-render detail
                 }
             }
         },
 
         async removeTag(id, tag) {
-             let t = this.getTxById(id);
-            if(t && tag) {
-                t.tags = t.tags.filter(x => x !== tag);
+            let t = this.getTxById(id);
+            if(t && t.tags) {
+                t.tags = t.tags.filter(tg => tg !== tag);
                 let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
-                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                if(store === 'tx') await db.save('tx', t); 
+                else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
                 this.initFuse();
-                if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
                 ui.refresh();
+                if(document.getElementById('detailModal').style.display === 'flex') ui.showDetail(id);
             }
         },
 
@@ -959,19 +1100,14 @@ Here is the complete, fixed file.
             const list = document.getElementById('autocompleteList');
             if(val.length < 2) { list.style.display = 'none'; return; }
             let allNames = new Set();
-            this.data.transactions.forEach(t => {
-                allNames.add(t.desc);
-                if(t.tags) t.tags.forEach(tag => allNames.add('#' + tag));
-            });
+            this.data.transactions.forEach(t => { allNames.add(t.desc); if(t.tags) t.tags.forEach(tg => allNames.add('#'+tg)); });
             Object.values(this.data.subData).forEach(arr => arr.forEach(t => allNames.add(t.desc)));
-            
             const matches = Array.from(allNames).filter(name => name.toLowerCase().includes(val.toLowerCase())).slice(0, 8);
             if(matches.length === 0) { list.style.display = 'none'; return; }
             list.innerHTML = matches.map(name => {
                 const regex = new RegExp(`(${val})`, 'gi');
                 const hl = name.replace(regex, '<span class="autocomplete-match">$1</span>');
-                const safeName = name.replace(/'/g, "\\'").replace(/^#/, "");
-                return `<div class="autocomplete-item" onclick="app.selectAutocomplete('${safeName}')">${hl}</div>`;
+                return `<div class="autocomplete-item" onclick="app.selectAutocomplete('${name.replace(/'/g, "\\'")}')">${hl}</div>`;
             }).join('');
             list.style.display = 'block';
         },
@@ -983,15 +1119,16 @@ Here is the complete, fixed file.
             this.applyFilters();
         },
 
-        async updateSettings() {
+        updateSettings() {
             this.settings.minDays = parseInt(document.getElementById('setMinDays').value) || 25;
             this.settings.maxDays = parseInt(document.getElementById('setMaxDays').value) || 35;
             this.settings.minCount = parseInt(document.getElementById('setMinCount').value) || 2;
-            this.settings.apiKey = document.getElementById('apiKeyInput').value.trim();
-            await db.save('settings', { id: 'main', ...this.settings });
+            const key = document.getElementById('apiKeyInput').value;
+            if(key) localStorage.setItem('geminiKey', key);
+            aiManager.init();
             ui.toggleModal('settingsModal');
             ui.refresh();
-            ui.toast("Settings updated & rescanned");
+            ui.toast("Settings updated");
         },
 
         async clearRejected() {
@@ -1068,10 +1205,14 @@ Here is the complete, fixed file.
             let count = 0;
             const all = [...this.data.transactions];
             for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            // Fuzzy match the group name to find targets
             const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
             const matchingItems = fuse.search(descGroup).map(r => r.item);
             const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
+            
             const targets = new Set([...matchingItems, ...exactMatches]);
+            
             for(const t of targets) {
                 if(t.isRecurring !== state) {
                     t.isRecurring = state;
@@ -1083,6 +1224,32 @@ Here is the complete, fixed file.
             if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(descGroup, true);
             ui.refresh();
             ui.toast(state ? `Marked all (${count})` : `Unmarked all (${count})`);
+        },
+        
+        async toggleAvgMode(descGroup) {
+            let count = 0;
+            const all = [...this.data.transactions];
+            for(let key in this.data.subData) all.push(...this.data.subData[key]);
+            
+            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+            const matchingItems = fuse.search(descGroup).map(r => r.item);
+            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
+            const targets = new Set([...matchingItems, ...exactMatches]);
+            
+            // Determine new mode based on the first item found
+            let newMode = 'avg'; // Default
+            if (targets.size > 0) {
+                 const first = [...targets][0];
+                 newMode = (first.recMode === '12mo') ? 'avg' : '12mo';
+            }
+
+            for(const t of targets) {
+                t.recMode = newMode;
+                const store = this.data.transactions.find(x => x.id === t.id) ? 'tx' : 'subData';
+                if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
+                count++;
+            }
+            ui.refresh();
         },
 
         async confirmPotential(descGroup) { await this.toggleAllRecurring(descGroup, true); ui.toast(`Confirmed transactions as recurring`); },
@@ -1110,6 +1277,8 @@ Here is the complete, fixed file.
             this.filters.min = document.getElementById('filterMin').value;
             this.filters.max = document.getElementById('filterMax').value;
             this.filters.type = document.getElementById('filterType').value;
+            this.filters.tag = document.getElementById('filterTag').value.trim();
+            
             let baseList = this.data.transactions;
             if (this.filters.text && this.fuse) { const results = this.fuse.search(this.filters.text); baseList = results.map(r => r.item).filter(i => !i.isSub); }
             this.data.viewTx = baseList.filter(t => {
@@ -1121,9 +1290,10 @@ Here is the complete, fixed file.
                 if(this.filters.max && Math.abs(t.amount) > parseFloat(this.filters.max)) return false;
                 if(this.filters.type === 'inc' && t.amount < 0) return false;
                 if(this.filters.type === 'exp' && t.amount > 0) return false;
+                if(this.filters.tag && (!t.tags || !t.tags.some(tg => tg.toLowerCase().includes(this.filters.tag.toLowerCase())))) return false;
                 return true; 
             });
-            const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all';
+            const hasAdv = this.filters.start || this.filters.end || this.filters.min || this.filters.max || this.filters.type !== 'all' || this.filters.tag;
             document.getElementById('filterDot').style.display = hasAdv ? 'inline' : 'none';
             if(document.getElementById('filterModal').style.display === 'flex') { ui.toggleModal('filterModal'); ui.toast(`Found ${this.data.viewTx.length} matches`); }
             ui.refresh();
@@ -1133,7 +1303,7 @@ Here is the complete, fixed file.
             document.getElementById('globalSearch').value = ''; this.filters.text = '';
             document.getElementById('filterStart').value = ''; document.getElementById('filterEnd').value = '';
             document.getElementById('filterMin').value = ''; document.getElementById('filterMax').value = '';
-            document.getElementById('filterType').value = 'all';
+            document.getElementById('filterType').value = 'all'; document.getElementById('filterTag').value = '';
             this.applyFilters();
             document.getElementById('filterDot').style.display = 'none'; ui.toggleModal('filterModal'); ui.refresh();
         },
@@ -1167,22 +1337,35 @@ Here is the complete, fixed file.
             ];
             const wsDash = XLSX.utils.aoa_to_sheet(dashData); wsDash['!cols'] = [{ wch: 25 }, { wch: 15 }]; XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
 
-            const txData = [[{ v: "Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Category", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Type", s: headerStyle }, { v: "Note", s: headerStyle }, { v: "Tags", s: headerStyle }]];
-            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => {
-                txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: (t.tags||[]).join(', ') }]);
+            let allRec = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => allRec = allRec.concat(items));
+            allRec = allRec.filter(t => t.isRecurring && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
+            const recGroups = {}; allRec.forEach(t => { const k = this.cleanSubDesc(t.desc); if(!recGroups[k]) recGroups[k] = []; recGroups[k].push(t); });
+            const recData = [[{ v: "Group / Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Note", s: headerStyle }]];
+            const rowProps = []; rowProps.push({});
+            Object.entries(recGroups).forEach(([name, items]) => {
+                const total = items.reduce((sum, t) => sum + t.amount, 0); const avg = total / items.length;
+                recData.push([{ v: name, s: subHeaderStyle }, { v: `${items.length} transactions - Avg: ${ui.fmt(avg)}`, s: subHeaderStyle }, { v: total, s: { ...subHeaderStyle, ...negStyle } }, { v: "", s: subHeaderStyle }]);
+                rowProps.push({ level: 0, collapsed: true });
+                items.forEach(t => { recData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.amount, s: negStyle }, { v: t.note || "" }]); rowProps.push({ level: 1, hidden: true }); });
             });
-            const wsTx = XLSX.utils.aoa_to_sheet(txData); wsTx['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 30 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 20 }]; XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
+            const wsRec = XLSX.utils.aoa_to_sheet(recData); wsRec['!cols'] = [{ wch: 25 }, { wch: 40 }, { wch: 15 }, { wch: 30 }]; wsRec['!rows'] = rowProps; XLSX.utils.book_append_sheet(wb, wsRec, "Recurring Report");
+
+            const txData = [[{ v: "Date", s: headerStyle }, { v: "Description", s: headerStyle }, { v: "Category", s: headerStyle }, { v: "Tags", s: headerStyle }, { v: "Amount", s: headerStyle }, { v: "Type", s: headerStyle }, { v: "Note", s: headerStyle }, { v: "Status", s: headerStyle }]];
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => {
+                txData.push([{ v: t.rawDateStr, s: dateStyle }, { v: t.desc }, { v: t.cleanName }, { v: (t.tags||[]).join(', ') }, { v: t.amount, s: t.amount >= 0 ? posStyle : negStyle }, { v: t.amount >= 0 ? "Income" : "Expense" }, { v: t.note || "" }, { v: t.isRecurring ? "Recurring" : "" }]);
+            });
+            const wsTx = XLSX.utils.aoa_to_sheet(txData); wsTx['!cols'] = [{ wch: 12 }, { wch: 50 }, { wch: 30 }, { wch: 20 }, { wch: 12 }, { wch: 10 }, { wch: 30 }, { wch: 12 }]; XLSX.utils.book_append_sheet(wb, wsTx, "Transactions");
 
             XLSX.writeFile(wb, "BankExplorer_Export.xlsx"); ui.toggleModal('exportModal');
         },
 
         exportCSV() {
-            const rows = [["Date","Description","Amount","Category","Note","Tags"]];
-            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => rows.push([t.rawDateStr, `"${t.desc.replace(/"/g,'""')}"`, t.amount, t.cleanName, `"${(t.note||'').replace(/"/g,'""')}"`, `"${(t.tags||[]).join(',')}"`]));
+            const rows = [["Date","Description","Amount","Category","Tags","Note"]];
+            this.data.viewTx.filter(t=>!t.isIgnored).forEach(t => rows.push([t.rawDateStr, `"${t.desc.replace(/"/g,'""')}"`, t.amount, t.cleanName, `"${(t.tags||[]).join(',')}"`, `"${(t.note||'').replace(/"/g,'""')}"`]));
             const csv = rows.map(r => r.join(',')).join('\n'); const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'bank_export.csv'; a.click();
         },
         exportJSON() {
-            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles, settings: this.settings });
+            const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
         },
         cleanSubDesc(desc) { 
@@ -1288,7 +1471,7 @@ Here is the complete, fixed file.
                 if(statementDateContext && amt > 0 && !desc.toLowerCase().includes('payment') && !desc.toLowerCase().includes('deposit')) { amt = -amt; }
                 const finalDate = statementDateContext ? this.inferYear(rawDate, statementDateContext) : new Date(rawDate);
                 const isIgnored = transferRegex.test(desc);
-                out.push({ id: crypto.randomUUID(), date: finalDate, rawDateStr: rawDate, desc: desc, amount: amt, cleanName: this.clean(desc), signature: `${rawDate}|${desc}|${amt}`, type: amt >= 0 ? 'inc' : 'exp', isIgnored: isIgnored, tags: [] });
+                out.push({ id: crypto.randomUUID(), date: finalDate, rawDateStr: rawDate, desc: desc, amount: amt, cleanName: this.clean(desc), signature: `${rawDate}|${desc}|${amt}`, type: amt >= 0 ? 'inc' : 'exp', isIgnored: isIgnored, needsYearAdjustment: false, recMode: 'avg', tags: [] });
             }
         },
         inferYear(mmdd, refDate) { const [m, d] = mmdd.split('/').map(Number); const refYear = refDate.getFullYear(); let candidate = new Date(refYear, m - 1, d); if (candidate > refDate) candidate.setFullYear(refYear - 1); return candidate; },
@@ -1296,96 +1479,9 @@ Here is the complete, fixed file.
         clean(s) { return s.toUpperCase().replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,'').replace(/[\d#*-]{4,}/g,'').trim(); }
     };
 
-    // --- AI AGENT ---
-    const agent = {
-        addTagTool: {
-            name: 'add_tags_to_transaction',
-            description: 'Add a specific tag to a transaction by ID. Use this when the user asks to tag items.',
-            parameters: {
-                type: Type.OBJECT,
-                properties: {
-                    transactionId: { type: Type.STRING, description: "The ID of the transaction to tag" },
-                    tag: { type: Type.STRING, description: "The tag name (e.g. 'Groceries', 'Rent')" }
-                },
-                required: ['transactionId', 'tag']
-            }
-        },
-        
-        async send() {
-            if(!app.settings.apiKey) return alert("Please set Gemini API Key in Settings");
-            const input = document.getElementById('chatInput');
-            const txt = input.value.trim();
-            if(!txt) return;
-
-            this.appendMsg(txt, 'user');
-            input.value = '';
-            
-            try {
-                this.appendMsg("Thinking...", 'ai', true);
-                
-                const ai = new GoogleGenAI({ apiKey: app.settings.apiKey });
-                
-                // Prepare context
-                const txData = app.data.viewTx.slice(0, 50).map(t => ({ id: t.id, date: t.rawDateStr, desc: t.desc, amt: t.amount, tags: t.tags }));
-                const context = `User has ${app.data.viewTx.length} visible transactions. Here are the first 50: ${JSON.stringify(txData)}.`;
-                
-                const systemInstruction = `You are a helpful financial assistant inside 'Bank Explorer'. 
-                    You can analyze spending, identify trends, and categorize transactions using tags.
-                    If asked to tag items, use the 'add_tags_to_transaction' tool.
-                    Always format monetary values as $X.XX.`;
-
-                const response = await ai.models.generateContent({
-                    model: "gemini-2.0-flash",
-                    config: {
-                        systemInstruction: systemInstruction,
-                        tools: [{ functionDeclarations: [this.addTagTool] }]
-                    },
-                    contents: [
-                        { role: 'user', parts: [{ text: `Current Data Context: ${context}` }] },
-                        { role: 'user', parts: [{ text: txt }] }
-                    ]
-                });
-
-                // Remove loading message
-                document.querySelector('.chat-messages .msg-ai:last-child').remove();
-
-                const calls = response.functionCalls;
-                if (calls && calls.length > 0) {
-                    this.appendMsg(`Executing ${calls.length} updates...`, 'ai');
-                    for (const call of calls) {
-                        if (call.name === 'add_tags_to_transaction') {
-                            await app.addTag(call.args.transactionId, call.args.tag);
-                        }
-                    }
-                    this.appendMsg(`Successfully tagged ${calls.length} items.`, 'ai');
-                } else {
-                    this.appendMsg(response.text(), 'ai');
-                }
-
-            } catch(e) {
-                document.querySelector('.chat-messages .msg-ai:last-child').innerHTML = "Error: " + e.message;
-                console.error(e);
-            }
-        },
-
-        appendMsg(text, role, loading=false) {
-            const div = document.createElement('div');
-            div.className = `message msg-${role}`;
-            if(loading) div.style.fontStyle = 'italic';
-            // Parse Markdown for AI
-            if(role === 'ai' && !loading) {
-                div.innerHTML = marked.parse(text);
-            } else {
-                div.innerText = text;
-            }
-            document.getElementById('chatMessages').appendChild(div);
-            div.scrollIntoView({ behavior: 'smooth' });
-        }
-    };
-
     // --- UI ---
     const ui = {
-        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null, dashTag: null, analysisMode: 'category', recMode: 'tx' },
+        state: { drillCat: null, dashTime: 'month', dashMode: 'flow', dashCat: null },
         charts: {},
 
         init() {
@@ -1398,15 +1494,49 @@ Here is the complete, fixed file.
 
         refresh() { this.renderSources(); this.renderDash(); this.renderTx(); this.renderAnalysis(); },
         closeAllModals() { document.querySelectorAll('.modal-overlay').forEach(el => el.style.display = 'none'); },
-        toggleChat() { const c = document.getElementById('chatWindow'); c.style.display = c.style.display === 'flex' ? 'none' : 'flex'; },
         
+        // CHAT UI
+        toggleChat() {
+            document.getElementById('chatWindow').classList.toggle('open');
+        },
+        appendChatMessage(text, role) {
+            const d = document.createElement('div');
+            d.className = `msg ${role}`;
+            d.innerHTML = text.replace(/\n/g, '<br>');
+            document.getElementById('chatMessages').appendChild(d);
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        },
+        showTypingIndicator() {
+            const d = document.createElement('div');
+            d.id = 'typingIndicator'; d.className = 'msg ai';
+            d.innerHTML = '<div class="typing-indicator"></div><div class="typing-indicator"></div><div class="typing-indicator"></div>';
+            document.getElementById('chatMessages').appendChild(d);
+        },
+        removeTypingIndicator() {
+            const el = document.getElementById('typingIndicator');
+            if(el) el.remove();
+        },
+        sendChatMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            if(!text) return;
+            input.value = '';
+            aiManager.sendMessage(text);
+        },
+
         // DASHBOARD CONTROLLER
-        setDashTime(mode, btn) { this.state.dashTime = mode; this.updateControlBtns(btn); this.updateDashboardCharts(); },
-        setDashMode(mode, btn) { this.state.dashMode = mode; this.updateControlBtns(btn); this.updateDashboardCharts(); },
-        setDashFilter(cat, type='cat') {
-            if(type === 'cat') { this.state.dashCat = cat; this.state.dashTag = null; }
-            else { this.state.dashTag = cat; this.state.dashCat = null; }
-            
+        setDashTime(mode, btn) {
+            this.state.dashTime = mode;
+            this.updateControlBtns(btn);
+            this.updateDashboardCharts();
+        },
+        setDashMode(mode, btn) {
+            this.state.dashMode = mode;
+            this.updateControlBtns(btn);
+            this.updateDashboardCharts();
+        },
+        setDashFilter(cat) {
+            this.state.dashCat = cat;
             const el = document.getElementById('chartFilterContainer');
             if(cat) {
                 el.innerHTML = `<div class="filter-chip" onclick="ui.setDashFilter(null)">Filter: ${cat} <i class="fas fa-times-circle"></i></div>`;
@@ -1424,7 +1554,7 @@ Here is the complete, fixed file.
 
         renderDash() {
             // KPIs
-            const tx = app.data.transactions.filter(t => !t.isIgnored); // STRICT FILTER
+            const tx = app.data.transactions.filter(t => !t.isIgnored);
             const inc = tx.filter(t=>t.amount>0).reduce((a,b)=>a+b.amount,0);
             const exp = tx.filter(t=>t.amount<0).reduce((a,b)=>a+b.amount,0);
             document.getElementById('kpi-net').innerText = this.fmt(inc+exp);
@@ -1454,8 +1584,9 @@ Here is the complete, fixed file.
 
         getAnalysisData(grouping) {
             let data = app.data.transactions.filter(t => !t.isIgnored);
-            if (this.state.dashCat) data = data.filter(t => t.cleanName === this.state.dashCat);
-            if (this.state.dashTag) data = data.filter(t => t.tags && t.tags.includes(this.state.dashTag));
+            if (this.state.dashCat) {
+                data = data.filter(t => t.cleanName === this.state.dashCat);
+            }
 
             if(data.length === 0) return { keys: [], values: [] };
 
@@ -1477,19 +1608,20 @@ Here is the complete, fixed file.
             const groups = {};
             data.forEach(t => {
                 const k = mapKey(new Date(t.date));
-                if(!groups[k.sort]) groups[k.sort] = { label: k.label, inc:0, exp:0, net:0, cats:{}, tags:{} };
+                if(!groups[k.sort]) groups[k.sort] = { label: k.label, inc:0, exp:0, net:0, cats:{} };
                 if(t.amount > 0) groups[k.sort].inc += t.amount;
                 else {
-                    const absAmt = Math.abs(t.amount);
-                    groups[k.sort].exp += absAmt;
-                    groups[k.sort].cats[t.cleanName] = (groups[k.sort].cats[t.cleanName] || 0) + absAmt;
-                    if(t.tags) t.tags.forEach(tag => groups[k.sort].tags[tag] = (groups[k.sort].tags[tag] || 0) + absAmt);
+                    groups[k.sort].exp += Math.abs(t.amount);
+                    groups[k.sort].cats[t.cleanName] = (groups[k.sort].cats[t.cleanName] || 0) + Math.abs(t.amount);
                 }
                 groups[k.sort].net += t.amount;
             });
 
             const sortedKeys = Object.keys(groups).sort();
-            return { keys: sortedKeys.map(k => groups[k].label), values: sortedKeys.map(k => groups[k]) };
+            return {
+                keys: sortedKeys.map(k => groups[k].label),
+                values: sortedKeys.map(k => groups[k])
+            };
         },
 
         updateDashboardCharts() {
@@ -1498,12 +1630,17 @@ Here is the complete, fixed file.
             const analysis = this.getAnalysisData(grouping);
             const labels = analysis.keys;
             const values = analysis.values;
-            const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981','#64748b'];
 
             let type, data, options = { 
                 responsive:true, maintainAspectRatio:false, 
                 scales: { x:{ grid:{display:false} }, y:{ border:{display:false} } },
-                onClick: (e, elements, chart) => { if (elements[0]) ui.toast(`Selected Period: ${chart.data.labels[elements[0].index]}`); }
+                onClick: (e, elements, chart) => {
+                    if (elements[0]) {
+                        const idx = elements[0].index;
+                        const label = chart.data.labels[idx];
+                        ui.toast(`Selected Period: ${label}`);
+                    }
+                }
             };
 
             if (mode === 'flow') {
@@ -1521,22 +1658,30 @@ Here is the complete, fixed file.
                 const trendData = values.map(v => { running += v.net; return running; });
                 data = {
                     labels: labels,
-                    datasets: [{ label: 'Cumulative Net Flow', data: trendData, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4 }]
+                    datasets: [{
+                        label: 'Cumulative Net Flow',
+                        data: trendData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
                 };
-            } else if (mode === 'composition' || mode === 'tags') {
+            } else if (mode === 'composition') {
                 type = 'bar';
-                options.scales.x.stacked = true; options.scales.y.stacked = true;
-                const prop = mode === 'composition' ? 'cats' : 'tags';
+                options.scales.x.stacked = true;
+                options.scales.y.stacked = true;
                 
-                const allKeys = {};
-                values.forEach(v => Object.entries(v[prop]).forEach(([k,amt]) => allKeys[k] = (allKeys[k]||0)+amt));
-                const topKeys = Object.keys(allKeys).sort((a,b)=>allKeys[b]-allKeys[a]).slice(0,5);
+                const allCats = {};
+                values.forEach(v => Object.entries(v.cats).forEach(([k,amt]) => allCats[k] = (allCats[k]||0)+amt));
+                const topCats = Object.keys(allCats).sort((a,b)=>allCats[b]-allCats[a]).slice(0,5);
+                const colors = ['#3b82f6','#8b5cf6','#ec4899','#f59e0b','#10b981'];
 
                 data = {
                     labels: labels,
-                    datasets: topKeys.map((k, i) => ({
-                        label: k,
-                        data: values.map(v => v[prop][k] || 0),
+                    datasets: topCats.map((cat, i) => ({
+                        label: cat,
+                        data: values.map(v => v.cats[cat] || 0),
                         backgroundColor: colors[i]
                     }))
                 };
@@ -1556,74 +1701,62 @@ Here is the complete, fixed file.
         renderSources() { document.getElementById('fileListContainer').innerHTML = app.data.files.map(f => `<div class="file-list-item"><div><b>${f.name}</b><br><small>${f.count} txns</small></div><div>${f.context ? `<small style="display:block;color:var(--accent);text-align:right">${f.context}</small>` : ''}<button class="btn btn-ghost" onclick="ui.openPdf('${f.id}')" style="padding:5px; color:var(--accent)"><i class="fas fa-eye"></i></button></div></div>`).join('') || '<div style="padding:20px;text-align:center;color:#999">No files</div>'; },
         renderTx() { const c = document.getElementById('txContainer'); const view = app.data.viewTx; document.getElementById('txCount').innerText = view.length; c.innerHTML = view.map(t => this.txHtml(t)).join(''); },
         
-        // EXPLORER (Category or Tag)
-        switchAnalysisMode(mode) {
-            this.state.analysisMode = mode;
-            document.getElementById('explore-cat-btn').classList.toggle('active', mode==='category');
-            document.getElementById('explore-tag-btn').classList.toggle('active', mode==='tag');
-            document.getElementById('categoryArea').classList.toggle('hidden', mode!=='category');
-            document.getElementById('tagCloudArea').classList.toggle('hidden', mode!=='tag');
-            this.renderAnalysis();
-        },
-        
-        toggleRecMode() {
-            this.state.recMode = this.state.recMode === 'tx' ? '12mo' : 'tx';
-            document.getElementById('recModeLabel').innerText = this.state.recMode === '12mo' ? '/ 12' : '/ Tx';
-            this.renderAnalysis();
-        },
-
         renderAnalysis() {
-            const list = document.getElementById('analysisList'); list.innerHTML='';
-            const tx = app.data.viewTx.filter(t=>t.amount<0 && !t.isIgnored);
-
-            if(this.state.analysisMode === 'category') {
-                const grp={}; tx.forEach(t=>{ if(!grp[t.cleanName]) grp[t.cleanName]={tot:0,cnt:0}; grp[t.cleanName].tot += t.amount; grp[t.cleanName].cnt++; });
-                Object.entries(grp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([name,d]) => { const hasSub = app.data.subData[name] && app.data.subData[name].length > 0; const div = document.createElement('div'); div.className = 'tx-row'; div.onclick = () => this.openDrill(name); div.innerHTML = `<div><div style="font-weight:600">${name} ${hasSub?'<i class="fas fa-check-circle" style="color:var(--accent);font-size:0.8rem"></i>':''}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div>`; list.appendChild(div); });
-                
-                // Rec List
-                const recList = document.getElementById('recurringList'); let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
-                const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
-                const fGroups = app.getFuzzyGroups(recurringCandidates);
-                const recEntries = Object.entries(fGroups).map(([name, items]) => { const tot = items.reduce((sum, t) => sum + Math.abs(t.amount), 0); return { name: name, tot: tot, cnt: items.length }; });
-
-                if(recEntries.length > 0) {
-                    recList.innerHTML = ''; let totalMonthly = 0;
-                    recEntries.forEach(g => { 
-                        const avgAmt = this.state.recMode === '12mo' ? g.tot / 12 : g.tot / g.cnt;
-                        totalMonthly += avgAmt; 
-                        recList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600">${g.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(avgAmt)}/mo</small><span class="badge">${g.cnt}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`; 
-                    });
-                    document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
-                } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; document.getElementById('recurringSum').innerText = "$0.00"; }
-                
-                const potList = document.getElementById('potentialList'); const potentials = app.getPotentialRecurring();
-                if(potentials.length > 0) {
-                    document.getElementById('potentialCard').classList.remove('hidden');
-                    potList.innerHTML = potentials.map(p => `<div class="potential-row"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${p.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600; color:var(--text-main)">${p.name}</div><div style="font-size:0.75rem; color:var(--text-sub)">~${p.days} days • ${this.fmt(Math.abs(p.avgAmt))}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-success-soft" onclick="app.confirmPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger-soft" onclick="app.rejectPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button></div></div>`).join('');
-                } else { document.getElementById('potentialCard').classList.add('hidden'); }
+            const tx = app.data.viewTx; const list = document.getElementById('analysisList'); list.innerHTML='';
+            const grp={}; tx.filter(t=>t.amount<0 && !t.isIgnored).forEach(t=>{ if(!grp[t.cleanName]) grp[t.cleanName]={tot:0,cnt:0}; grp[t.cleanName].tot += t.amount; grp[t.cleanName].cnt++; });
+            Object.entries(grp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([name,d]) => { const hasSub = app.data.subData[name] && app.data.subData[name].length > 0; const div = document.createElement('div'); div.className = 'tx-row'; div.onclick = () => this.openDrill(name); div.innerHTML = `<div><div style="font-weight:600">${name} ${hasSub?'<i class="fas fa-check-circle" style="color:var(--accent);font-size:0.8rem"></i>':''}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div>`; list.appendChild(div); });
             
+            // Render Tags Cloud
+            const tagCounts = {};
+            tx.forEach(t => { if(t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag]||0)+1); });
+            const tagsCloud = document.getElementById('tagsCloud');
+            if(Object.keys(tagCounts).length > 0) {
+                tagsCloud.innerHTML = Object.entries(tagCounts).map(([tag, count]) => 
+                    `<span class="tag-badge" style="padding:5px 10px; font-size:0.8rem; cursor:pointer;" onclick="document.getElementById('filterTag').value='${tag}';app.applyFilters();ui.switchView('transactions');">#${tag} (${count})</span>`
+                ).join('');
             } else {
-                // TAG MODE
-                const tagCloud = document.getElementById('tagCloud'); tagCloud.innerHTML = '';
-                const tagGrp = {};
-                tx.forEach(t => { 
-                    if(t.tags && t.tags.length) {
-                        t.tags.forEach(tag => { if(!tagGrp[tag]) tagGrp[tag] = {tot:0, cnt:0}; tagGrp[tag].tot += t.amount; tagGrp[tag].cnt++; });
-                    } else {
-                        if(!tagGrp['Untagged']) tagGrp['Untagged'] = {tot:0, cnt:0}; tagGrp['Untagged'].tot += t.amount; tagGrp['Untagged'].cnt++;
-                    }
-                });
-                
-                Object.entries(tagGrp).sort((a,b)=>a[1].tot-b[1].tot).forEach(([tag, d]) => {
-                     // Tag Cloud Item
-                     tagCloud.innerHTML += `<div class="tag-chip" style="cursor:pointer; font-size:0.9rem; padding:8px 12px; background:var(--surface); border-color:var(--accent);" onclick="ui.setDashFilter('${tag}', 'tag'); ui.switchView('dashboard');">${tag} (${this.fmt(Math.abs(d.tot))})</div>`;
-                     
-                     // List Item
-                     const div = document.createElement('div'); div.className = 'tx-row'; 
-                     div.innerHTML = `<div><div style="font-weight:600"><i class="fas fa-tag" style="color:var(--accent); font-size:0.8rem; margin-right:5px;"></i>${tag}</div><div style="font-size:0.75rem;color:var(--text-sub)">${d.cnt} txns</div></div><div style="font-weight:700" class="neg">${this.fmt(d.tot)}</div>`; 
-                     list.appendChild(div);
-                });
+                tagsCloud.innerHTML = '<small style="color:var(--text-sub)">Add tags to transactions to see them here.</small>';
             }
+
+            // Rec List
+            const recList = document.getElementById('recurringList'); let allTx = [...app.data.transactions]; Object.values(app.data.subData).forEach(s => allTx = allTx.concat(s));
+            const recurringCandidates = allTx.filter(t => t.isRecurring && !t.isIgnored);
+            const fGroups = app.getFuzzyGroups(recurringCandidates);
+            const recEntries = Object.entries(fGroups).map(([name, items]) => {
+                const tot = items.reduce((sum, t) => sum + Math.abs(t.amount), 0);
+                const mode = items[0] ? (items[0].recMode || 'avg') : 'avg';
+                return { name: name, tot: tot, cnt: items.length, mode: mode };
+            });
+
+            if(recEntries.length > 0) {
+                recList.innerHTML = ''; let totalMonthly = 0;
+                recEntries.forEach(g => { 
+                    const monthlyCost = g.mode === '12mo' ? (g.tot / 12) : (g.tot / g.cnt);
+                    totalMonthly += monthlyCost; 
+                    
+                    recList.innerHTML += `
+                    <div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;">
+                        <div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;">
+                            <button class="calc-toggle-btn ${g.mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">AVG</button>
+                            <button class="calc-toggle-btn ${g.mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleAvgMode('${g.name.replace(/'/g, "\\'")}')">/12</button>
+                        </div>
+                        <div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${g.name.replace(/'/g, "\\'")}', true)">
+                            <div style="font-weight:600">${g.name}</div>
+                            <small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}/mo</small>
+                            <span class="badge">${g.cnt}x</span>
+                        </div>
+                        <button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.unmarkGroup('${g.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button>
+                    </div>`; 
+                });
+                document.getElementById('recurringSum').innerText = this.fmt(totalMonthly);
+            } else { recList.innerHTML = '<small style="color:var(--text-sub)">No recurring items tagged.</small>'; document.getElementById('recurringSum').innerText = "$0.00"; }
+            
+            // Potential
+            const potList = document.getElementById('potentialList'); const potentials = app.getPotentialRecurring();
+            if(potentials.length > 0) {
+                document.getElementById('potentialCard').classList.remove('hidden');
+                potList.innerHTML = potentials.map(p => `<div class="potential-row"><div style="flex:1; cursor:pointer;" onclick="ui.openPatternDrill('${p.name.replace(/'/g, "\\'")}', true)"><div style="font-weight:600; color:var(--text-main)">${p.name}</div><div style="font-size:0.75rem; color:var(--text-sub)">~${p.days} days • ${this.fmt(Math.abs(p.avgAmt))}</div></div><div style="display:flex; gap:5px;"><button class="btn btn-sm btn-success-soft" onclick="app.confirmPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-check"></i></button><button class="btn btn-sm btn-danger-soft" onclick="app.rejectPotential('${p.name.replace(/'/g, "\\'")}')"><i class="fas fa-times"></i></button></div></div>`).join('');
+            } else { document.getElementById('potentialCard').classList.add('hidden'); }
         },
 
         openDrill(cat) { this.state.drillCat = cat; document.getElementById('drillTitle').innerText = cat; this.renderDrillDown(cat); this.switchDrillTab('list'); this.toggleModal('drillModal'); },
@@ -1631,10 +1764,15 @@ Here is the complete, fixed file.
             this.state.drillCat = null; document.getElementById('drillTitle').innerText = name; document.getElementById('drill-actions').style.display = 'flex';
             let all = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => all = all.concat(items));
             let items = [];
-            if (useFuzzy) { const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 }); items = fuse.search(name).map(r => r.item); } else { items = all.filter(t => app.cleanSubDesc(t.desc) === name); }
+            if (useFuzzy) {
+                const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
+                items = fuse.search(name).map(r => r.item);
+            } else {
+                items = all.filter(t => app.cleanSubDesc(t.desc) === name);
+            }
             items.sort((a,b) => new Date(b.date) - new Date(a.date));
             document.getElementById('drillSubtitle').innerText = "Pattern History";
-            document.getElementById('drillList').innerHTML = items.map(t => this.txHtml(t)).join('');
+            document.getElementById('drillList').innerHTML = items.map(t => `<div class="tx-row" style="${t.isIgnored ? 'opacity:0.5;' : ''}"><div style="display:flex; align-items:center; gap:10px; flex:1"><label class="check-group" style="padding:5px; margin:0; border:none;"><input type="checkbox" style="transform:scale(1.3)" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"></label><div onclick="ui.showDetail('${t.id}')" style="cursor:pointer; flex:1"><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.isIgnored ? '(Ignored)' : ''}</div></div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700">${this.fmt(t.amount)}</div></div>`).join('');
             document.getElementById('drillAnalysisList').innerHTML = `<div style="padding:10px;text-align:center;color:var(--text-sub)">${items.length} items found</div>`;
             const byMonth = {}; items.forEach(t => { if(t.date && !t.isIgnored) { const k = new Date(t.date).toLocaleString('default', {month:'short', year:'2-digit'}); byMonth[k] = (byMonth[k]||0) + Math.abs(t.amount); } });
             const lbls = Object.keys(byMonth).reverse(); this.chart('chartSubTime', 'bar', { labels: lbls, datasets: [{ label: 'Spent', data: lbls.map(l=>byMonth[l]), backgroundColor:'#3b82f6' }] });
@@ -1658,36 +1796,22 @@ Here is the complete, fixed file.
         },
 
         switchDrillTab(tab) { ['list','analysis','upload'].forEach(t => document.getElementById('drill-tab-'+t).classList.add('hidden')); document.querySelectorAll('.sub-nav-btn').forEach(b => b.classList.remove('active')); document.getElementById('drill-tab-'+tab).classList.remove('hidden'); const map = {list:0, analysis:1, upload:2}; document.querySelectorAll('.sub-nav-btn')[map[tab]].classList.add('active'); },
-        
         showDetail(id) {
             let t = app.getTxById(id); if(!t) return;
             const hist = app.getHistory(t.desc); const histHtml = hist.items.length > 1 ? `<div style="margin-top:20px;"><h4 style="margin-bottom:10px; color:var(--text-sub)">HISTORY (${hist.count})</h4><div style="display:flex; gap:10px; margin-bottom:15px; font-size:0.9rem;"><div class="badge">Total: ${this.fmt(hist.total)}</div><div class="badge">Avg: ${this.fmt(hist.avg)}</div></div><div style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border); border-radius: 8px;">${hist.items.map(h => `<div style="display:flex; justify-content:space-between; padding:10px; border-bottom:1px solid var(--border); font-size:0.85rem; background:var(--surface);"><span>${new Date(h.date).toLocaleDateString()}</span><span>${h.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success); margin-right:5px;"></i>' : ''}<span class="${h.amount>=0?'pos':'neg'}">${this.fmt(h.amount)}</span></span></div>`).join('')}</div></div>` : '';
             
-            // TAGS
-            const tagsHtml = (t.tags||[]).map(tag => `<div class="tag-chip">${tag} <i class="fas fa-times" onclick="app.removeTag('${t.id}', '${tag}')"></i></div>`).join('');
+            // Tags HTML
+            const tagsHtml = (t.tags || []).map(tag => `<span class="tag-badge">#${tag} <i class="fas fa-times" onclick="app.removeTag('${t.id}', '${tag}')"></i></span>`).join('');
 
-            document.getElementById('detailContent').innerHTML = `
-                <div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div>
-                <div style="background:var(--bg);padding:15px;border-radius:8px;">
-                    <label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div>
-                    
-                    <label style="font-size:0.7rem;font-weight:700;color:var(--text-sub); margin-top:10px;">TAGS</label>
-                    <div class="tag-container">${tagsHtml}</div>
-                    <div class="tag-input-wrapper">
-                        <input type="text" id="newTagInput" class="form-control" style="padding:6px; font-size:0.85rem;" placeholder="Add tag..." onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)">
-                        <button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)">Add</button>
-                    </div>
-
-                    <div style="display:flex; gap:10px; margin:15px 0;">
-                        <label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label>
-                        <label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label>
-                    </div>
-                    <div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div>
-                    <div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div>
-                </div>${histHtml}`;
-            this.toggleModal('detailModal');
+            document.getElementById('detailContent').innerHTML = `<div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div><div style="background:var(--bg);padding:15px;border-radius:8px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div><div style="display:flex; gap:10px; margin-bottom:15px;"><label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label><label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label></div><div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">TAGS</label><div style="margin-bottom:5px;">${tagsHtml}</div><div class="tag-input-container"><input type="text" id="newTagInput" class="form-control" placeholder="Add tag..." onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)"><button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)"><i class="fas fa-plus"></i></button></div></div><div style="margin-top:15px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div><div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div></div>${histHtml}`;
+            
+            // Ensure modal is open
+            if(document.getElementById('detailModal').style.display !== 'flex') this.toggleModal('detailModal');
         },
-        txHtml(t) { return `<div class="tx-row" onclick="ui.showDetail('${t.id}')"><div><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${(t.tags||[]).map(g=>`<span style="color:var(--accent)">#${g}</span>`).join(' ')} ${t.note ? '<i class="fas fa-sticky-note" style="color:var(--accent)"></i>' : ''} ${t.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success)"></i>' : ''} ${t.isIgnored ? '<i class="fas fa-ban" style="color:var(--text-sub)"></i>' : ''}</div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700; ${t.isIgnored ? 'text-decoration:line-through; color:var(--text-sub);' : ''}">${this.fmt(t.amount)}</div></div>`; },
+        txHtml(t) { 
+            const tags = (t.tags || []).map(tag => `<span class="tag-badge">#${tag}</span>`).join('');
+            return `<div class="tx-row" onclick="ui.showDetail('${t.id}')"><div><div style="font-weight:600">${t.desc}</div><div style="font-size:0.75rem;color:var(--text-sub)">${t.rawDateStr} ${t.note ? '<i class="fas fa-sticky-note" style="color:var(--accent)"></i>' : ''} ${t.isRecurring ? '<i class="fas fa-rotate" style="color:var(--success)"></i>' : ''} ${t.isIgnored ? '<i class="fas fa-ban" style="color:var(--text-sub)"></i>' : ''} ${tags}</div></div><div class="${t.amount>=0?'pos':'neg'}" style="font-weight:700; ${t.isIgnored ? 'text-decoration:line-through; color:var(--text-sub);' : ''}">${this.fmt(t.amount)}</div></div>`; 
+        },
         toggleModal(id) { const el = document.getElementById(id); el.style.display = el.style.display==='flex'?'none':'flex'; },
         chart(id, type, data, options = {}) {
             if(this.charts[id]) this.charts[id].destroy();
@@ -1697,13 +1821,12 @@ Here is the complete, fixed file.
         fmt(n) { return n.toLocaleString('en-US', {style:'currency', currency:'USD'}); }
     };
 
-    // Attach to window for global access
+    // Expose app/ui to global scope for HTML event handlers
     window.app = app;
     window.ui = ui;
-    window.agent = agent;
-    window.parser = parser;
-    window.db = db;
+    window.aiManager = aiManager;
 
+    // Start
     app.init();
 </script>
 </body>
