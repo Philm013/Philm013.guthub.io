@@ -1051,7 +1051,7 @@
             const d = document.createElement('div');
             d.className = `msg ${role}`;
             if (role === 'ai') {
-                d.innerHTML = marked.parse(text);
+                d.innerHTML = text ? marked.parse(text) : '';
             } else {
                 d.textContent = text;
             }
@@ -1335,8 +1335,11 @@
             if (tagStats.length > 0) {
                 recurringTagsList.innerHTML = '';
                 tagStats.forEach(stat => {
-                    totalMonthly += stat.monthlyAvg;
-                    recurringTagsList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="flex:1; cursor:pointer;" onclick="app.searchByTag('${stat.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">#${stat.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(stat.monthlyAvg)}/mo (avg)</small><span class="badge">${stat.count}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.removeRecurringTag('${stat.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`;
+                    const mode = stat.mode || 'avg';
+                    const monthlyCost = mode === '12mo' ? stat.total / 12 : stat.monthlyAvg;
+                    totalMonthly += monthlyCost;
+                    const modeLabel = mode === '12mo' ? '/mo (/12)' : '/mo (avg)';
+                    recurringTagsList.innerHTML += `<div class="tx-row" style="padding:10px 0; border-bottom:1px solid var(--border); border-radius:0; background:transparent;"><div style="display:flex; flex-direction:column; gap:2px; margin-right:10px;"><button class="calc-toggle-btn ${mode === 'avg' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">AVG</button><button class="calc-toggle-btn ${mode === '12mo' ? 'active' : ''}" onclick="event.stopPropagation(); app.toggleRecurringTagMode('${stat.name.replace(/'/g, "\\'")}')">/12</button></div><div style="flex:1; cursor:pointer;" onclick="app.searchByTag('${stat.name.replace(/'/g, "\\'")}')"><div style="font-weight:600">#${stat.name}</div><small class="neg" style="margin-right:10px;">${this.fmt(monthlyCost)}${modeLabel}</small><span class="badge">${stat.count}x</span></div><button class="btn btn-danger-ghost" onclick="event.stopPropagation(); app.removeRecurringTag('${stat.name.replace(/'/g, "\\'")}')"><i class="fas fa-trash"></i></button></div>`;
                 });
             } else {
                 recurringTagsList.innerHTML = '';
@@ -1482,7 +1485,7 @@
             this.data.transactions.sort((a,b) => new Date(b.date) - new Date(a.date));
             this.data.viewTx = [...this.data.transactions];
             this.initFuse();
-            ui.refresh();
+            this.applyFilters();
         },
 
         async initProfiles() {
@@ -1561,7 +1564,7 @@
         async addRecurringTag(tag) {
             tag = tag.trim();
             if (!tag || this.data.recurringTags.find(t => t.id === tag)) return;
-            const newTag = { id: tag };
+            const newTag = { id: tag, mode: 'avg' };
             this.data.recurringTags.push(newTag);
             await db.save('recurringTags', newTag);
             document.getElementById('newRecurringTag').value = '';
@@ -1574,6 +1577,15 @@
             ui.refresh();
         },
 
+        async toggleRecurringTagMode(tagName) {
+            const tag = this.data.recurringTags.find(t => t.id === tagName);
+            if (tag) {
+                tag.mode = (tag.mode === '12mo') ? 'avg' : '12mo';
+                await db.save('recurringTags', tag);
+                ui.refresh();
+            }
+        },
+
         calculateRecurringTagStats() {
             if (this.data.recurringTags.length === 0) return [];
             
@@ -1583,7 +1595,7 @@
             return this.data.recurringTags.map(tagObj => {
                 const tag = tagObj.id;
                 const taggedTx = allTx.filter(t => t.tags && t.tags.includes(tag) && t.amount < 0);
-                if (taggedTx.length === 0) return { name: tag, monthlyAvg: 0, total: 0, count: 0 };
+                if (taggedTx.length === 0) return { name: tag, monthlyAvg: 0, total: 0, count: 0, mode: tagObj.mode || 'avg' };
 
                 taggedTx.sort((a, b) => new Date(a.date) - new Date(b.date));
                 const total = taggedTx.reduce((sum, t) => sum + Math.abs(t.amount), 0);
@@ -1595,7 +1607,7 @@
                 months += lastDate.getMonth();
                 const monthSpan = months <= 0 ? 1 : months + 1;
 
-                return { name: tag, monthlyAvg: total / monthSpan, total, count: taggedTx.length };
+                return { name: tag, monthlyAvg: total / monthSpan, total, count: taggedTx.length, mode: tagObj.mode || 'avg' };
             });
         },
 
@@ -1759,8 +1771,12 @@
                 t.isRecurring = !t.isRecurring;
                 let store = this.data.transactions.find(x => x.id === id) ? 'tx' : 'subData';
                 if(store === 'tx') await db.save('tx', t); else await db.save('subData', { category: t.cleanName, items: this.data.subData[t.cleanName] });
-                if(ui.state.drillCat) ui.renderDrillDown(ui.state.drillCat); else if(document.getElementById('drillModal').style.display === 'flex') ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
-                ui.refresh(); 
+                
+                // Refresh the analysis view in the background, and the current modal if open
+                ui.renderAnalysis();
+                if(document.getElementById('drillModal').style.display === 'flex') {
+                    ui.openPatternDrill(document.getElementById('drillTitle').innerText, true);
+                }
             }
         },
 
