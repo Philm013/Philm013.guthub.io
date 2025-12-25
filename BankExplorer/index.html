@@ -1334,18 +1334,14 @@
         },
 
         openDrill(cat) { this.state.drillCat = cat; document.getElementById('drillTitle').innerText = cat; this.renderDrillDown(cat); this.switchDrillTab('list'); this.toggleModal('drillModal'); },
+        
         openPatternDrill(name, useFuzzy = false) {
             this.state.drillCat = null; document.getElementById('drillTitle').innerText = name; document.getElementById('drill-actions').style.display = 'flex';
             let all = [...app.data.transactions]; Object.values(app.data.subData).forEach(items => all = all.concat(items));
             let items = [];
             if (useFuzzy) {
-                // --- START OF FIX ---
-                // The original code performed a new, inconsistent fuzzy search here.
-                // The corrected code re-uses the exact same grouping logic that
-                // generated the suggestion in the first place, ensuring consistency.
                 const allGroups = app.getFuzzyGroups(all);
                 items = allGroups[name] || [];
-                // --- END OF FIX ---
             } else {
                 items = all.filter(t => app.cleanSubDesc(t.desc) === name);
             }
@@ -1675,11 +1671,8 @@
             const all = [...this.data.transactions];
             for(let key in this.data.subData) all.push(...this.data.subData[key]);
             
-            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
-            const matchingItems = fuse.search(descGroup).map(r => r.item);
-            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
-            
-            const targets = new Set([...matchingItems, ...exactMatches]);
+            const allGroups = this.getFuzzyGroups(all);
+            const targets = new Set(allGroups[descGroup] || []);
             
             for(const t of targets) {
                 if(t.isRecurring !== state) {
@@ -1699,10 +1692,8 @@
             const all = [...this.data.transactions];
             for(let key in this.data.subData) all.push(...this.data.subData[key]);
             
-            const fuse = new Fuse(all, { keys: ['cleanName', 'desc'], threshold: 0.25 });
-            const matchingItems = fuse.search(descGroup).map(r => r.item);
-            const exactMatches = all.filter(t => app.cleanSubDesc(t.desc) === descGroup);
-            const targets = new Set([...matchingItems, ...exactMatches]);
+            const allGroups = this.getFuzzyGroups(all);
+            const targets = new Set(allGroups[descGroup] || []);
             
             let newMode = 'avg'; // Default
             if (targets.size > 0) {
@@ -1835,45 +1826,87 @@
             const data = JSON.stringify({ tx: this.data.transactions, sub: this.data.subData, files: this.data.files.map(f => ({...f, blob:null})), rejected: this.data.rejected, profiles: this.data.profiles });
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
         },
+        
+        // --- NEW HELPER FUNCTION: Levenshtein Distance ---
+        levenshtein(s1, s2) {
+            s1 = s1.toLowerCase();
+            s2 = s2.toLowerCase();
+            const costs = [];
+            for (let i = 0; i <= s1.length; i++) {
+                let lastValue = i;
+                for (let j = 0; j <= s2.length; j++) {
+                    if (i === 0) {
+                        costs[j] = j;
+                    } else {
+                        if (j > 0) {
+                            let newValue = costs[j - 1];
+                            if (s1.charAt(i - 1) !== s2.charAt(j - 1)) {
+                                newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                            }
+                            costs[j - 1] = lastValue;
+                            lastValue = newValue;
+                        }
+                    }
+                }
+                if (i > 0) costs[s2.length] = lastValue;
+            }
+            return costs[s2.length];
+        },
+
+        // --- ENHANCEMENT for cleanSubDesc ---
         cleanSubDesc(desc) { 
-            return desc.toUpperCase()
+            let cleaned = desc.toUpperCase()
                 .replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,' ')
                 .replace(/[\d#*-]+/g,' ') 
                 .replace(/\s+/g, ' ')
-                .trim(); 
+                .trim();
+            
+            const locationKeywords = / ST | AVE | BLVD | RD | FL | CA | NY /i;
+            if (locationKeywords.test(cleaned)) {
+                cleaned = cleaned.split(locationKeywords)[0];
+            }
+            
+            return cleaned.trim();
         },
+        
+        // --- REPLACEMENT for getFuzzyGroups ---
         getFuzzyGroups(txList) {
             const strictMap = {};
             txList.forEach(t => {
                 const k = this.cleanSubDesc(t.desc);
+                if (!k) return; // Ignore empty descriptions after cleaning
                 if (!strictMap[k]) strictMap[k] = [];
                 strictMap[k].push(t);
             });
+
             const groupNames = Object.keys(strictMap);
-            const fuse = new Fuse(groupNames.map(n => ({ name: n })), { keys: ['name'], threshold: 0.25 });
-            const merged = {};
-            const visited = new Set();
-            groupNames.sort((a,b) => a.length - b.length); 
-            for (const name of groupNames) {
-                if (visited.has(name)) continue;
-                const matches = fuse.search(name);
-                merged[name] = [];
-                let hasSelf = false;
-                matches.forEach(m => {
-                    const matchedName = m.item.name;
-                    if (!visited.has(matchedName)) {
-                        merged[name].push(...strictMap[matchedName]);
-                        visited.add(matchedName);
+            const mergedGroups = {};
+            const mergedKeys = new Set();
+
+            const MERGE_THRESHOLD = 2; 
+
+            for (let i = 0; i < groupNames.length; i++) {
+                const baseName = groupNames[i];
+                if (mergedKeys.has(baseName)) continue;
+
+                mergedGroups[baseName] = [...strictMap[baseName]];
+                mergedKeys.add(baseName);
+
+                for (let j = i + 1; j < groupNames.length; j++) {
+                    const compareName = groupNames[j];
+                    if (mergedKeys.has(compareName)) continue;
+
+                    const distance = this.levenshtein(baseName, compareName);
+
+                    if (distance <= MERGE_THRESHOLD) {
+                        mergedGroups[baseName].push(...strictMap[compareName]);
+                        mergedKeys.add(compareName);
                     }
-                    if(matchedName === name) hasSelf = true;
-                });
-                if(!hasSelf && !visited.has(name)) {
-                    merged[name].push(...strictMap[name]);
-                    visited.add(name);
                 }
             }
-            return merged;
+            return mergedGroups;
         },
+
         getHistory(desc) {
             const clean = this.cleanSubDesc(desc); let all = [...this.data.transactions]; Object.values(this.data.subData).forEach(items => all = all.concat(items));
             const matches = all.filter(t => this.cleanSubDesc(t.desc) === clean && !t.isIgnored).sort((a,b) => new Date(b.date) - new Date(a.date));
