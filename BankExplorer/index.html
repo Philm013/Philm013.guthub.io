@@ -1282,7 +1282,7 @@
             
             // Render Tags Cloud
             const tagCounts = {};
-            tx.forEach(t => { if(t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag]||0)+1); });
+            app.data.transactions.forEach(t => { if(t.tags) t.tags.forEach(tag => tagCounts[tag] = (tagCounts[tag]||0)+1); });
             const tagsCloud = document.getElementById('tagsCloud');
             if(Object.keys(tagCounts).length > 0) {
                 tagsCloud.innerHTML = Object.entries(tagCounts).map(([tag, count]) => 
@@ -1377,8 +1377,10 @@
             
             // Tags HTML
             const tagsHtml = (t.tags || []).map(tag => `<span class="tag-badge">#${tag} <i class="fas fa-times" onclick="app.removeTag('${t.id}', '${tag}')"></i></span>`).join('');
+            const allTags = app.getAllUniqueTags();
+            const datalistHtml = `<datalist id="tag-suggestions">${allTags.map(tag => `<option value="${tag}"></option>`).join('')}</datalist>`;
 
-            document.getElementById('detailContent').innerHTML = `<div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div><div style="background:var(--bg);padding:15px;border-radius:8px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div><div style="display:flex; gap:10px; margin-bottom:15px;"><label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label><label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label></div><div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">TAGS</label><div style="margin-bottom:5px;">${tagsHtml}</div><div class="tag-input-container"><input type="text" id="newTagInput" class="form-control" placeholder="Add tag..." onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)"><button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)"><i class="fas fa-plus"></i></button></div></div><div style="margin-top:15px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div><div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div></div>${histHtml}`;
+            document.getElementById('detailContent').innerHTML = `<div style="text-align:center;margin-bottom:20px;"><h1 class="${t.amount>=0?'pos':'neg'}">${this.fmt(t.amount)}</h1><div style="color:var(--text-sub)">${new Date(t.date).toDateString()}</div></div><div style="background:var(--bg);padding:15px;border-radius:8px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">DESCRIPTION</label><div style="font-size:1.1rem;margin-bottom:10px">${t.desc}</div><div style="display:flex; gap:10px; margin-bottom:15px;"><label class="check-group" style="flex:1"><input type="checkbox" ${t.isRecurring?'checked':''} onchange="app.toggleRecurring('${t.id}')"><span style="font-weight:600">Recurring</span></label><label class="check-group" style="flex:1"><input type="checkbox" ${t.isIgnored?'checked':''} onchange="app.toggleIgnored('${t.id}')"><span style="font-weight:600; color:var(--text-sub)">Ignore/Transfer</span></label></div><div><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">TAGS</label><div style="margin-bottom:5px;">${tagsHtml}</div><div class="tag-input-container"><input type="text" id="newTagInput" class="form-control" placeholder="Add tag..." list="tag-suggestions" onkeypress="if(event.key==='Enter') app.addTag('${t.id}', this.value)"><button class="btn btn-sm btn-outline" onclick="app.addTag('${t.id}', document.getElementById('newTagInput').value)"><i class="fas fa-plus"></i></button></div>${datalistHtml}</div><div style="margin-top:15px;"><label style="font-size:0.7rem;font-weight:700;color:var(--text-sub)">NOTES</label><textarea id="noteInput" class="form-control" rows="2" placeholder="Add details...">${t.note || ''}</textarea><button class="btn btn-primary" style="width:100%; margin-top:10px;" onclick="app.saveNote('${t.id}', document.getElementById('noteInput').value)">Save Note</button></div><div style="margin-top:20px; display:flex; justify-content:space-between; align-items:center;"><span style="font-size:0.8rem; color:var(--text-sub)">Source: ${t.sourceFile || 'N/A'}</span>${t.sourceFileId ? `<button class="btn btn-outline" style="padding:5px 10px; font-size:0.8rem;" onclick="ui.openPdf('${t.sourceFileId}')"><i class="fas fa-file-pdf"></i> View Source</button>` : ''}</div></div>${histHtml}`;
             
             // Ensure modal is open
             if(document.getElementById('detailModal').style.display !== 'flex') this.toggleModal('detailModal');
@@ -1466,6 +1468,20 @@
         },
 
         // --- TAGGING ---
+        getAllUniqueTags() {
+            const DEFAULT_TAGS = ['Groceries', 'Utilities', 'Rent', 'Mortgage', 'Gas', 'Dining', 'Entertainment', 'Shopping', 'Health', 'Travel', 'Subscription', 'Income', 'Transfer'];
+            const tagSet = new Set(DEFAULT_TAGS);
+            this.data.transactions.forEach(t => {
+                if (t.tags) t.tags.forEach(tag => tagSet.add(tag));
+            });
+            for (const cat in this.data.subData) {
+                this.data.subData[cat].forEach(t => {
+                    if (t.tags) t.tags.forEach(tag => tagSet.add(tag));
+                });
+            }
+            return Array.from(tagSet).sort();
+        },
+
         async addTag(id, tag) {
             tag = tag.trim();
             if(!tag) return;
@@ -1827,7 +1843,6 @@
             const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([data], {type:'application/json'})); a.download = 'bank_backup.json'; a.click();
         },
         
-        // --- NEW HELPER FUNCTION: Levenshtein Distance ---
         levenshtein(s1, s2) {
             s1 = s1.toLowerCase();
             s2 = s2.toLowerCase();
@@ -1852,8 +1867,7 @@
             }
             return costs[s2.length];
         },
-
-        // --- ENHANCEMENT for cleanSubDesc ---
+        
         cleanSubDesc(desc) { 
             let cleaned = desc.toUpperCase()
                 .replace(/WITHDRAWAL|DEPOSIT|ACH|POS|ATM|CHECK CARD|PURCHASE|BILL PAY|RECURRING/gi,' ')
@@ -1869,12 +1883,11 @@
             return cleaned.trim();
         },
         
-        // --- REPLACEMENT for getFuzzyGroups ---
         getFuzzyGroups(txList) {
             const strictMap = {};
             txList.forEach(t => {
                 const k = this.cleanSubDesc(t.desc);
-                if (!k) return; // Ignore empty descriptions after cleaning
+                if (!k) return;
                 if (!strictMap[k]) strictMap[k] = [];
                 strictMap[k].push(t);
             });
